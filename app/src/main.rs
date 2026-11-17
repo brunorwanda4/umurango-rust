@@ -6,6 +6,9 @@ use gpui_kit::{
     },
     *,
 };
+use std::sync::Arc;
+
+const BRAND_ICON: &[u8] = include_bytes!("../../assets/brand/umuryango-inverted-icon.png");
 
 struct Dashboard {
     local_database: String,
@@ -28,15 +31,28 @@ impl Render for Dashboard {
                     .child(
                         div()
                             .flex()
-                            .flex_col()
-                            .gap_1()
+                            .items_center()
+                            .gap_3()
+                            .child(
+                                img(Arc::new(Image::from_bytes(
+                                    ImageFormat::Png,
+                                    BRAND_ICON.to_vec(),
+                                )))
+                                .size(px(40.0)),
+                            )
                             .child(
                                 div()
-                                    .text_xl()
-                                    .font_weight(FontWeight::BOLD)
-                                    .child("Umuryango"),
-                            )
-                            .child("Family finance overview"),
+                                    .flex()
+                                    .flex_col()
+                                    .gap_1()
+                                    .child(
+                                        div()
+                                            .text_xl()
+                                            .font_weight(FontWeight::BOLD)
+                                            .child("Umuryango"),
+                                    )
+                                    .child("Family finance overview"),
+                            ),
                     )
                     .child(Badge::new().count(1)),
             )
