@@ -8,6 +8,8 @@ use gpui_kit::{
 };
 use std::sync::Arc;
 
+mod icons;
+
 const BRAND_ICON: &[u8] = include_bytes!("../../assets/brand/umuryango-inverted-icon.png");
 
 struct Dashboard {
@@ -60,8 +62,12 @@ impl Render for Dashboard {
                 div()
                     .flex()
                     .gap_3()
-                    .child(summary_card("Available balance", "RWF 1,240,000"))
-                    .child(summary_card("Pending sync", "3 changes")),
+                    .child(summary_card(
+                        icons::WALLET,
+                        "Available balance",
+                        "RWF 1,240,000",
+                    ))
+                    .child(summary_card(icons::ROTATE, "Pending sync", "3 changes")),
             )
             .child(
                 div()
@@ -71,7 +77,14 @@ impl Render for Dashboard {
                     .p_4()
                     .rounded_lg()
                     .bg(rgb(0x1e293b))
-                    .child("Community project progress")
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .child(icons::icon(icons::CIRCLE_CHECK).size(px(16.0)))
+                            .child("Community project progress"),
+                    )
                     .child(Progress::new("project-progress").value(68.0))
                     .child("68% funded"),
             )
@@ -86,7 +99,7 @@ impl Render for Dashboard {
     }
 }
 
-fn summary_card(title: &'static str, value: &'static str) -> impl IntoElement {
+fn summary_card(icon: &'static [u8], title: &'static str, value: &'static str) -> impl IntoElement {
     div()
         .flex()
         .flex_col()
@@ -95,7 +108,14 @@ fn summary_card(title: &'static str, value: &'static str) -> impl IntoElement {
         .flex_1()
         .rounded_lg()
         .bg(rgb(0x1e293b))
-        .child(title)
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap_2()
+                .child(icons::icon(icon).size(px(16.0)))
+                .child(title),
+        )
         .child(div().text_lg().font_weight(FontWeight::BOLD).child(value))
 }
 

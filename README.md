@@ -21,6 +21,10 @@ Rune will need to be used in a separate surface or during a later UI
 migration because both renderers currently select incompatible Windows
 `wgpu` support versions.
 
+The native app includes the free Font Awesome 7.3.1 solid, regular, and brands
+SVG collections under `assets/fontawesome/`. The reusable GPUI icon helper is
+in `app/src/icons.rs`; paid Font Awesome Pro icons are not included.
+
 ## Core Principles
 
 - Money is always integer minor units (`i64`), never `f32` or `f64`.

@@ -29,6 +29,11 @@ working, then read the context files in the order below:
   to `web/` through WebAssembly instead of duplicating financial or domain
   algorithms in TypeScript.
 - Keep handlers, screens, and modules focused; reuse existing patterns.
+- Use the bundled Font Awesome Free SVG icons for native app UI. Add new
+  icon constants in `app/src/icons.rs` and render them with
+  `icons::icon(...)`; do not duplicate raw asset includes in screens.
+- Font Awesome assets live under `assets/fontawesome/`. Paid Font Awesome Pro
+  assets must not be added.
 - Do not add speculative features or silently weaken validation.
 
 ## Working Method
