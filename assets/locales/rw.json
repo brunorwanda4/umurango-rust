@@ -10,20 +10,5 @@
   "login.no_account": "Nta konti ufite?",
   "login.ask_admin": "Baza umuyobozi w'umuryango wawe",
   "login.email_required": "Andika nimero ya telefone cyangwa indangamuntu y'umunyamuryango.",
-  "login.password_required": "Ijambo ry'ibanga cyangwa PIN bigomba kugira nibura inyuguti 4.",
-  "dashboard.sign_out": "Sohoka",
-  "dashboard.available_balance": "Amafaranga ahari",
-  "dashboard.household_treasury": "Ikigega cy'urugo",
-  "dashboard.pending_sync": "Guhuza gutegerejwe",
-  "dashboard.local_sync": "Ububiko bwa SQLite bwahujwe",
-  "dashboard.monthly_budget": "Ingengo y'imari y'ukwezi",
-  "dashboard.budget_status": "72% yakoreshejwe (biragenda neza)",
-  "dashboard.communal_goal": "Intego y'umuryango: amafaranga y'ishuri n'ubwizigame bw'igihembwe cya 1",
-  "dashboard.funded": "68% byabonetse",
-  "dashboard.target": "Intego: RWF 1,500,000",
-  "dashboard.contributed": "Byatanzwe: RWF 1,020,000",
-  "dashboard.active_member": "Umunyamuryango ukora: {name} • Ububiko bw'umuryango burinzwe",
-  "dashboard.local_database": "Ububiko bw'imbere: {database} (SQLite AES-256 Outbox)",
-  "dashboard.record_contribution": "Andika umusanzu",
-  "dashboard.add_expense": "Ongeraho ikiguzi"
+  "login.password_required": "Ijambo ry'ibanga cyangwa PIN bigomba kugira nibura inyuguti 4."
 }

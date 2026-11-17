@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::brand::ThemeMode;
 use gpui_kit::{component::Icon, svg, Pixels, Rgba, Styled, Svg};
 use include_dir::{include_dir, Dir};

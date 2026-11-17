@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
@@ -6,6 +8,29 @@ pub enum Language {
     #[default]
     English,
     Kinyarwanda,
+}
+
+impl Language {
+    pub fn toggle(self) -> Self {
+        match self {
+            Self::English => Self::Kinyarwanda,
+            Self::Kinyarwanda => Self::English,
+        }
+    }
+
+    pub fn code(self) -> &'static str {
+        match self {
+            Self::English => "EN",
+            Self::Kinyarwanda => "RW",
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::English => "Kinyarwanda",
+            Self::Kinyarwanda => "English",
+        }
+    }
 }
 
 fn dictionary(language: Language) -> &'static HashMap<String, String> {
