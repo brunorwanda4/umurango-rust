@@ -37,5 +37,15 @@ working, then read the context files in the order below:
 5. Update the relevant context document and progress tracker.
 6. Report incomplete validation or known limitations explicitly.
 
+## Commit Policy
+
+- Commit completed and validated changes promptly after they happen.
+- Keep commits focused and use a concise Conventional Commits message.
+- Include all related source, tests, lockfiles, and documentation in the same
+  commit.
+- Do not commit unrelated work, secrets, generated build output, or incomplete
+  changes.
+- Do not amend an existing commit unless explicitly requested.
+
 Do not treat this file as a product specification. Product behavior belongs in
 the context documents and the implementation.
