@@ -1,0 +1,21 @@
+# Progress Tracker
+
+This file records meaningful repository progress. Keep entries concise, newest
+entries at the end, and include validation.
+
+## 2026-11-17
+
+- Scaffolded the Rust workspace with `crates/shared`, `backend`, and `app`.
+- Added shared family, transaction, expense, contribution, money, and sync
+  contracts.
+- Added the initial Actix-web backend with PostgreSQL pool configuration,
+  `/health`, `/api/v1/families`, and a family migration.
+- Added the GPUI native app entrypoint and local SQLite outbox foundation.
+- Added the Next.js 15 web portal with Tailwind 4 and daisyUI.
+- Standardized web tooling on Bun and Oxlint; `bun run check` passes.
+- Rust formatting and workspace crate checks pass.
+- Upgraded web dependencies to current Next.js 16, React 19.3, Tailwind 4.3,
+  TypeScript 7, daisyUI 5.8, and Oxlint 1.94.
+- Upgraded Rust dependencies to current Actix-web 4.20 and SQLx 0.9. GPUI
+  remains at its latest published 0.2.2; rusqlite uses 0.37 for native SQLite
+  link compatibility with SQLx 0.9.

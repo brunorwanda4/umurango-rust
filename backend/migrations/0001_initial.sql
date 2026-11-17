@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS families (
+    id UUID PRIMARY KEY,
+    name TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'RWF',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
