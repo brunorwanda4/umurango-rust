@@ -1,10 +1,23 @@
 @import "tailwindcss";
 @plugin "daisyui";
 
+@theme {
+  --color-brand-emerald: #059669;
+  --color-brand-emerald-dark: #047857;
+  --color-brand-emerald-light: #10b981;
+  --color-brand-gold: #f59e0b;
+  --color-brand-navy: #0f172a;
+  --color-brand-navy-card: #1e293b;
+  --color-brand-navy-border: #334155;
+}
+
 :root {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family:
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
 }
 
 body {
   margin: 0;
+  min-height: 100vh;
 }

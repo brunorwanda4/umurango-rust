@@ -21,3 +21,9 @@ entries at the end, and include validation.
   link compatibility with SQLx 0.9.
 - Established the cross-client rule: reusable deterministic Rust logic created
   for `app/` is exposed to `web/` through a narrow WebAssembly boundary.
+- Implemented native GPUI Sign In page in `app/src/login.rs` and brand definitions
+  in `app/src/brand.rs` using official brand colors (emerald #059669, navy #0a0f1d,
+  gold #d97706, sky #0284c7) and brand icons. Integrated authentication flow and
+  screen switching between Sign In and Dashboard in `app/src/main.rs`.
+- Validated via `cargo check -p umuryango-app`, `cargo fmt --all -- --check`,
+  `cargo test -p umuryango-shared -p umuryango-backend`, and `bun run check`.
