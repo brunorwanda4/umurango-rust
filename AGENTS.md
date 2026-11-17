@@ -25,6 +25,9 @@ working, then read the context files in the order below:
 - Make sync operations idempotent and safe to retry.
 - Use Bun for all JavaScript and TypeScript commands in `web/`.
 - Use Oxlint and TypeScript checks before completing web changes.
+- When a capability is implemented in `app/`, expose reusable pure Rust logic
+  to `web/` through WebAssembly instead of duplicating financial or domain
+  algorithms in TypeScript.
 - Keep handlers, screens, and modules focused; reuse existing patterns.
 - Do not add speculative features or silently weaken validation.
 

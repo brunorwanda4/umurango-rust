@@ -4,8 +4,8 @@
 
 ```text
 GPUI app -> local SQLite + sync_outbox -> Actix-web API -> PostgreSQL
-Next.js web portal ---------------------> Actix-web API
-                 crates/shared contracts
+Next.js web portal -> Rust WebAssembly domain layer -> Actix-web API
+                 \-> crates/shared contracts
 ```
 
 The backend is the trust boundary. Clients may optimize UX and cache data, but
@@ -28,6 +28,25 @@ authorization decisions.
 - Native app uses GPUI and rusqlite; encryption must be preserved when the local
   database implementation moves from scaffold to production.
 - Shared DTOs and enums belong in `crates/shared`, not duplicated per client.
+- Pure, deterministic domain logic created for `app/` must be organized so it
+  can compile to WebAssembly for `web/`. GPUI, SQLite, filesystem, and native
+  synchronization workers stay outside the WebAssembly boundary.
+- WebAssembly improves consistency and client-side computation; it does not
+  replace backend authorization, validation, or authoritative persistence.
+
+## WebAssembly Boundary
+
+When a native app capability also belongs in the web portal:
+
+1. Keep the reusable calculation or domain operation in a Rust crate with no
+   native-only dependencies.
+2. Expose a narrow `wasm-bindgen` API with serializable inputs and outputs.
+3. Package the generated module for `web/` and keep the TypeScript wrapper
+   typed and small.
+4. Keep secrets, family permission checks, sync acceptance, and final money
+   writes on the backend.
+
+Do not compile the GPUI UI or local SQLite layer to WebAssembly as a shortcut.
 
 ## Backend Layers
 

@@ -19,3 +19,5 @@ entries at the end, and include validation.
 - Upgraded Rust dependencies to current Actix-web 4.20 and SQLx 0.9. GPUI
   remains at its latest published 0.2.2; rusqlite uses 0.37 for native SQLite
   link compatibility with SQLx 0.9.
+- Established the cross-client rule: reusable deterministic Rust logic created
+  for `app/` is exposed to `web/` through a narrow WebAssembly boundary.
