@@ -14,6 +14,13 @@ web/            Next.js web portal using Bun, TypeScript, Tailwind, and daisyUI
 context/        Project context for human and AI contributors
 ```
 
+The native app includes optional [Rune](https://github.com/anomalyco/rune) and
+`rune-kit` dependencies for native design work under the `rune-design`
+feature. The existing GPUI dashboard remains the default app entrypoint;
+Rune will need to be used in a separate surface or during a later UI
+migration because both renderers currently select incompatible Windows
+`wgpu` support versions.
+
 ## Core Principles
 
 - Money is always integer minor units (`i64`), never `f32` or `f64`.
@@ -32,6 +39,14 @@ cargo check --workspace
 cargo fmt --all -- --check
 cargo run -p umuryango-backend
 cargo run -p umuryango-app
+```
+
+From the repository root, Bun provides shorter native app commands:
+
+```powershell
+bun run check
+bun run build
+bun run
 ```
 
 The backend defaults to `127.0.0.1:8080` and reads `DATABASE_URL` and

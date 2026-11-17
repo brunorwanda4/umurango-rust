@@ -1,0 +1,15 @@
+{
+  "name": "umuryango",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "cargo build -p umuryango-app",
+    "dev": "cargo run -p umuryango-app",
+    "check": "cargo check -p umuryango-app",
+    "fmt": "cargo fmt --all -- --check"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "packageManager": "bun@1.4.4"
+}
