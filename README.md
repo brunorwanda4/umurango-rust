@@ -23,7 +23,11 @@ migration because both renderers currently select incompatible Windows
 
 The native app includes the free Font Awesome 7.3.1 solid, regular, and brands
 SVG collections under `assets/fontawesome/`. The reusable GPUI icon helper is
-in `app/src/icons.rs`; paid Font Awesome Pro icons are not included.
+in `app/src/icons.rs`; use `icons::icon("wallet")` for solid icons or
+`icons::icon_set("free-brands-svg-icons", "github")` for another collection.
+Use `icons::icon_with("wallet", color, px(20.0))` to set color and size.
+Theme controls automatically use light icons in dark mode. Paid Font Awesome
+Pro icons are not included.
 
 ## Core Principles
 

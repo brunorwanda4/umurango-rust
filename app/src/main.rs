@@ -1,15 +1,18 @@
+mod auth;
 mod brand;
+mod i18n;
 mod icons;
-mod login;
 
+use auth::login::{LoginEvent, LoginView};
 use brand::*;
 use gpui_kit::component::{
     badge::Badge,
     button::{Button, ButtonVariants},
     progress::Progress,
 };
+use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
-use login::{LoginEvent, LoginView};
+use i18n::{text, Language};
 use std::sync::Arc;
 
 #[derive(Clone, Debug)]
@@ -29,6 +32,8 @@ pub enum CurrentScreen {
 pub struct UmuryangoApp {
     local_database: String,
     current_screen: CurrentScreen,
+    theme: ThemeMode,
+    language: Language,
     login_view: Entity<LoginView>,
     authenticated_member: Option<AuthenticatedMember>,
     _login_subscription: Subscription,
@@ -36,11 +41,21 @@ pub struct UmuryangoApp {
 
 impl UmuryangoApp {
     pub fn new(local_database: String, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let login_view = cx.new(|cx| LoginView::new(window, cx));
+        let theme = ThemeMode::Dark;
+        let language = Language::default();
+        let login_view = cx.new(|cx| LoginView::new(window, theme, language, cx));
 
         let login_subscription = cx.subscribe(
             &login_view,
             |this, _view, event: &LoginEvent, cx| match event {
+                LoginEvent::ThemeChanged(theme) => {
+                    this.theme = *theme;
+                    cx.notify();
+                }
+                LoginEvent::LanguageChanged(language) => {
+                    this.language = *language;
+                    cx.notify();
+                }
                 LoginEvent::SignedIn {
                     email,
                     display_name,
@@ -62,6 +77,8 @@ impl UmuryangoApp {
         Self {
             local_database,
             current_screen: CurrentScreen::SignIn,
+            theme,
+            language,
             login_view,
             authenticated_member: None,
             _login_subscription: login_subscription,
@@ -74,6 +91,8 @@ impl UmuryangoApp {
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let app_entity = cx.entity().clone();
+        let palette = colors(self.theme);
+        let theme_label = self.theme.label();
         let display_name = self
             .authenticated_member
             .as_ref()
@@ -96,8 +115,8 @@ impl UmuryangoApp {
             .size_full()
             .gap_4()
             .p_8()
-            .bg(color_bg())
-            .text_color(color_text_primary())
+            .bg(palette.bg)
+            .text_color(palette.text_primary)
             // Top Bar
             .child(
                 div()
@@ -106,9 +125,9 @@ impl UmuryangoApp {
                     .justify_between()
                     .p_4()
                     .rounded_xl()
-                    .bg(color_card())
+                    .bg(palette.card)
                     .border_1()
-                    .border_color(color_border())
+                    .border_color(palette.border)
                     .child(
                         div()
                             .flex()
@@ -117,9 +136,10 @@ impl UmuryangoApp {
                             .child(
                                 img(Arc::new(Image::from_bytes(
                                     ImageFormat::Png,
-                                    BRAND_ICON.to_vec(),
+                                    self.theme.wordmark().to_vec(),
                                 )))
-                                .size(px(44.0)),
+                                .w(px(150.0))
+                                .h(px(26.0)),
                             )
                             .child(
                                 div()
@@ -135,7 +155,7 @@ impl UmuryangoApp {
                                                 div()
                                                     .text_lg()
                                                     .font_weight(FontWeight::BOLD)
-                                                    .text_color(color_text_primary())
+                                                    .text_color(palette.text_primary)
                                                     .child(family_name),
                                             )
                                             .child(
@@ -144,18 +164,18 @@ impl UmuryangoApp {
                                                     .px_2()
                                                     .py_0p5()
                                                     .rounded_full()
-                                                    .bg(color_primary().opacity(0.15))
-                                                    .text_color(color_primary_light())
+                                                    .bg(palette.primary.opacity(0.15))
+                                                    .text_color(palette.primary_light)
                                                     .font_weight(FontWeight::SEMIBOLD)
                                                     .child(role),
                                             ),
                                     )
-                                    .child(div().text_xs().text_color(color_text_muted()).child(
-                                        format!(
-                                            "Active Member: {} • Encrypted Local Vault",
-                                            display_name
+                                    .child(
+                                        div().text_xs().text_color(palette.text_muted).child(
+                                            text(self.language, "dashboard.active_member")
+                                                .replace("{name}", &display_name),
                                         ),
-                                    )),
+                                    ),
                             ),
                     )
                     .child(
@@ -163,18 +183,109 @@ impl UmuryangoApp {
                             .flex()
                             .items_center()
                             .gap_3()
+                            .child({
+                                let app = app_entity.clone();
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .gap_1()
+                                    .p_1()
+                                    .rounded_full()
+                                    .bg(palette.surface)
+                                    .child({
+                                        let app = app.clone();
+                                        let selected = self.language == Language::Kinyarwanda;
+                                        Button::new("dashboard-language-rw")
+                                            .label("RW")
+                                            .compact()
+                                            .text()
+                                            .when(selected, |this| {
+                                                this.bg(palette.card)
+                                                    .rounded_full()
+                                                    .text_color(palette.text_primary)
+                                            })
+                                            .when(!selected, |this| {
+                                                this.text_color(palette.text_muted)
+                                            })
+                                            .on_click(move |_e, window, cx| {
+                                                app.update(cx, |this, cx| {
+                                                    if this.language != Language::Kinyarwanda {
+                                                        this.language = Language::Kinyarwanda;
+                                                        this.login_view.update(cx, |view, cx| {
+                                                            view.set_language(
+                                                                Language::Kinyarwanda,
+                                                                window,
+                                                                cx,
+                                                            );
+                                                        });
+                                                        cx.notify();
+                                                    }
+                                                });
+                                            })
+                                    })
+                                    .child({
+                                        let app = app.clone();
+                                        let selected = self.language == Language::English;
+                                        Button::new("dashboard-language-en")
+                                            .label("EN")
+                                            .compact()
+                                            .text()
+                                            .when(selected, |this| {
+                                                this.bg(palette.card)
+                                                    .rounded_full()
+                                                    .text_color(palette.text_primary)
+                                            })
+                                            .when(!selected, |this| {
+                                                this.text_color(palette.text_muted)
+                                            })
+                                            .on_click(move |_e, window, cx| {
+                                                app.update(cx, |this, cx| {
+                                                    if this.language != Language::English {
+                                                        this.language = Language::English;
+                                                        this.login_view.update(cx, |view, cx| {
+                                                            view.set_language(
+                                                                Language::English,
+                                                                window,
+                                                                cx,
+                                                            );
+                                                        });
+                                                        cx.notify();
+                                                    }
+                                                });
+                                            })
+                                    })
+                            })
+                            .child({
+                                let app = app_entity.clone();
+                                Button::new("theme-toggle")
+                                    .icon(icons::theme_button_icon(self.theme))
+                                    .accessibility_label(theme_label)
+                                    .tooltip(theme_label)
+                                    .text()
+                                    .compact()
+                                    .on_click(move |_e, _w, cx| {
+                                        app.update(cx, |this, cx| {
+                                            let theme = this.theme.toggle();
+                                            this.theme = theme;
+                                            this.login_view.update(cx, |view, cx| {
+                                                view.set_theme(theme, cx);
+                                            });
+                                            cx.notify();
+                                        });
+                                    })
+                            })
                             .child(Badge::new().count(1))
                             .child({
                                 let app = app_entity.clone();
-                                Button::new("sign-out-btn").label("Sign Out").on_click(
-                                    move |_e, _w, cx| {
+                                Button::new("sign-out-btn")
+                                    .label(text(self.language, "dashboard.sign_out"))
+                                    .on_click(move |_e, _w, cx| {
                                         app.update(cx, |this, cx| {
                                             this.current_screen = CurrentScreen::SignIn;
                                             this.authenticated_member = None;
                                             cx.notify();
                                         });
-                                    },
-                                )
+                                    })
                             }),
                     ),
             )
@@ -184,25 +295,28 @@ impl UmuryangoApp {
                     .flex()
                     .gap_4()
                     .child(summary_card(
-                        icons::WALLET,
-                        "Available Balance",
+                        "wallet",
+                        text(self.language, "dashboard.available_balance"),
                         "RWF 1,240,000",
-                        "Household Treasury",
-                        color_primary_light(),
+                        text(self.language, "dashboard.household_treasury"),
+                        palette.primary_light,
+                        palette,
                     ))
                     .child(summary_card(
-                        icons::ROTATE,
-                        "Pending Sync",
+                        "rotate",
+                        text(self.language, "dashboard.pending_sync"),
                         "0 changes",
-                        "Local SQLite outbox in sync",
-                        color_accent_blue(),
+                        text(self.language, "dashboard.local_sync"),
+                        palette.accent_blue,
+                        palette,
                     ))
                     .child(summary_card(
-                        icons::WALLET,
-                        "Monthly Budget",
+                        "wallet",
+                        text(self.language, "dashboard.monthly_budget"),
                         "RWF 850,000",
-                        "72% utilized (on track)",
-                        color_accent_gold(),
+                        text(self.language, "dashboard.budget_status"),
+                        palette.accent_gold,
+                        palette,
                     )),
             )
             // Communal Project Progress Card
@@ -213,9 +327,9 @@ impl UmuryangoApp {
                     .gap_3()
                     .p_5()
                     .rounded_xl()
-                    .bg(color_card())
+                    .bg(palette.card)
                     .border_1()
-                    .border_color(color_border())
+                    .border_color(palette.border)
                     .child(
                         div()
                             .flex()
@@ -226,25 +340,25 @@ impl UmuryangoApp {
                                     .flex()
                                     .items_center()
                                     .gap_2()
-                                    .child(
-                                        icons::icon(icons::CIRCLE_CHECK)
-                                            .size(px(16.0))
-                                            .text_color(color_primary_light()),
-                                    )
+                                    .child(icons::icon_with(
+                                        "circle-check",
+                                        palette.primary_light,
+                                        px(16.0),
+                                    ))
                                     .child(
                                         div()
                                             .text_sm()
                                             .font_weight(FontWeight::SEMIBOLD)
-                                            .text_color(color_text_primary())
-                                            .child("Communal Goal: School Fees & Term 1 Savings"),
+                                            .text_color(palette.text_primary)
+                                            .child(text(self.language, "dashboard.communal_goal")),
                                     ),
                             )
                             .child(
                                 div()
                                     .text_xs()
                                     .font_weight(FontWeight::BOLD)
-                                    .text_color(color_primary_light())
-                                    .child("68% funded"),
+                                    .text_color(palette.primary_light)
+                                    .child(text(self.language, "dashboard.funded")),
                             ),
                     )
                     .child(Progress::new("project-progress").value(68.0))
@@ -253,9 +367,9 @@ impl UmuryangoApp {
                             .flex()
                             .justify_between()
                             .text_xs()
-                            .text_color(color_text_muted())
-                            .child("Target: RWF 1,500,000")
-                            .child("Contributed: RWF 1,020,000"),
+                            .text_color(palette.text_muted)
+                            .child(text(self.language, "dashboard.target"))
+                            .child(text(self.language, "dashboard.contributed")),
                     ),
             )
             // Footer with Action Buttons and Local Database Info
@@ -266,19 +380,28 @@ impl UmuryangoApp {
                     .justify_between()
                     .p_4()
                     .rounded_xl()
-                    .bg(color_card())
+                    .bg(palette.card)
                     .border_1()
-                    .border_color(color_border())
-                    .child(div().text_xs().text_color(color_text_dim()).child(format!(
-                        "Local database: {} (SQLite AES-256 Outbox)",
-                        self.local_database
-                    )))
+                    .border_color(palette.border)
+                    .child(
+                        div().text_xs().text_color(palette.text_dim).child(
+                            text(self.language, "dashboard.local_database")
+                                .replace("{database}", &self.local_database),
+                        ),
+                    )
                     .child(
                         div()
                             .flex()
                             .gap_3()
-                            .child(Button::new("record-contribution").label("Record contribution"))
-                            .child(Button::new("add-expense").label("Add expense").primary()),
+                            .child(
+                                Button::new("record-contribution")
+                                    .label(text(self.language, "dashboard.record_contribution")),
+                            )
+                            .child(
+                                Button::new("add-expense")
+                                    .label(text(self.language, "dashboard.add_expense"))
+                                    .primary(),
+                            ),
                     ),
             )
     }
@@ -286,84 +409,23 @@ impl UmuryangoApp {
 
 impl Render for UmuryangoApp {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let app_entity = cx.entity().clone();
-
         div()
-            .flex()
-            .flex_col()
             .size_full()
-            .bg(color_bg())
-            // Top Navigation Banner with Screen Switcher for Testing/Previewing
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .px_6()
-                    .py_2()
-                    .bg(color_surface())
-                    .border_b_1()
-                    .border_color(color_border())
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_2()
-                            .child(div().size(px(8.0)).rounded_full().bg(color_primary_light()))
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .font_weight(FontWeight::MEDIUM)
-                                    .text_color(color_text_muted())
-                                    .child("Umuryango Native App • Local-First Architecture"),
-                            ),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_2()
-                            .child({
-                                let app = app_entity.clone();
-                                Button::new("nav-signin")
-                                    .label("Screen 1: Sign In")
-                                    .compact()
-                                    .primary()
-                                    .on_click(move |_e, _w, cx| {
-                                        app.update(cx, |this, cx| {
-                                            this.current_screen = CurrentScreen::SignIn;
-                                            cx.notify();
-                                        });
-                                    })
-                            })
-                            .child({
-                                let app = app_entity.clone();
-                                Button::new("nav-dashboard")
-                                    .label("Screen 2: Dashboard")
-                                    .compact()
-                                    .on_click(move |_e, _w, cx| {
-                                        app.update(cx, |this, cx| {
-                                            this.current_screen = CurrentScreen::Dashboard;
-                                            cx.notify();
-                                        });
-                                    })
-                            }),
-                    ),
-            )
-            // Screen Content
-            .child(div().flex_1().size_full().child(match self.current_screen {
+            .bg(colors(self.theme).bg)
+            .child(match self.current_screen {
                 CurrentScreen::SignIn => self.login_view.clone().into_any_element(),
                 CurrentScreen::Dashboard => self.render_dashboard(window, cx).into_any_element(),
-            }))
+            })
     }
 }
 
 fn summary_card(
-    icon: &'static [u8],
-    title: &'static str,
+    icon: &'static str,
+    title: String,
     value: &'static str,
-    subtitle: &'static str,
+    subtitle: String,
     accent: Rgba,
+    palette: ThemeColors,
 ) -> impl IntoElement {
     div()
         .flex()
@@ -372,20 +434,20 @@ fn summary_card(
         .p_5()
         .flex_1()
         .rounded_xl()
-        .bg(color_card())
+        .bg(palette.card)
         .border_1()
-        .border_color(color_border())
+        .border_color(palette.border)
         .child(
             div()
                 .flex()
                 .items_center()
                 .gap_2()
-                .child(icons::icon(icon).size(px(14.0)).text_color(accent))
+                .child(icons::icon_with(icon, accent, px(14.0)))
                 .child(
                     div()
                         .text_xs()
                         .font_weight(FontWeight::MEDIUM)
-                        .text_color(color_text_muted())
+                        .text_color(palette.text_muted)
                         .child(title),
                 ),
         )
@@ -396,7 +458,43 @@ fn summary_card(
                 .text_color(accent)
                 .child(value),
         )
-        .child(div().text_xs().text_color(color_text_dim()).child(subtitle))
+        .child(div().text_xs().text_color(palette.text_dim).child(subtitle))
+}
+
+fn window_options(cx: &App) -> WindowOptions {
+    const DEFAULT_WIDTH: f32 = 1100.0;
+    const DEFAULT_HEIGHT: f32 = 750.0;
+    const MIN_WIDTH: f32 = 360.0;
+    const MIN_HEIGHT: f32 = 560.0;
+    const SCREEN_FRACTION: f32 = 0.8;
+    const SCREEN_MARGIN: f32 = 32.0;
+
+    let display_bounds = cx
+        .primary_display()
+        .or_else(|| cx.displays().into_iter().next())
+        .map(|display| display.bounds());
+    let (width, height) = display_bounds
+        .map(|bounds| {
+            (
+                DEFAULT_WIDTH.min(bounds.size.width.as_f32() * SCREEN_FRACTION),
+                DEFAULT_HEIGHT.min(bounds.size.height.as_f32() * SCREEN_FRACTION),
+            )
+        })
+        .unwrap_or((DEFAULT_WIDTH, DEFAULT_HEIGHT));
+    let (min_width, min_height) = display_bounds
+        .map(|bounds| {
+            (
+                MIN_WIDTH.min((bounds.size.width.as_f32() - SCREEN_MARGIN).max(0.0)),
+                MIN_HEIGHT.min((bounds.size.height.as_f32() - SCREEN_MARGIN).max(0.0)),
+            )
+        })
+        .unwrap_or((MIN_WIDTH, MIN_HEIGHT));
+
+    WindowOptions {
+        window_bounds: Some(WindowBounds::centered(size(px(width), px(height)), cx)),
+        window_min_size: Some(size(px(min_width), px(min_height))),
+        ..Default::default()
+    }
 }
 
 fn main() {
@@ -406,7 +504,7 @@ fn main() {
 
     application().run(|cx| {
         init(cx);
-        open_window(WindowOptions::default(), cx, |window, cx| {
+        open_window(window_options(cx), cx, |window, cx| {
             cx.new(|cx| UmuryangoApp::new(database_path.to_string(), window, cx))
         })
         .expect("window must open");
