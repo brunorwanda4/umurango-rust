@@ -177,17 +177,6 @@ impl Render for LoginView {
         };
 
         let content = div()
-            .when_some(self.error_message.as_ref(), |this, error| {
-                this.child(
-                    div()
-                        .p_3()
-                        .rounded_lg()
-                        .bg(palette.bg)
-                        .text_color(palette.error)
-                        .text_xs()
-                        .child(error.clone()),
-                )
-            })
             .child(
                 div()
                     .flex()
@@ -304,21 +293,39 @@ impl Render for LoginView {
                             })
                     }),
             )
-            .child({
-                let view = view_entity.clone();
-                Button::new("sign-in")
-                    .mt_4()
-                    .label(if self.is_authenticating {
-                        text(self.language, "login.signing_in")
-                    } else {
-                        text(self.language, "login.sign_in")
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap_2()
+                    // .mt_4()
+                    .when_some(self.error_message.as_ref(), |this, error| {
+                        this.child(
+                            div()
+                                .w_full()
+                                .p_3()
+                                .rounded_lg()
+                                .bg(palette.bg)
+                                .text_color(palette.error)
+                                .text_xs()
+                                .child(error.clone()),
+                        )
                     })
-                    .primary()
-                    .loading(self.is_authenticating)
-                    .on_click(move |_event, window, cx| {
-                        view.update(cx, |this, cx| this.handle_submit(window, cx));
-                    })
-            })
+                    .child({
+                        let view = view_entity.clone();
+                        Button::new("sign-in")
+                            .label(if self.is_authenticating {
+                                text(self.language, "login.signing_in")
+                            } else {
+                                text(self.language, "login.sign_in")
+                            })
+                            .primary()
+                            .loading(self.is_authenticating)
+                            .on_click(move |_event, window, cx| {
+                                view.update(cx, |this, cx| this.handle_submit(window, cx));
+                            })
+                    }),
+            )
             .child(
                 div()
                     .flex()

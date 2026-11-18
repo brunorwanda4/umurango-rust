@@ -31,3 +31,4 @@ entries at the end, and include validation.
   button.
 - Added an explicit Font Awesome check icon and controlled checked state to
   the login remember-me checkbox.
+- Positioned login validation errors immediately above the Sign In button.
