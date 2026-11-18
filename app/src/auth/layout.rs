@@ -131,3 +131,62 @@ fn language_option(
         .child(label)
         .on_click(move |_event, window, cx| on_change(language, window, cx))
 }
+
+pub fn auth_submit_section(
+    button_id: impl Into<ElementId>,
+    palette: crate::brand::ThemeColors,
+    error_message: Option<&String>,
+    label: impl Into<SharedString>,
+    loading: bool,
+    on_submit: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+) -> impl IntoElement {
+    div()
+        .flex()
+        .flex_col()
+        .gap_2()
+        .when_some(error_message, |this, error| {
+            this.child(
+                div()
+                    .w_full()
+                    .p_3()
+                    .rounded_lg()
+                    .bg(palette.bg)
+                    .text_color(palette.error)
+                    .text_xs()
+                    .child(error.clone()),
+            )
+        })
+        .child(
+            Button::new(button_id)
+                .label(label)
+                .primary()
+                .loading(loading)
+                .on_click(on_submit),
+        )
+}
+
+pub fn auth_footer_prompt(
+    action_id: impl Into<ElementId>,
+    palette: crate::brand::ThemeColors,
+    prompt: impl Into<SharedString>,
+    action_label: impl Into<SharedString>,
+    on_action: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+) -> impl IntoElement {
+    div()
+        .flex()
+        .items_center()
+        .justify_center()
+        .mt_4()
+        .gap_1()
+        .text_xs()
+        .text_color(palette.text_muted)
+        .child(prompt.into())
+        .child(
+            div()
+                .id(action_id)
+                .cursor_pointer()
+                .text_color(palette.primary_light)
+                .child(action_label.into())
+                .on_click(on_action),
+        )
+}

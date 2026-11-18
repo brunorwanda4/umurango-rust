@@ -32,3 +32,18 @@ entries at the end, and include validation.
 - Added an explicit Font Awesome check icon and controlled checked state to
   the login remember-me checkbox.
 - Positioned login validation errors immediately above the Sign In button.
+
+## 2026-11-18
+
+- Extracted reusable GPUI form components (`app/src/components/input.rs`,
+  `app/src/components/checkbox.rs`) and shared auth section helpers in
+  `app/src/auth/layout.rs`.
+- Implemented the native registration view in `app/src/auth/register.rs` with
+  name, phone number, and password inputs, localized strings (`en.json` and
+  `rw.json`), and Login/Register screen navigation in `app/src/main.rs`.
+- Validated via `cargo fmt --all -- --check`,
+  `cargo check -p umuryango-app --all-targets`, and
+  `cargo test -p umuryango-app --lib` (linking GUI test binaries requires host
+  `libxkbcommon-x11`).
+
+

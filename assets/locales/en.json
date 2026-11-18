@@ -11,6 +11,20 @@
   "login.signing_in": "Signing in...",
   "login.no_account": "Don't have an account?",
   "login.ask_admin": "Ask your family administrator",
+  "login.create_account": "Create account",
   "login.email_required": "Enter your phone number or member ID.",
-  "login.password_required": "Password or PIN must be at least 4 characters."
+  "login.password_required": "Password or PIN must be at least 4 characters.",
+  "register.name_label": "Full name",
+  "register.name_placeholder": "Enter your full name",
+  "register.phone_label": "Phone number",
+  "register.phone_placeholder": "Enter your phone number",
+  "register.password_label": "Password or security PIN",
+  "register.password_placeholder": "Create a password or PIN",
+  "register.submit": "Create account",
+  "register.submitting": "Creating account...",
+  "register.have_account": "Already have an account?",
+  "register.sign_in": "Sign in",
+  "register.name_required": "Enter your full name.",
+  "register.phone_required": "Enter your phone number.",
+  "register.password_required": "Password or PIN must be at least 4 characters."
 }
