@@ -298,7 +298,6 @@ impl Render for LoginView {
                     .flex()
                     .flex_col()
                     .gap_2()
-                    // .mt_4()
                     .when_some(self.error_message.as_ref(), |this, error| {
                         this.child(
                             div()
@@ -331,7 +330,7 @@ impl Render for LoginView {
                     .flex()
                     .items_center()
                     .justify_center()
-                    .mt_4()
+                    .my_4()
                     .gap_1()
                     .text_xs()
                     .text_color(palette.text_muted)
