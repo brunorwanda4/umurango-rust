@@ -7,6 +7,8 @@ use gpui_kit::*;
 use std::rc::Rc;
 use std::sync::Arc;
 
+type LanguageChangeHandler = Rc<dyn Fn(Language, &mut Window, &mut App)>;
+
 pub fn auth_layout<L, T, C>(
     theme: ThemeMode,
     language: Language,
@@ -31,6 +33,26 @@ where
         .bg(palette.bg)
         .text_color(palette.text_primary)
         .child(
+            div().absolute().top_6().right_6().child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .child(language_switch(language, theme, on_language_change))
+                    .child(
+                        Button::new("auth-theme-toggle")
+                            .icon(icons::theme_button_icon(theme))
+                            .accessibility_label(theme_label)
+                            .tooltip(theme_label)
+                            .text()
+                            .compact()
+                            .on_click(move |_event, _window, cx| {
+                                on_theme_change(theme.toggle(), cx)
+                            }),
+                    ),
+            ),
+        )
+        .child(
             div()
                 .flex()
                 .flex_col()
@@ -40,24 +62,6 @@ where
                 .p_8()
                 .rounded_xl()
                 .bg(palette.card)
-                .child(
-                    div()
-                        .flex()
-                        .justify_end()
-                        .gap_2()
-                        .child(language_switch(language, theme, on_language_change))
-                        .child(
-                            Button::new("auth-theme-toggle")
-                                .icon(icons::theme_button_icon(theme))
-                                .accessibility_label(theme_label)
-                                .tooltip(theme_label)
-                                .text()
-                                .compact()
-                                .on_click(move |_event, _window, cx| {
-                                    on_theme_change(theme.toggle(), cx)
-                                }),
-                        ),
-                )
                 .child(
                     img(Arc::new(Image::from_bytes(
                         ImageFormat::Png,
@@ -75,7 +79,7 @@ where
     F: Fn(Language, &mut Window, &mut App) + 'static,
 {
     let palette = colors(theme);
-    let on_change: Rc<dyn Fn(Language, &mut Window, &mut App)> = Rc::new(on_change);
+    let on_change: LanguageChangeHandler = Rc::new(on_change);
 
     div()
         .flex()
@@ -107,7 +111,7 @@ fn language_option(
     label: &'static str,
     selected: bool,
     palette: crate::brand::ThemeColors,
-    on_change: Rc<dyn Fn(Language, &mut Window, &mut App)>,
+    on_change: LanguageChangeHandler,
     language: Language,
 ) -> impl IntoElement {
     div()

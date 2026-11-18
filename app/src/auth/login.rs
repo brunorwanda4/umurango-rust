@@ -1,8 +1,9 @@
 #![allow(dead_code)]
 
 use crate::auth::layout::auth_layout;
-use crate::brand::{colors, ThemeColors, ThemeMode};
+use crate::brand::{apply_theme, colors, ThemeColors, ThemeMode};
 use crate::i18n::{text, Language};
+use crate::icons;
 use gpui_kit::component::{
     button::{Button, ButtonVariants},
     checkbox::Checkbox,
@@ -26,6 +27,7 @@ pub enum LoginEvent {
 pub struct LoginView {
     email_input: Entity<InputState>,
     password_input: Entity<InputState>,
+    show_password: bool,
     remember_me: bool,
     error_message: Option<String>,
     is_authenticating: bool,
@@ -42,15 +44,25 @@ impl LoginView {
         language: Language,
         cx: &mut Context<Self>,
     ) -> Self {
+        apply_theme(theme, cx);
+
+        let email_input = cx.new(|cx| {
+            InputState::new(window, cx).placeholder(text(language, "login.phone_placeholder"))
+        });
+        let password_input = cx.new(|cx| {
+            InputState::new(window, cx)
+                .placeholder(text(language, "login.password_placeholder"))
+                .masked(true)
+        });
+
+        email_input.update(cx, |input, cx| {
+            input.focus(window, cx);
+        });
+
         Self {
-            email_input: cx.new(|cx| {
-                InputState::new(window, cx).placeholder(text(language, "login.phone_placeholder"))
-            }),
-            password_input: cx.new(|cx| {
-                InputState::new(window, cx)
-                    .placeholder(text(language, "login.password_placeholder"))
-                    .masked(true)
-            }),
+            email_input,
+            password_input,
+            show_password: false,
             remember_me: true,
             error_message: None,
             is_authenticating: false,
@@ -61,6 +73,7 @@ impl LoginView {
 
     pub fn set_theme(&mut self, theme: ThemeMode, cx: &mut Context<Self>) {
         self.theme = theme;
+        apply_theme(theme, cx);
         cx.notify();
     }
 
@@ -71,13 +84,29 @@ impl LoginView {
         cx: &mut Context<Self>,
     ) {
         self.language = language;
+        let current_email = self.email_input.read(cx).value().to_string();
+        let current_password = self.password_input.read(cx).value().to_string();
+        let masked = !self.show_password;
+
         self.email_input = cx.new(|cx| {
-            InputState::new(window, cx).placeholder(text(language, "login.phone_placeholder"))
+            InputState::new(window, cx)
+                .placeholder(text(language, "login.phone_placeholder"))
+                .default_value(current_email)
         });
         self.password_input = cx.new(|cx| {
             InputState::new(window, cx)
                 .placeholder(text(language, "login.password_placeholder"))
-                .masked(true)
+                .default_value(current_password)
+                .masked(masked)
+        });
+        cx.notify();
+    }
+
+    fn toggle_password_visibility(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.show_password = !self.show_password;
+        let masked = !self.show_password;
+        self.password_input.update(cx, |input, cx| {
+            input.set_masked(masked, window, cx);
         });
         cx.notify();
     }
@@ -126,6 +155,16 @@ impl Render for LoginView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let view_entity = cx.entity().clone();
         let palette = colors(self.theme);
+        let password_toggle_label = if self.show_password {
+            text(self.language, "login.hide_password")
+        } else {
+            text(self.language, "login.show_password")
+        };
+        let password_toggle_icon = if self.show_password {
+            "eye-slash"
+        } else {
+            "eye"
+        };
         let language_change = {
             let view = view_entity.clone();
             move |language: Language, window: &mut Window, cx: &mut App| {
@@ -160,6 +199,7 @@ impl Render for LoginView {
                         text(self.language, "login.phone_label"),
                         Input::new(&self.email_input)
                             .cleanable(true)
+                            .cursor_text()
                             .bg(palette.surface)
                             .text_color(palette.text_body),
                     ))
@@ -186,15 +226,42 @@ impl Render for LoginView {
                                             .child(text(self.language, "login.forgot_pin")),
                                     ),
                             )
-                            .child(
-                                div().w_full().rounded_lg().bg(palette.surface).p_1().child(
-                                    Input::new(&self.password_input)
-                                        .cleanable(true)
-                                        .mask_toggle()
-                                        .bg(palette.surface)
-                                        .text_color(palette.text_body),
-                                ),
-                            ),
+                            .child({
+                                let view = view_entity.clone();
+                                div()
+                                    .w_full()
+                                    .rounded_lg()
+                                    .bg(palette.surface)
+                                    .p_1()
+                                    .cursor_text()
+                                    .child(
+                                        Input::new(&self.password_input)
+                                            .cleanable(true)
+                                            .cursor_text()
+                                            .bg(palette.surface)
+                                            .text_color(palette.text_body)
+                                            .suffix(
+                                                Button::new("toggle-password-visibility")
+                                                    .icon(
+                                                        icons::button_icon(password_toggle_icon)
+                                                            .text_color(palette.text_muted),
+                                                    )
+                                                    .accessibility_label(
+                                                        password_toggle_label.clone(),
+                                                    )
+                                                    .tooltip(password_toggle_label)
+                                                    .text()
+                                                    .compact()
+                                                    .on_click(move |_event, window, cx| {
+                                                        view.update(cx, |this, cx| {
+                                                            this.toggle_password_visibility(
+                                                                window, cx,
+                                                            );
+                                                        });
+                                                    }),
+                                            ),
+                                    )
+                            }),
                     )
                     .child({
                         let view = view_entity.clone();
@@ -248,9 +315,8 @@ impl Render for LoginView {
             let view = view_entity;
             move |theme: ThemeMode, cx: &mut App| {
                 view.update(cx, |this, cx| {
-                    this.theme = theme;
+                    this.set_theme(theme, cx);
                     cx.emit(LoginEvent::ThemeChanged(theme));
-                    cx.notify();
                 });
             }
         };
@@ -277,6 +343,7 @@ fn login_field(palette: ThemeColors, label: String, input: impl IntoElement) -> 
                 .rounded_lg()
                 .bg(palette.surface)
                 .p_1()
+                .cursor_text()
                 .child(input),
         )
 }

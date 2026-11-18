@@ -3,6 +3,8 @@
   "login.phone_placeholder": "Phone number or member ID",
   "login.password_label": "Password or security PIN",
   "login.password_placeholder": "Enter your password or PIN",
+  "login.show_password": "Show password",
+  "login.hide_password": "Hide password",
   "login.forgot_pin": "Forgot PIN?",
   "login.remember_me": "Keep me signed in on this device",
   "login.sign_in": "Sign in",

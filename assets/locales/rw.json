@@ -3,6 +3,8 @@
   "login.phone_placeholder": "Nimero ya telefone cyangwa indangamuntu y'umunyamuryango",
   "login.password_label": "Ijambo ry'ibanga cyangwa PIN y'umutekano",
   "login.password_placeholder": "Andika ijambo ry'ibanga cyangwa PIN",
+  "login.show_password": "Erekana ijambo ry'ibanga",
+  "login.hide_password": "Hisha ijambo ry'ibanga",
   "login.forgot_pin": "Wibagiwe PIN?",
   "login.remember_me": "Nkomeza kunshyira ku gikoresho",
   "login.sign_in": "Kwinjira",

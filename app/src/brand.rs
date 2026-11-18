@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
-use gpui_kit::{rgb, Rgba};
+use gpui_kit::component::theme::{Theme, ThemeMode as ComponentThemeMode};
+use gpui_kit::{rgb, App, Rgba};
 
 pub const BRAND_WORDMARK: &[u8] = include_bytes!("../../assets/brand/umuryango-wordmark.png");
 pub const BRAND_WORDMARK_INVERTED: &[u8] =
@@ -29,11 +30,30 @@ impl ThemeMode {
     }
 
     pub fn wordmark(self) -> &'static [u8] {
-        match self {
-            Self::Dark => BRAND_WORDMARK_INVERTED,
-            Self::Light => BRAND_WORDMARK,
+        if self == Self::Dark {
+            BRAND_WORDMARK_INVERTED
+        } else {
+            BRAND_WORDMARK
         }
     }
+}
+
+pub fn apply_theme(mode: ThemeMode, cx: &mut App) {
+    let palette = colors(mode);
+    let component_mode = match mode {
+        ThemeMode::Dark => ComponentThemeMode::Dark,
+        ThemeMode::Light => ComponentThemeMode::Light,
+    };
+    Theme::change(component_mode, None, cx);
+    Theme::update(cx, |theme| {
+        theme.colors.caret = palette.primary_light.into();
+        theme.colors.foreground = palette.text_body.into();
+        theme.colors.muted_foreground = palette.text_muted.into();
+        theme.colors.background = palette.bg.into();
+        theme.colors.input = palette.border.into();
+        theme.colors.border = palette.border.into();
+        theme.colors.ring = palette.primary_light.into();
+    });
 }
 
 #[derive(Clone, Copy, Debug)]
