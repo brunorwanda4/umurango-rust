@@ -84,6 +84,7 @@ pub fn api_register(name: &str, phone: &str, password: &str) -> Result<AuthRespo
         phone: phone.to_string(),
         email: None,
         password: password.to_string(),
+        avatar_url: None,
     };
 
     let response = match ureq::post(&url)

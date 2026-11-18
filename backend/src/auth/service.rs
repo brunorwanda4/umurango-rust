@@ -8,8 +8,8 @@ use crate::auth::{
 use sqlx::{PgPool, Row};
 use std::fmt;
 use umuryango_shared::{
-    AuthResponse, CreateFamilyRequest, CreateFamilyResponse, JoinFamilyResponse, LoginRequest,
-    PendingFamilyInviteDto, RegisterRequest, UserDto,
+    generate_default_avatar_url, AuthResponse, CreateFamilyRequest, CreateFamilyResponse,
+    JoinFamilyResponse, LoginRequest, PendingFamilyInviteDto, RegisterRequest, UserDto,
 };
 use uuid::Uuid;
 
@@ -64,6 +64,12 @@ pub async fn register_user(
     let clean_phone = req.phone.trim();
     let clean_name = req.name.trim();
     let clean_email = req.email.as_ref().map(|e| e.trim().to_lowercase());
+    let avatar_url = req
+        .avatar_url
+        .as_ref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| generate_default_avatar_url(clean_name));
 
     // 1. Check for duplicate phone or email concurrently with offloaded Argon2id password hashing
     let password_owned = req.password.clone();
@@ -111,9 +117,9 @@ pub async fn register_user(
         r#"
         WITH new_user AS (
             INSERT INTO "User" (
-                "id", "fullName", "phoneNumber", "email", "passwordHash", "status", "createdAt", "updatedAt"
+                "id", "fullName", "phoneNumber", "email", "passwordHash", "avatarUrl", "status", "createdAt", "updatedAt"
             )
-            VALUES ($1, $2, $3, $4, $5, 'ACTIVE', NOW(), NOW())
+            VALUES ($1, $2, $3, $4, $5, $6, 'ACTIVE', NOW(), NOW())
             RETURNING "id"
         ),
         new_family AS (
@@ -121,7 +127,7 @@ pub async fn register_user(
                 "id", "name", "slug", "joinCode", "country", "defaultCurrency", "contributionCadence",
                 "type", "createdById", "personalOwnerId", "createdAt", "updatedAt"
             )
-            SELECT $6, $7, $8, $9, 'RW', 'RWF', 'MONTHLY', 'NUCLEAR', "id", "id", NOW(), NOW()
+            SELECT $7, $8, $9, $10, 'RW', 'RWF', 'MONTHLY', 'NUCLEAR', "id", "id", NOW(), NOW()
             FROM new_user
             ON CONFLICT DO NOTHING
         ),
@@ -129,7 +135,7 @@ pub async fn register_user(
             INSERT INTO "FamilyMember" (
                 "id", "familyId", "userId", "authority", "capabilities", "createdAt", "updatedAt"
             )
-            SELECT $10, $6, "id", 'HEAD', '{}', NOW(), NOW()
+            SELECT $11, $7, "id", 'HEAD', '{}', NOW(), NOW()
             FROM new_user
             ON CONFLICT DO NOTHING
         ),
@@ -144,7 +150,7 @@ pub async fn register_user(
             ON CONFLICT ("familyId", "userId") DO NOTHING
         )
         INSERT INTO "AuthAuditEvent" ("id", "userId", "emailOrMobile", "action", "result", "createdAt")
-        SELECT $11, "id", $3, 'REGISTER', 'SUCCESS', NOW()
+        SELECT $12, "id", $3, 'REGISTER', 'SUCCESS', NOW()
         FROM new_user;
         "#,
     )
@@ -153,6 +159,7 @@ pub async fn register_user(
     .bind(clean_phone)
     .bind(clean_email.as_deref())
     .bind(&password_hash)
+    .bind(&avatar_url)
     .bind(&family_id)
     .bind(&family_name)
     .bind(&family_slug)
@@ -182,6 +189,7 @@ pub async fn register_user(
             full_name: clean_name.to_string(),
             phone_number: Some(clean_phone.to_string()),
             email: clean_email,
+            avatar_url: Some(avatar_url),
             status: "ACTIVE".into(),
         },
         token,
@@ -205,7 +213,7 @@ pub async fn login_user(
     // 1. Fetch user by phoneNumber OR email
     let row = sqlx::query(
         r#"
-        SELECT "id", "fullName", "phoneNumber", "email", "passwordHash", "status"::text AS "status"
+        SELECT "id", "fullName", "phoneNumber", "email", "passwordHash", "avatarUrl", "status"::text AS "status"
         FROM "User"
         WHERE "phoneNumber" = $1 OR LOWER("email") = LOWER($1)
         LIMIT 1;
@@ -234,6 +242,9 @@ pub async fn login_user(
     let phone_number: Option<String> = row.get("phoneNumber");
     let email: Option<String> = row.get("email");
     let password_hash: Option<String> = row.get("passwordHash");
+    let avatar_url: Option<String> = row
+        .get::<Option<String>, _>("avatarUrl")
+        .or_else(|| Some(generate_default_avatar_url(&full_name)));
     let status: String = row.get("status");
 
     if status.eq_ignore_ascii_case("DISABLED") {
@@ -342,6 +353,7 @@ pub async fn login_user(
             full_name,
             phone_number,
             email,
+            avatar_url,
             status,
         },
         token,
@@ -354,7 +366,7 @@ pub async fn login_user(
 pub async fn get_user_profile(pool: &PgPool, user_id: &str) -> Result<UserDto, ServiceError> {
     let row = sqlx::query(
         r#"
-        SELECT "id", "fullName", "phoneNumber", "email", "status"::text AS "status"
+        SELECT "id", "fullName", "phoneNumber", "email", "avatarUrl", "status"::text AS "status"
         FROM "User"
         WHERE "id" = $1
         LIMIT 1;
@@ -366,11 +378,17 @@ pub async fn get_user_profile(pool: &PgPool, user_id: &str) -> Result<UserDto, S
     .map_err(|e| ServiceError::Internal(e.to_string()))?
     .ok_or_else(|| ServiceError::NotFound("User not found".into()))?;
 
+    let full_name: String = row.get("fullName");
+    let avatar_url: Option<String> = row
+        .get::<Option<String>, _>("avatarUrl")
+        .or_else(|| Some(generate_default_avatar_url(&full_name)));
+
     Ok(UserDto {
         id: row.get("id"),
-        full_name: row.get("fullName"),
+        full_name,
         phone_number: row.get("phoneNumber"),
         email: row.get("email"),
+        avatar_url,
         status: row.get("status"),
     })
 }

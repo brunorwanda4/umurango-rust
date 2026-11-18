@@ -203,3 +203,14 @@ entries at the end, and include validation.
   reusable components and data under `app/src/components/dashboard/`, while
   leaving page state and navigation in `app/src/dashboard/`. This convention
   applies to future features as they grow.
+- Generated default DiceBear weave avatars (`https://api.dicebear.com/10.x/weave/svg?seed=...`)
+  on new account registration, persisting `avatarUrl` to PostgreSQL `User` table
+  (`crates/shared/src/lib.rs`, `backend/src/auth/service.rs`). Added `avatar_url`
+  support to `RegisterRequest` and `UserDto`, and added corresponding helper and
+  types to `web/src/service/api.ts`.
+- Added unit tests in `umuryango-shared` and end-to-end integration test
+  `backend/tests/auth_avatar_test.rs` against live PostgreSQL verifying avatar
+  generation, persistence, and profile/login retrieval.
+- Validated via `cargo fmt --all -- --check`, `cargo test -p umuryango-shared`,
+  `cargo test -p umuryango-backend`, `cargo test -p umuryango-app --lib`, and
+  `bun run check` in `web/`.

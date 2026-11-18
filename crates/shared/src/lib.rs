@@ -124,6 +124,24 @@ pub struct SyncPullResponse {
     pub contributions: Vec<Contribution>,
 }
 
+/// Default DiceBear avatar style used for new user accounts.
+/// Based on https://www.dicebear.com/styles/weave/
+pub const DEFAULT_AVATAR_STYLE_BASE_URL: &str = "https://api.dicebear.com/10.x/weave/svg";
+
+/// Generates a default avatar URL using DiceBear's "weave" style.
+/// Accepts a seed string (such as user name or user id) and returns the full SVG URL.
+/// Empty or whitespace-only seeds return the base URL without query parameters.
+pub fn generate_default_avatar_url(seed: &str) -> String {
+    let clean = seed.trim();
+    if clean.is_empty() {
+        DEFAULT_AVATAR_STYLE_BASE_URL.to_string()
+    } else {
+        let encoded =
+            percent_encoding::utf8_percent_encode(clean, percent_encoding::NON_ALPHANUMERIC);
+        format!("{DEFAULT_AVATAR_STYLE_BASE_URL}?seed={encoded}")
+    }
+}
+
 /// Request payload to register a new user.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
@@ -133,6 +151,8 @@ pub struct RegisterRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub email: Option<String>,
     pub password: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub avatar_url: Option<String>,
 }
 
 /// Request payload to log in an existing user with phone or email.
@@ -151,6 +171,8 @@ pub struct UserDto {
     pub full_name: String,
     pub phone_number: Option<String>,
     pub email: Option<String>,
+    #[serde(default)]
+    pub avatar_url: Option<String>,
     pub status: String,
 }
 
@@ -215,4 +237,61 @@ pub struct PendingFamilyInviteDto {
     pub family_name: String,
     pub role: String,
     pub created_at: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_generate_default_avatar_url_simple_name() {
+        let url = generate_default_avatar_url("Aline");
+        assert_eq!(url, "https://api.dicebear.com/10.x/weave/svg?seed=Aline");
+    }
+
+    #[test]
+    fn test_generate_default_avatar_url_with_spaces() {
+        let url = generate_default_avatar_url("Jean Luc");
+        assert_eq!(
+            url,
+            "https://api.dicebear.com/10.x/weave/svg?seed=Jean%20Luc"
+        );
+    }
+
+    #[test]
+    fn test_generate_default_avatar_url_empty_or_whitespace() {
+        assert_eq!(
+            generate_default_avatar_url(""),
+            DEFAULT_AVATAR_STYLE_BASE_URL
+        );
+        assert_eq!(
+            generate_default_avatar_url("   "),
+            DEFAULT_AVATAR_STYLE_BASE_URL
+        );
+    }
+
+    #[test]
+    fn test_user_dto_serialization_with_avatar() {
+        let user = UserDto {
+            id: "user-123".into(),
+            full_name: "Alice Mutesi".into(),
+            phone_number: Some("+250788111222".into()),
+            email: None,
+            avatar_url: Some("https://api.dicebear.com/10.x/weave/svg?seed=Alice%20Mutesi".into()),
+            status: "ACTIVE".into(),
+        };
+
+        let json = serde_json::to_string(&user).expect("serialization succeeds");
+        assert!(json.contains("avatar_url"));
+
+        let deserialized: UserDto = serde_json::from_str(&json).expect("deserialization succeeds");
+        assert_eq!(deserialized, user);
+    }
+
+    #[test]
+    fn test_user_dto_backward_compatibility_without_avatar() {
+        let json = r#"{"id":"user-1","full_name":"Bob","phone_number":null,"email":null,"status":"ACTIVE"}"#;
+        let deserialized: UserDto = serde_json::from_str(json).expect("deserialization succeeds");
+        assert_eq!(deserialized.avatar_url, None);
+    }
 }

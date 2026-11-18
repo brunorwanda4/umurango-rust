@@ -8819,6 +8819,7 @@ dependencies = [
 name = "umuryango-shared"
 version = "0.1.0"
 dependencies = [
+ "percent-encoding",
  "serde",
  "serde_json",
  "utoipa",
