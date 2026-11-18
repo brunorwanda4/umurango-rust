@@ -70,7 +70,7 @@ It watches `backend/`, `crates/`, and workspace Cargo files, then stops and
 restarts the Actix server after source changes. Cargo's incremental build cache
 keeps subsequent restarts fast.
 
-The backend defaults to `127.0.0.1:8080` and reads `DATABASE_URL` and
+The backend defaults to `127.0.0.1:4433` and reads `DATABASE_URL` and
 `BIND_ADDRESS` from the environment.
 
 ### Web portal
@@ -85,7 +85,7 @@ bun run check
 bun run build
 ```
 
-The web API defaults to `http://localhost:8080/api/v1`. Override it with
+The web API defaults to `http://localhost:4433/api/v1`. Override it with
 `NEXT_PUBLIC_API_URL`.
 
 ## Context For Contributors

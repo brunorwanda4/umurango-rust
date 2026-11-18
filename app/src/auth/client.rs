@@ -25,7 +25,7 @@ pub fn get_current_token() -> Option<String> {
 pub fn api_base_url() -> String {
     env::var("API_URL")
         .or_else(|_| env::var("NEXT_PUBLIC_API_URL"))
-        .unwrap_or_else(|_| "http://localhost:8080/api/v1".to_string())
+        .unwrap_or_else(|_| "http://localhost:4433/api/v1".to_string())
 }
 
 /// Calls backend `POST /api/v1/auth/login` to authenticate an existing user.

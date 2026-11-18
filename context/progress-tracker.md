@@ -116,3 +116,4 @@ entries at the end, and include validation.
 - Added `bun run dev:backend`, a Bun-based backend development watcher that
   restarts the Actix server after backend or shared-crate changes and uses
   Cargo incremental builds for fast subsequent startup.
+- Updated the local backend and API client defaults to port `4433`.
