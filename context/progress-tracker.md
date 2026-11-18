@@ -138,3 +138,28 @@ entries at the end, and include validation.
 - Added Actix request logging middleware for timestamped method, status, client
   IP, route, duration, and slow-request console output. Successful `/health`
   checks are quiet, while API requests and error responses remain visible.
+- Built reusable native GPUI UI component library in `app/src/components/ui/`
+  modeled after `input.rs` and the design tokens in `brand.rs`:
+  - `checkbox.rs`: `checkbox_indicator`, `checkbox`, `checkbox_with_description`,
+    and `checkbox_with_link`.
+  - `card.rs`: `card`, `card_surface`, `card_header`, `card_footer`, `interactive_card`,
+    and standardized `option_card`.
+  - `input.rs`: `text_input`, `password_input`, `search_input` (with magnifying glass prefix),
+    `input_container`, `input_field`, `input_field_with_error`, and `password_field`.
+  - `stat_card.rs`: Financial summary metric card with balance, subtitle, optional icon,
+    and positive/negative trend indicators.
+  - `badge.rs`: Status tags and pills with `BadgeVariant` (`Primary`, `Success`, `Warning`,
+    `Error`, `Neutral`, `Info`).
+  - `alert.rs`: `alert` and `dismissible_alert` banners with `AlertVariant` mapping to theme
+    accents and icons.
+  - `divider.rs`: `divider`, `vertical_divider`, and `divider_with_label`.
+  - `avatar.rs`: Initial extraction, `avatar_initials`, and `member_avatar` with `AvatarSize`.
+  - `modal.rs`: `modal_backdrop`, `modal_card`, `modal_header` with close button, and `modal_footer`.
+  - `toggle.rs`: Animated switch components `toggle` and `toggle_field`.
+  - `button.rs`: Reusable action buttons: `icon_action_button`, `secondary_button`, and `destructive_button`.
+  - Added new Font Awesome Free icons in `app/src/icons.rs` (`ICON_CIRCLE_CHECK`, `ICON_CIRCLE_XMARK`,
+    `ICON_CIRCLE_INFO`, `ICON_TRIANGLE_EXCLAMATION`, `ICON_MAGNIFYING_GLASS`, `ICON_WALLET`,
+    `ICON_CREDIT_CARD`, `ICON_ARROW_UP`, `ICON_ARROW_DOWN`).
+  - Preserved backward compatibility in `app/src/components/input.rs`, `app/src/components/checkbox.rs`,
+    and `app/src/components/mod.rs`, and refactored `app/src/auth/family_setup.rs` to use `option_card`.
+  - Validated via `cargo fmt --all -- --check`, `cargo check --workspace`, and `cargo test -p umuryango-app --lib`.

@@ -2,7 +2,8 @@
 
 use crate::auth::client::{api_accept_invitation, api_get_pending_invitations};
 use crate::auth::layout::{auth_footer_prompt, auth_layout};
-use crate::brand::{apply_theme, colors, ThemeColors, ThemeMode};
+use crate::brand::{apply_theme, colors, ThemeMode};
+use crate::components::ui::option_card;
 use crate::i18n::{text, Language};
 use crate::icons;
 use gpui_kit::component::button::{Button, ButtonVariants};
@@ -292,7 +293,7 @@ impl Render for FamilySetupView {
                     .gap_3()
                     .child({
                         let view = view_entity.clone();
-                        family_option_card(
+                        option_card(
                             "family-setup-create",
                             palette,
                             icons::ICON_USERS,
@@ -308,7 +309,7 @@ impl Render for FamilySetupView {
                     })
                     .child({
                         let view = view_entity.clone();
-                        family_option_card(
+                        option_card(
                             "family-setup-join",
                             palette,
                             icons::ICON_USER_PLUS,
@@ -357,83 +358,4 @@ impl Render for FamilySetupView {
             content,
         )
     }
-}
-
-fn family_option_card(
-    id: impl Into<ElementId>,
-    palette: ThemeColors,
-    icon_name: &'static str,
-    title: String,
-    description: String,
-    selected: bool,
-    on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
-) -> impl IntoElement {
-    div()
-        .id(id)
-        .flex()
-        .items_center()
-        .justify_between()
-        .gap_3()
-        .p_4()
-        .rounded_lg()
-        .border_1()
-        .border_color(if selected {
-            palette.primary
-        } else {
-            palette.border
-        })
-        .bg(palette.surface)
-        .cursor_pointer()
-        .hover(|style| style.border_color(palette.border_hover))
-        .child(
-            div()
-                .flex_1()
-                .flex()
-                .items_center()
-                .gap_3()
-                .child(
-                    div()
-                        .w(px(36.))
-                        .h(px(36.))
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .rounded_lg()
-                        .bg(palette.card)
-                        .border_1()
-                        .border_color(palette.border)
-                        .child(
-                            icons::icon(icon_name)
-                                .size(px(16.))
-                                .text_color(palette.primary_light),
-                        ),
-                )
-                .child(
-                    div()
-                        .flex_1()
-                        .flex()
-                        .flex_col()
-                        .gap_1()
-                        .child(
-                            div()
-                                .text_sm()
-                                .font_weight(FontWeight::SEMIBOLD)
-                                .text_color(palette.text_primary)
-                                .child(title),
-                        )
-                        .child(
-                            div()
-                                .text_xs()
-                                .whitespace_normal()
-                                .text_color(palette.text_muted)
-                                .child(description),
-                        ),
-                ),
-        )
-        .child(
-            icons::icon(icons::ICON_ARROW_RIGHT)
-                .size(px(14.))
-                .text_color(palette.text_muted),
-        )
-        .on_click(on_click)
 }

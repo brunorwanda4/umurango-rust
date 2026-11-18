@@ -16,6 +16,15 @@ pub const ICON_ARROW_RIGHT: &str = "arrow-right";
 pub const ICON_SHIELD_HALVED: &str = "shield-halved";
 pub const ICON_PHONE: &str = "phone";
 pub const ICON_XMARK: &str = "xmark";
+pub const ICON_CIRCLE_CHECK: &str = "circle-check";
+pub const ICON_CIRCLE_XMARK: &str = "circle-xmark";
+pub const ICON_CIRCLE_INFO: &str = "circle-info";
+pub const ICON_TRIANGLE_EXCLAMATION: &str = "triangle-exclamation";
+pub const ICON_MAGNIFYING_GLASS: &str = "magnifying-glass";
+pub const ICON_WALLET: &str = "wallet";
+pub const ICON_CREDIT_CARD: &str = "credit-card";
+pub const ICON_ARROW_UP: &str = "arrow-up";
+pub const ICON_ARROW_DOWN: &str = "arrow-down";
 
 fn icon_data(set: &str, name: &str) -> &'static [u8] {
     let path = format!("{set}/{name}.svg");
