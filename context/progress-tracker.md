@@ -133,3 +133,8 @@ entries at the end, and include validation.
   with color-coded log prefixing, unified signal handling (`Ctrl+C`), and
   options for web portal (`--cwd web dev`) or native desktop app (`--native`).
   Updated `README.md` and `.gitignore`.
+- Fixed family setup card text overflow by allowing card text columns to shrink
+  and wrap beside their icons and trailing controls.
+- Added Actix request logging middleware for timestamped method, status, client
+  IP, route, duration, and slow-request console output. Successful `/health`
+  checks are quiet, while API requests and error responses remain visible.

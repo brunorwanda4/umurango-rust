@@ -61,6 +61,14 @@ Keep HTTP handlers thin:
 Do not construct SQL by concatenating request data. Use bound SQLx parameters
 and committed migrations.
 
+## Backend Request Logging
+
+- Actix request logging middleware prints method, status, client IP, route,
+  elapsed milliseconds, and slow-request markers.
+- Successful `/health` checks stay quiet; errors and all API routes are logged.
+- Request middleware must not log authorization tokens, passwords, request
+  bodies, or financial values.
+
 ## Web Runtime
 
 The web portal is Next.js 16 with the App Router, TypeScript, Tailwind CSS 4,

@@ -1,6 +1,8 @@
-use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{get, middleware::from_fn, web, App, HttpResponse, HttpServer, Responder};
 use sqlx::{postgres::PgPoolOptions, PgPool};
-use umuryango_backend::{config::Config, handlers, openapi::ApiDoc};
+use umuryango_backend::{
+    config::Config, handlers, middleware::request_log::request_log, openapi::ApiDoc,
+};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -26,6 +28,7 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
+            .wrap(from_fn(request_log))
             .app_data(web::Data::<PgPool>::new(pool.clone()))
             .app_data(web::Data::<Config>::new(config.clone()))
             .service(health)
