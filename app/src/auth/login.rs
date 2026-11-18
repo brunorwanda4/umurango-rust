@@ -144,24 +144,33 @@ impl LoginView {
         self.is_authenticating = true;
         cx.notify();
 
-        let display_name = if email.to_lowercase().contains("mama") {
-            "Mama Keza"
-        } else if email.to_lowercase().contains("papa") {
-            "Papa Jean"
-        } else {
-            "Family Member"
-        };
+        match crate::auth::client::api_login(&email, &password) {
+            Ok(auth_resp) => {
+                self.is_authenticating = false;
+                self.error_message = None;
+                cx.notify();
 
-        cx.emit(LoginEvent::SignedIn {
-            email,
-            display_name: display_name.to_string(),
-            family_name: "Umuryango wa Keza".to_string(),
-            role: if display_name == "Mama Keza" {
-                "Family Admin".to_string()
-            } else {
-                "Family Member".to_string()
-            },
-        });
+                let display_name = auth_resp.user.full_name;
+                let family_name = auth_resp
+                    .family_name
+                    .unwrap_or_else(|| "Umuryango".to_string());
+                let role = auth_resp
+                    .role
+                    .unwrap_or_else(|| "Family Member".to_string());
+
+                cx.emit(LoginEvent::SignedIn {
+                    email,
+                    display_name,
+                    family_name,
+                    role,
+                });
+            }
+            Err(err) => {
+                self.is_authenticating = false;
+                self.error_message = Some(err);
+                cx.notify();
+            }
+        }
     }
 }
 

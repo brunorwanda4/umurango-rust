@@ -1,6 +1,8 @@
 use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
 use sqlx::{postgres::PgPoolOptions, PgPool};
-use umuryango_backend::{config::Config, handlers};
+use umuryango_backend::{config::Config, handlers, openapi::ApiDoc};
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 #[get("/health")]
 async fn health() -> impl Responder {
@@ -17,12 +19,27 @@ async fn main() -> std::io::Result<()> {
         .map_err(|error| std::io::Error::other(error.to_string()))?;
 
     let bind_address = config.bind_address.clone();
+    let openapi = ApiDoc::openapi();
+
+    println!("Starting Umuryango API server on {bind_address}");
+    println!("Swagger documentation available at http://{bind_address}/swagger-ui/");
+
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::<PgPool>::new(pool.clone()))
+            .app_data(web::Data::<Config>::new(config.clone()))
             .service(health)
             .service(
+                SwaggerUi::new("/swagger-ui/{_:.*}").url("/api-docs/openapi.json", openapi.clone()),
+            )
+            .service(
                 web::scope("/api/v1")
+                    .service(
+                        web::scope("/auth")
+                            .service(handlers::auth::register)
+                            .service(handlers::auth::login)
+                            .service(handlers::auth::me),
+                    )
                     .service(web::scope("/families").service(handlers::families::list_families)),
             )
     })

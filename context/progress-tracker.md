@@ -74,6 +74,24 @@ entries at the end, and include validation.
   and updated `.gitignore` to prevent committing local `.env` files.
 - Validated via `cargo fmt --all -- --check`, `cargo check -p umuryango-backend`,
   and `cargo test -p umuryango-shared -p umuryango-backend`.
+- Implemented backend authentication system in `backend/src/auth/` with modular
+  architecture: Argon2id password hashing (`password.rs`), JWT authentication
+  (`jwt.rs`), validation rules and DTOs (`dto.rs`), and service logic
+  (`service.rs`) handling registration, login, session tracking, primary family
+  workspace auto-provisioning, and audit logging.
+- Added endpoints `/api/v1/auth/register`, `/api/v1/auth/login`, and `/api/v1/auth/me`
+  in `backend/src/handlers/auth.rs`.
+- Added interactive OpenAPI documentation with Swagger UI via Utoipa available at
+  `/swagger-ui/` and `/api-docs/openapi.json` (`backend/src/openapi.rs`).
+- Made `User.email` nullable in PostgreSQL schema to allow phone-based user registration
+  without extraneous fields.
+- Connected native GPUI app login and register views (`app/src/auth/login.rs` and
+  `app/src/auth/register.rs`) with backend authentication via lightweight HTTP client
+  (`app/src/auth/client.rs`) while preserving the exact UI design and inputs.
+- Validated via `cargo fmt --all -- --check`, `cargo check -p umuryango-backend`,
+  `cargo check -p umuryango-app`, `cargo test -p umuryango-app --lib`, and
+  `cargo test -p umuryango-shared -p umuryango-backend`.
+
 
 ## 2026-11-18
 

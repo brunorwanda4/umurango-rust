@@ -38,6 +38,7 @@ pub enum CommandType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct Family {
     pub id: Uuid,
     pub name: String,
@@ -121,4 +122,51 @@ pub struct SyncPullResponse {
     pub transactions: Vec<Transaction>,
     pub expenses: Vec<Expense>,
     pub contributions: Vec<Contribution>,
+}
+
+/// Request payload to register a new user.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+pub struct RegisterRequest {
+    pub name: String,
+    pub phone: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub email: Option<String>,
+    pub password: String,
+}
+
+/// Request payload to log in an existing user with phone or email.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+pub struct LoginRequest {
+    pub identifier: String,
+    pub password: String,
+}
+
+/// User profile details returned upon successful authentication.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+pub struct UserDto {
+    pub id: String,
+    pub full_name: String,
+    pub phone_number: Option<String>,
+    pub email: Option<String>,
+    pub status: String,
+}
+
+/// Authentication response containing the authenticated user, bearer token, and family context.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+pub struct AuthResponse {
+    pub user: UserDto,
+    pub token: String,
+    pub family_name: Option<String>,
+    pub role: Option<String>,
+}
+
+/// Standard error response envelope.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+pub struct ErrorResponse {
+    pub error: String,
 }

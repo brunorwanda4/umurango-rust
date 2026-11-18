@@ -158,16 +158,35 @@ impl RegisterView {
         }
 
         self.error_message = None;
-        self.is_registering = false;
+        self.is_registering = true;
         cx.notify();
 
-        cx.emit(RegisterEvent::Registered {
-            display_name: name.clone(),
-            name,
-            phone,
-            family_name: "Umuryango wa Keza".to_string(),
-            role: "Family Member".to_string(),
-        });
+        match crate::auth::client::api_register(&name, &phone, &password) {
+            Ok(auth_resp) => {
+                self.is_registering = false;
+                self.error_message = None;
+                cx.notify();
+
+                let display_name = auth_resp.user.full_name;
+                let family_name = auth_resp
+                    .family_name
+                    .unwrap_or_else(|| "Umuryango".to_string());
+                let role = auth_resp.role.unwrap_or_else(|| "HEAD".to_string());
+
+                cx.emit(RegisterEvent::Registered {
+                    display_name,
+                    name,
+                    phone,
+                    family_name,
+                    role,
+                });
+            }
+            Err(err) => {
+                self.is_registering = false;
+                self.error_message = Some(err);
+                cx.notify();
+            }
+        }
     }
 }
 

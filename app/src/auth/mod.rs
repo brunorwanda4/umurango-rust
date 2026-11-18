@@ -1,3 +1,4 @@
+pub mod client;
 pub mod family_setup;
 pub mod layout;
 pub mod login;

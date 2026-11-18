@@ -239,7 +239,7 @@ END $$;
 -- 1. User
 CREATE TABLE IF NOT EXISTS "User" (
     "id" TEXT PRIMARY KEY,
-    "email" TEXT NOT NULL,
+    "email" TEXT,
     "pendingEmail" TEXT,
     "phoneNumber" TEXT,
     "fullName" TEXT NOT NULL,
