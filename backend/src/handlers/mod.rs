@@ -1,5 +1,9 @@
 pub mod auth;
 pub mod families;
+pub mod members;
+pub mod projects;
+pub mod sync;
+pub mod transactions;
 
 use crate::auth::{verify_token, ServiceError};
 use actix_web::{HttpRequest, HttpResponse};

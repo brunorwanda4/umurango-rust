@@ -16,6 +16,16 @@ use utoipa::{
         crate::handlers::families::join_family,
         crate::handlers::families::get_pending_invitations,
         crate::handlers::families::accept_invitation,
+        crate::handlers::transactions::list_transactions,
+        crate::handlers::transactions::create_transaction,
+        crate::handlers::transactions::get_treasury_summary,
+        crate::handlers::transactions::approve_transaction,
+        crate::handlers::projects::list_projects,
+        crate::handlers::projects::create_project,
+        crate::handlers::projects::contribute_project,
+        crate::handlers::members::list_members,
+        crate::handlers::sync::sync_push,
+        crate::handlers::sync::sync_pull,
     ),
     components(
         schemas(
@@ -30,6 +40,19 @@ use utoipa::{
             umuryango_shared::JoinFamilyRequest,
             umuryango_shared::JoinFamilyResponse,
             umuryango_shared::PendingFamilyInviteDto,
+            umuryango_shared::TransactionItemDto,
+            umuryango_shared::CreateTransactionRequest,
+            umuryango_shared::TreasurySummaryDto,
+            umuryango_shared::ProjectDto,
+            umuryango_shared::CreateProjectRequest,
+            umuryango_shared::ProjectContributionRequest,
+            umuryango_shared::FamilyMemberDto,
+            umuryango_shared::SyncPushRequest,
+            umuryango_shared::SyncPushResponse,
+            umuryango_shared::SyncPullRequest,
+            umuryango_shared::SyncPullResponse,
+            umuryango_shared::SyncMutation,
+            umuryango_shared::SyncMutationResult,
             crate::auth::MeResponse,
         )
     ),
@@ -37,7 +60,11 @@ use utoipa::{
     modifiers(&SecurityAddon),
     tags(
         (name = "auth", description = "Authentication and registration endpoints"),
-        (name = "families", description = "Family workspace management")
+        (name = "families", description = "Family workspace management"),
+        (name = "transactions", description = "Treasury transactions and financial metrics"),
+        (name = "projects", description = "Communal family projects and fundraising"),
+        (name = "members", description = "Household members roster"),
+        (name = "sync", description = "Offline-first mutation sync")
     ),
     info(
         title = "Umuryango API",

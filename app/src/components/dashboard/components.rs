@@ -74,7 +74,7 @@ pub fn transaction_row(
                                 .text_sm()
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .text_color(palette.text_primary)
-                                .child(*title),
+                                .child(title.clone()),
                         )
                         .child(
                             div()
@@ -89,7 +89,7 @@ pub fn transaction_row(
                 .flex()
                 .items_center()
                 .gap_3()
-                .child(badge(*category, *category_variant, palette))
+                .child(badge(category.clone(), *category_variant, palette))
                 .child(
                     div()
                         .text_sm()
@@ -99,9 +99,9 @@ pub fn transaction_row(
                         } else {
                             palette.text_primary
                         })
-                        .child(*amount),
+                        .child(amount.clone()),
                 )
-                .child(badge(*status, *status_variant, palette)),
+                .child(badge(status.clone(), *status_variant, palette)),
         )
 }
 
@@ -127,16 +127,16 @@ pub fn project_card(project: &ProjectSummary, palette: ThemeColors) -> impl Into
                                 .text_sm()
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .text_color(palette.text_primary)
-                                .child(project.name),
+                                .child(project.name.clone()),
                         )
                         .child(
                             div()
                                 .text_xs()
                                 .text_color(palette.text_muted)
-                                .child(project.target),
+                                .child(project.target.clone()),
                         ),
                 )
-                .child(badge(project.progress, project.variant, palette)),
+                .child(badge(project.progress.clone(), project.variant, palette)),
         )
         .child(
             div()
@@ -162,7 +162,7 @@ pub fn project_card(project: &ProjectSummary, palette: ThemeColors) -> impl Into
                 .mt_2()
                 .text_xs()
                 .text_color(palette.text_muted)
-                .child(project.contributors)
-                .child(project.deadline),
+                .child(project.contributors.clone())
+                .child(project.deadline.clone()),
         )
 }

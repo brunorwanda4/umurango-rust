@@ -195,6 +195,7 @@ pub async fn register_user(
         token,
         family_name: Some(family_name),
         role: Some("HEAD".into()),
+        family_id: Some(family_id),
     })
 }
 
@@ -303,7 +304,7 @@ pub async fn login_user(
 
     let family_fut = sqlx::query(
         r#"
-        SELECT f."name" AS "familyName", m."authority"::text AS "role"
+        SELECT f."id" AS "familyId", f."name" AS "familyName", m."authority"::text AS "role"
         FROM "FamilyMember" m
         JOIN "Family" f ON f."id" = m."familyId"
         WHERE m."userId" = $1 AND m."removedAt" IS NULL
@@ -339,12 +340,13 @@ pub async fn login_user(
 
     let (family_res, _) = tokio::join!(family_fut, session_audit_fut);
 
-    let (family_name, role) = match family_res.unwrap_or(None) {
+    let (family_id, family_name, role) = match family_res.unwrap_or(None) {
         Some(fr) => (
+            Some(fr.get::<String, _>("familyId")),
             Some(fr.get::<String, _>("familyName")),
             Some(fr.get::<String, _>("role")),
         ),
-        None => (None, None),
+        None => (None, None, None),
     };
 
     Ok(AuthResponse {
@@ -359,6 +361,7 @@ pub async fn login_user(
         token,
         family_name,
         role,
+        family_id,
     })
 }
 
@@ -706,6 +709,34 @@ pub async fn accept_invitation(
         family_name: invite.get("familyName"),
         role: invite.get("role"),
     })
+}
+
+/// Verifies that a user is an active member of a family and returns their (member_id, authority).
+pub async fn verify_family_member(
+    pool: &PgPool,
+    user_id: &str,
+    family_id: &str,
+) -> Result<(String, String), ServiceError> {
+    let row = sqlx::query(
+        r#"
+        SELECT "id", "authority"::TEXT AS authority
+        FROM "FamilyMember"
+        WHERE "familyId" = $1 AND "userId" = $2 AND "removedAt" IS NULL
+        LIMIT 1;
+        "#,
+    )
+    .bind(family_id)
+    .bind(user_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| ServiceError::Internal(format!("Database error: {e}")))?;
+
+    match row {
+        Some(r) => Ok((r.get("id"), r.get("authority"))),
+        None => Err(ServiceError::Forbidden(
+            "You are not a member of this family".into(),
+        )),
+    }
 }
 
 #[cfg(test)]

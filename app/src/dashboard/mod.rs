@@ -1,5 +1,7 @@
 use crate::brand::{apply_theme, colors, ThemeMode};
-use crate::components::dashboard::{project_card, transaction_row, PROJECTS, TRANSACTIONS};
+use crate::components::dashboard::{
+    project_card, transaction_row, ProjectSummary, TransactionRow, PROJECTS, TRANSACTIONS,
+};
 use crate::components::layouts::responsive::app_content_width;
 use crate::components::layouts::sections::{
     members_section, money_section, profile_section, projects_section,
@@ -44,10 +46,22 @@ pub struct DashboardView {
     language: Language,
     active_section: AppSection,
     member_name: String,
+    pub family_name: String,
     search_state: Entity<InputState>,
     activity_filter: ActivityFilter,
     show_approval_alert: bool,
     pending_approval_count: usize,
+    pending_approval_tx_id: Option<String>,
+    pending_approval_tx_title: Option<String>,
+    pending_approval_tx_amount: Option<String>,
+    pub total_treasury: String,
+    pub monthly_contributions: String,
+    pub monthly_expenses: String,
+    pub emergency_reserve: String,
+    pub transactions: Vec<TransactionRow>,
+    pub projects: Vec<ProjectSummary>,
+    pub members: Vec<(String, String, BadgeVariant)>,
+    pub storage_sync_status: String,
 }
 
 impl EventEmitter<DashboardEvent> for DashboardView {}
@@ -64,15 +78,55 @@ impl DashboardView {
             InputState::new(window, cx).placeholder(text(language, "dashboard.search_placeholder"))
         });
 
+        let default_members = vec![
+            (
+                "Bruno Mugabo".to_string(),
+                "Family Head / Admin".to_string(),
+                BadgeVariant::Primary,
+            ),
+            (
+                "Claudine Mugabo".to_string(),
+                "Treasurer".to_string(),
+                BadgeVariant::Success,
+            ),
+            (
+                "Eric Mugabo".to_string(),
+                "Member".to_string(),
+                BadgeVariant::Neutral,
+            ),
+            (
+                "Alice Keza".to_string(),
+                "Member".to_string(),
+                BadgeVariant::Neutral,
+            ),
+            (
+                "Patrick Mugabo".to_string(),
+                "Youth Member".to_string(),
+                BadgeVariant::Info,
+            ),
+        ];
+
         Self {
             theme,
             language,
             active_section: AppSection::Home,
             member_name: "Bruno Mugabo".to_string(),
+            family_name: "Umuryango Workspace".to_string(),
             search_state,
             activity_filter: ActivityFilter::All,
             show_approval_alert: true,
             pending_approval_count: 1,
+            pending_approval_tx_id: None,
+            pending_approval_tx_title: Some("Medical Emergency Assistance".to_string()),
+            pending_approval_tx_amount: Some("85,000 RWF".to_string()),
+            total_treasury: "3,450,000 RWF".to_string(),
+            monthly_contributions: "780,000 RWF".to_string(),
+            monthly_expenses: "240,000 RWF".to_string(),
+            emergency_reserve: "1,500,000 RWF".to_string(),
+            transactions: TRANSACTIONS.to_vec(),
+            projects: PROJECTS.to_vec(),
+            members: default_members,
+            storage_sync_status: text(language, "dashboard.storage_health_desc").to_string(),
         }
     }
 
@@ -107,6 +161,121 @@ impl DashboardView {
         self.search_state.update(cx, |state, cx| {
             state.set_placeholder(placeholder, window, cx);
         });
+        cx.notify();
+    }
+
+    pub fn set_storage_status(&mut self, status: String, cx: &mut Context<Self>) {
+        self.storage_sync_status = status;
+        cx.notify();
+    }
+
+    #[allow(dead_code)]
+    pub fn set_family_name(&mut self, name: String, cx: &mut Context<Self>) {
+        if !name.trim().is_empty() {
+            self.family_name = name;
+            cx.notify();
+        }
+    }
+
+    pub fn refresh_from_backend(&mut self, cx: &mut Context<Self>) {
+        let family_id = crate::auth::client::get_current_family_id().or_else(|| {
+            if let Ok(fams) = crate::auth::client::api_list_families() {
+                if let Some(first) = fams.first() {
+                    crate::auth::client::set_current_family(
+                        Some(first.id.to_string()),
+                        Some(first.name.clone()),
+                    );
+                    return Some(first.id.to_string());
+                }
+            }
+            None
+        });
+
+        if let Some(ref fam_name) = crate::auth::client::get_current_family_name() {
+            self.family_name = fam_name.clone();
+        }
+
+        if let Some(ref fid) = family_id {
+            if let Ok(summary) = crate::auth::client::api_get_treasury_summary(fid) {
+                self.total_treasury = umuryango_shared::format_money(
+                    summary.total_treasury_minor_units,
+                    &summary.currency,
+                );
+                self.monthly_contributions = umuryango_shared::format_money(
+                    summary.monthly_contributions_minor_units,
+                    &summary.currency,
+                );
+                self.monthly_expenses = umuryango_shared::format_money(
+                    summary.monthly_expenses_minor_units,
+                    &summary.currency,
+                );
+                self.emergency_reserve = umuryango_shared::format_money(
+                    summary.emergency_reserve_minor_units,
+                    &summary.currency,
+                );
+            }
+
+            if let Ok(txs) = crate::auth::client::api_list_transactions(fid, None) {
+                let pending = txs.iter().find(|t| t.status == "PENDING");
+                if let Some(p) = pending {
+                    self.pending_approval_count =
+                        txs.iter().filter(|t| t.status == "PENDING").count();
+                    self.pending_approval_tx_id = Some(p.id.clone());
+                    self.pending_approval_tx_title = Some(p.title.clone());
+                    self.pending_approval_tx_amount = Some(umuryango_shared::format_money(
+                        p.amount_minor_units,
+                        &p.currency,
+                    ));
+                    self.show_approval_alert = true;
+                } else {
+                    self.pending_approval_count = 0;
+                    self.pending_approval_tx_id = None;
+                    self.pending_approval_tx_title = None;
+                    self.pending_approval_tx_amount = None;
+                    self.show_approval_alert = false;
+                }
+                if !txs.is_empty() {
+                    self.transactions = txs
+                        .into_iter()
+                        .map(|dto| TransactionRow::from_dto(&dto))
+                        .collect();
+                }
+            }
+
+            if let Ok(projs) = crate::auth::client::api_list_projects(fid) {
+                if !projs.is_empty() {
+                    self.projects = projs
+                        .into_iter()
+                        .map(|dto| ProjectSummary::from_dto(&dto))
+                        .collect();
+                }
+            }
+
+            if let Ok(mems) = crate::auth::client::api_list_members(fid) {
+                if !mems.is_empty() {
+                    self.members = mems
+                        .into_iter()
+                        .map(|m| {
+                            let role_desc = match m.role.as_str() {
+                                "HEAD" => "Family Head / Admin",
+                                "TREASURER" => "Treasurer",
+                                "ELDER" => "Elder",
+                                "YOUTH" => "Youth Member",
+                                _ => "Member",
+                            };
+                            let variant = match m.role.as_str() {
+                                "HEAD" => BadgeVariant::Primary,
+                                "TREASURER" => BadgeVariant::Success,
+                                "ELDER" => BadgeVariant::Warning,
+                                "YOUTH" => BadgeVariant::Info,
+                                _ => BadgeVariant::Neutral,
+                            };
+                            (m.full_name, role_desc.to_string(), variant)
+                        })
+                        .collect();
+                }
+            }
+        }
         cx.notify();
     }
 
@@ -300,7 +469,7 @@ impl Render for DashboardView {
                         "stat-treasury",
                         palette,
                         text(lang, "dashboard.total_treasury"),
-                        "3,450,000 RWF",
+                        self.total_treasury.clone(),
                         Some(text(lang, "dashboard.treasury_trend")),
                         Some(icons::ICON_WALLET),
                         Some(("+14.2%".into(), true)),
@@ -309,7 +478,7 @@ impl Render for DashboardView {
                         "stat-contributions",
                         palette,
                         text(lang, "dashboard.monthly_contributions"),
-                        "780,000 RWF",
+                        self.monthly_contributions.clone(),
                         Some(text(lang, "dashboard.contributions_sub")),
                         Some(icons::ICON_CREDIT_CARD),
                         Some(("8/10 paid".into(), true)),
@@ -318,7 +487,7 @@ impl Render for DashboardView {
                         "stat-expenses",
                         palette,
                         text(lang, "dashboard.monthly_expenses"),
-                        "240,000 RWF",
+                        self.monthly_expenses.clone(),
                         Some(text(lang, "dashboard.expenses_sub")),
                         Some(icons::ICON_ARROW_DOWN),
                         Some(("-8%".into(), true)),
@@ -327,7 +496,7 @@ impl Render for DashboardView {
                         "stat-reserve",
                         palette,
                         text(lang, "dashboard.emergency_reserve"),
-                        "1,500,000 RWF",
+                        self.emergency_reserve.clone(),
                         Some(text(lang, "dashboard.reserve_sub")),
                         Some(icons::ICON_SHIELD_HALVED),
                         Some(("100% funded".into(), true)),
@@ -487,13 +656,14 @@ impl Render for DashboardView {
                             .on_click(set_filter(ActivityFilter::Expenses)),
                     );
 
-                let filtered_txs = TRANSACTIONS
-                    .iter()
-                    .filter(|transaction| match current_filter {
-                        ActivityFilter::All => true,
-                        ActivityFilter::Contributions => transaction.is_income,
-                        ActivityFilter::Expenses => !transaction.is_income,
-                    });
+                let filtered_txs =
+                    self.transactions
+                        .iter()
+                        .filter(|transaction| match current_filter {
+                            ActivityFilter::All => true,
+                            ActivityFilter::Contributions => transaction.is_income,
+                            ActivityFilter::Expenses => !transaction.is_income,
+                        });
 
                 let tx_list = div().flex().flex_col().gap_2().children(
                     filtered_txs
@@ -502,18 +672,26 @@ impl Render for DashboardView {
                 );
 
                 let projects_section_el = div().flex().flex_col().gap_3().children(
-                    PROJECTS
+                    self.projects
                         .iter()
                         .map(|project| project_card(project, palette)),
                 );
 
                 let approve_action = {
                     let view = view_entity.clone();
+                    let tx_id = self.pending_approval_tx_id.clone();
                     move |_event: &ClickEvent, _window: &mut Window, cx: &mut App| {
                         view.update(cx, |this, cx| {
-                            this.pending_approval_count =
-                                this.pending_approval_count.saturating_sub(1);
-                            cx.notify();
+                            if let Some(id) = tx_id.clone() {
+                                if let Some(fid) = crate::auth::client::get_current_family_id() {
+                                    let _ = crate::auth::client::api_approve_transaction(&fid, &id);
+                                }
+                                this.refresh_from_backend(cx);
+                            } else {
+                                this.pending_approval_count =
+                                    this.pending_approval_count.saturating_sub(1);
+                                cx.notify();
+                            }
                         });
                     }
                 };
@@ -544,15 +722,26 @@ impl Render for DashboardView {
                                             .text_sm()
                                             .font_weight(FontWeight::SEMIBOLD)
                                             .text_color(palette.text_primary)
-                                            .child("Medical Emergency Assistance"),
+                                            .child(
+                                                self.pending_approval_tx_title
+                                                    .clone()
+                                                    .unwrap_or_else(|| {
+                                                        "Medical Emergency Assistance".to_string()
+                                                    }),
+                                            ),
                                     )
-                                    .child(badge("85,000 RWF", BadgeVariant::Warning, palette)),
+                                    .child(badge(
+                                        self.pending_approval_tx_amount
+                                            .clone()
+                                            .unwrap_or_else(|| "85,000 RWF".to_string()),
+                                        BadgeVariant::Warning,
+                                        palette,
+                                    )),
                             )
                             .child(
-                                div()
-                                    .text_xs()
-                                    .text_color(palette.text_muted)
-                                    .child("Submitted by Eric Mugabo • Needs 1 admin confirmation"),
+                                div().text_xs().text_color(palette.text_muted).child(
+                                    "Submitted by Family Member • Needs 1 admin confirmation",
+                                ),
                             )
                             .child(
                                 div().flex().items_center().gap_2().mt_1().child(
@@ -576,7 +765,10 @@ impl Render for DashboardView {
                 let members_card = card_surface(palette)
                     .child(card_header(
                         text(lang, "dashboard.household_members"),
-                        Some("5 active members in this workspace"),
+                        Some(format!(
+                            "{} active members in this workspace",
+                            self.members.len()
+                        )),
                         palette,
                     ))
                     .child(
@@ -584,36 +776,9 @@ impl Render for DashboardView {
                             .flex()
                             .flex_col()
                             .gap_3()
-                            .child(member_avatar(
-                                "Bruno Mugabo",
-                                Some("Family Head / Admin"),
-                                AvatarSize::Md,
-                                palette,
-                            ))
-                            .child(member_avatar(
-                                "Claudine Mugabo",
-                                Some("Treasurer"),
-                                AvatarSize::Md,
-                                palette,
-                            ))
-                            .child(member_avatar(
-                                "Eric Mugabo",
-                                Some("Member"),
-                                AvatarSize::Md,
-                                palette,
-                            ))
-                            .child(member_avatar(
-                                "Alice Keza",
-                                Some("Member"),
-                                AvatarSize::Md,
-                                palette,
-                            ))
-                            .child(member_avatar(
-                                "Patrick Mugabo",
-                                Some("Youth Member"),
-                                AvatarSize::Md,
-                                palette,
-                            )),
+                            .children(self.members.iter().map(|(name, role, _variant)| {
+                                member_avatar(name, Some(role.as_str()), AvatarSize::Md, palette)
+                            })),
                     );
 
                 let storage_card =
@@ -642,7 +807,7 @@ impl Render for DashboardView {
                                             div()
                                                 .text_xs()
                                                 .text_color(palette.text_primary)
-                                                .child(text(lang, "dashboard.storage_health_desc")),
+                                                .child(self.storage_sync_status.clone()),
                                         ),
                                 )
                                 .child(div().text_xs().text_color(palette.text_muted).child(

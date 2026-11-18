@@ -16,6 +16,7 @@ rune-kit = { git = "https://github.com/anomalyco/rune", rev = "27c31fc23c11f15f7
 rusqlite = { version = "0.37.0", features = ["bundled"] }
 umuryango-shared = { path = "../crates/shared" }
 ureq = { version = "2.10.2", features = ["json"] }
+uuid.workspace = true
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"

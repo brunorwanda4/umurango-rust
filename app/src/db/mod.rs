@@ -43,6 +43,54 @@ pub fn set_app_state(connection: &Connection, key: &str, value: Option<&str>) ->
     Ok(())
 }
 
+/// Queues a new mutation into the local SQLite sync outbox.
+pub fn queue_outbox_mutation(
+    connection: &Connection,
+    idempotency_key: &str,
+    command: &str,
+    payload: &str,
+) -> Result<()> {
+    connection.execute(
+        "INSERT INTO sync_outbox (idempotency_key, command, payload)
+         VALUES (?1, ?2, ?3)
+         ON CONFLICT(idempotency_key) DO NOTHING",
+        params![idempotency_key, command, payload],
+    )?;
+    Ok(())
+}
+
+/// Retrieves all pending mutations from the local outbox.
+pub fn get_pending_outbox_mutations(
+    connection: &Connection,
+) -> Result<Vec<(String, String, String)>> {
+    let mut stmt = connection.prepare(
+        "SELECT idempotency_key, command, payload FROM sync_outbox ORDER BY created_at ASC",
+    )?;
+    let rows = stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?;
+
+    let mut result = Vec::new();
+    for r in rows {
+        result.push(r?);
+    }
+    Ok(result)
+}
+
+/// Deletes an acknowledged mutation from the local outbox.
+pub fn delete_outbox_mutation(connection: &Connection, idempotency_key: &str) -> Result<()> {
+    connection.execute(
+        "DELETE FROM sync_outbox WHERE idempotency_key = ?1",
+        params![idempotency_key],
+    )?;
+    Ok(())
+}
+
+/// Counts total pending mutations in the local outbox.
+pub fn count_pending_outbox(connection: &Connection) -> Result<usize> {
+    let count: i64 =
+        connection.query_row("SELECT COUNT(*) FROM sync_outbox", [], |row| row.get(0))?;
+    Ok(count as usize)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -67,5 +115,28 @@ mod tests {
 
         set_app_state(&connection, "screen", None).unwrap();
         assert_eq!(get_app_state(&connection, "screen").unwrap(), None);
+    }
+
+    #[test]
+    fn outbox_queues_retrieves_and_deletes() {
+        let connection = open_local(":memory:").expect("in-memory database opens");
+        assert_eq!(count_pending_outbox(&connection).unwrap(), 0);
+
+        queue_outbox_mutation(
+            &connection,
+            "k1",
+            "CREATE_CONTRIBUTION",
+            "{\"amount\": 50000}",
+        )
+        .unwrap();
+        assert_eq!(count_pending_outbox(&connection).unwrap(), 1);
+
+        let items = get_pending_outbox_mutations(&connection).unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].0, "k1");
+        assert_eq!(items[0].1, "CREATE_CONTRIBUTION");
+
+        delete_outbox_mutation(&connection, "k1").unwrap();
+        assert_eq!(count_pending_outbox(&connection).unwrap(), 0);
     }
 }

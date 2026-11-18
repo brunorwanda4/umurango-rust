@@ -8792,6 +8792,7 @@ dependencies = [
  "serde_json",
  "umuryango-shared",
  "ureq",
+ "uuid",
  "winres",
 ]
 

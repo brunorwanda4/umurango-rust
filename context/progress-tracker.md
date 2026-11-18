@@ -225,3 +225,17 @@ entries at the end, and include validation.
     switching and section routing.
   - Validated via unit tests for navigation order, breakpoint switching,
     content width calculations, and localized label availability.
+- Implemented complete backend treasury, communal projects, member roster, and sync services:
+  - `backend/src/transactions/`: list transactions with filtering, create transactions (strictly integer minor units, automatic approval for income/admins), authoritative treasury summary calculation, and admin transaction approval.
+  - `backend/src/projects/`: list active communal projects with funded %, create projects, and record project contributions.
+  - `backend/src/members/`: list active household members with roles and joined dates scoped by `family_id`.
+  - `backend/src/sync/`: idempotent outbox push (`FamilySyncMutation`) and pull endpoint (`/api/v1/sync/pull`).
+  - Registered all routes in `main.rs` and OpenAPI documentation in `openapi.rs`.
+  - Added end-to-end integration test `backend/tests/family_finance_test.rs` covering the full financial and sync lifecycle against PostgreSQL.
+- Connected native GPUI app (`app/`) to the backend and SQLite outbox:
+  - Added API client methods in `app/src/auth/client.rs` for transactions, projects, members, and sync.
+  - Implemented local SQLite outbox queue, retrieval, and acknowledgment in `app/src/db/mod.rs`.
+  - Connected `DashboardView` with live treasury stats, activity feed, projects, member roster, pending approval review, and storage sync status.
+  - Wired quick actions in `app/src/app.rs` for Record Contribution, Add Expense, New Project, and Sync Now (draining offline SQLite outbox).
+- Validated via `cargo fmt --all -- --check`, `cargo check --workspace`, `cargo test -p umuryango-shared -p umuryango-backend`, `cargo test -p umuryango-app`, and `bun run check` in `web/`.
+

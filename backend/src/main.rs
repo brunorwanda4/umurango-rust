@@ -56,7 +56,20 @@ async fn main() -> std::io::Result<()> {
                             .service(handlers::families::create_family)
                             .service(handlers::families::join_family)
                             .service(handlers::families::get_pending_invitations)
-                            .service(handlers::families::accept_invitation),
+                            .service(handlers::families::accept_invitation)
+                            .service(handlers::transactions::list_transactions)
+                            .service(handlers::transactions::create_transaction)
+                            .service(handlers::transactions::get_treasury_summary)
+                            .service(handlers::transactions::approve_transaction)
+                            .service(handlers::projects::list_projects)
+                            .service(handlers::projects::create_project)
+                            .service(handlers::projects::contribute_project)
+                            .service(handlers::members::list_members),
+                    )
+                    .service(
+                        web::scope("/sync")
+                            .service(handlers::sync::sync_push)
+                            .service(handlers::sync::sync_pull),
                     ),
             )
     })

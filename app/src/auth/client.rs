@@ -3,12 +3,17 @@
 use std::env;
 use std::sync::RwLock;
 use umuryango_shared::{
-    AuthResponse, CreateFamilyRequest, CreateFamilyResponse, ErrorResponse, JoinFamilyRequest,
-    JoinFamilyResponse, LoginRequest, PendingFamilyInviteDto, RegisterRequest,
+    AuthResponse, CreateFamilyRequest, CreateFamilyResponse, CreateProjectRequest,
+    CreateTransactionRequest, ErrorResponse, Family, FamilyMemberDto, JoinFamilyRequest,
+    JoinFamilyResponse, LoginRequest, PendingFamilyInviteDto, ProjectContributionRequest,
+    ProjectDto, RegisterRequest, SyncMutation, SyncPullRequest, SyncPullResponse, SyncPushRequest,
+    SyncPushResponse, TransactionItemDto, TreasurySummaryDto,
 };
 
 static CURRENT_TOKEN: RwLock<Option<String>> = RwLock::new(None);
 static CURRENT_LANGUAGE: RwLock<&'static str> = RwLock::new("en");
+static CURRENT_FAMILY_ID: RwLock<Option<String>> = RwLock::new(None);
+static CURRENT_FAMILY_NAME: RwLock<Option<String>> = RwLock::new(None);
 
 /// Stores the current user's session token.
 pub fn set_current_token(token: Option<String>) {
@@ -34,11 +39,42 @@ pub fn get_current_language() -> &'static str {
     CURRENT_LANGUAGE.read().map(|lock| *lock).unwrap_or("en")
 }
 
+/// Stores the active family ID and name.
+pub fn set_current_family(family_id: Option<String>, family_name: Option<String>) {
+    if let Ok(mut lock) = CURRENT_FAMILY_ID.write() {
+        *lock = family_id;
+    }
+    if let Ok(mut lock) = CURRENT_FAMILY_NAME.write() {
+        *lock = family_name;
+    }
+}
+
+/// Retrieves the active family ID.
+pub fn get_current_family_id() -> Option<String> {
+    CURRENT_FAMILY_ID.read().ok().and_then(|lock| lock.clone())
+}
+
+/// Retrieves the active family name.
+pub fn get_current_family_name() -> Option<String> {
+    CURRENT_FAMILY_NAME
+        .read()
+        .ok()
+        .and_then(|lock| lock.clone())
+}
+
 /// Resolves the backend API base URL from environment or defaults to local dev server.
 pub fn api_base_url() -> String {
     env::var("API_URL")
         .or_else(|_| env::var("NEXT_PUBLIC_API_URL"))
         .unwrap_or_else(|_| "http://localhost:4433/api/v1".to_string())
+}
+
+fn authorized_request(req: ureq::Request) -> ureq::Request {
+    let mut req = req.set("Accept-Language", get_current_language());
+    if let Some(token) = get_current_token() {
+        req = req.set("Authorization", &format!("Bearer {token}"));
+    }
+    req
 }
 
 /// Calls backend `POST /api/v1/auth/login` to authenticate an existing user.
@@ -73,6 +109,9 @@ pub fn api_login(identifier: &str, password: &str) -> Result<AuthResponse, Strin
         .map_err(|e| format!("Failed to parse server response: {e}"))?;
 
     set_current_token(Some(auth_resp.token.clone()));
+    if auth_resp.family_id.is_some() {
+        set_current_family(auth_resp.family_id.clone(), auth_resp.family_name.clone());
+    }
     Ok(auth_resp)
 }
 
@@ -111,7 +150,36 @@ pub fn api_register(name: &str, phone: &str, password: &str) -> Result<AuthRespo
         .map_err(|e| format!("Failed to parse server response: {e}"))?;
 
     set_current_token(Some(auth_resp.token.clone()));
+    if auth_resp.family_id.is_some() {
+        set_current_family(auth_resp.family_id.clone(), auth_resp.family_name.clone());
+    }
     Ok(auth_resp)
+}
+
+/// Calls backend `GET /api/v1/families` to list families the user belongs to.
+pub fn api_list_families() -> Result<Vec<Family>, String> {
+    let url = format!("{}/families", api_base_url());
+    let req = authorized_request(ureq::get(&url));
+
+    let response = match req.call() {
+        Ok(resp) => resp,
+        Err(ureq::Error::Status(status, resp)) => {
+            if let Ok(err_body) = resp.into_json::<ErrorResponse>() {
+                return Err(err_body.error);
+            }
+            return Err(format!("Server returned HTTP {status}"));
+        }
+        Err(ureq::Error::Transport(transport)) => {
+            return Err(format!(
+                "Network error: {}",
+                transport.message().unwrap_or("cannot connect to server")
+            ));
+        }
+    };
+
+    response
+        .into_json::<Vec<Family>>()
+        .map_err(|e| format!("Failed to parse server response: {e}"))
 }
 
 /// Calls backend `POST /api/v1/families` to create a new family and invite members by phone.
@@ -125,11 +193,7 @@ pub fn api_create_family(
         member_phones,
     };
 
-    let mut req = ureq::post(&url).set("Accept-Language", get_current_language());
-    if let Some(token) = get_current_token() {
-        req = req.set("Authorization", &format!("Bearer {token}"));
-    }
-
+    let req = authorized_request(ureq::post(&url));
     let response = match req.send_json(&payload) {
         Ok(resp) => resp,
         Err(ureq::Error::Status(status, resp)) => {
@@ -146,9 +210,12 @@ pub fn api_create_family(
         }
     };
 
-    response
+    let resp = response
         .into_json::<CreateFamilyResponse>()
-        .map_err(|e| format!("Failed to parse server response: {e}"))
+        .map_err(|e| format!("Failed to parse server response: {e}"))?;
+
+    set_current_family(Some(resp.id.clone()), Some(resp.name.clone()));
+    Ok(resp)
 }
 
 /// Calls backend `POST /api/v1/families/join` to join a family with a 4-character code.
@@ -158,11 +225,7 @@ pub fn api_join_family(code: &str) -> Result<JoinFamilyResponse, String> {
         code: code.to_string(),
     };
 
-    let mut req = ureq::post(&url).set("Accept-Language", get_current_language());
-    if let Some(token) = get_current_token() {
-        req = req.set("Authorization", &format!("Bearer {token}"));
-    }
-
+    let req = authorized_request(ureq::post(&url));
     let response = match req.send_json(&payload) {
         Ok(resp) => resp,
         Err(ureq::Error::Status(status, resp)) => {
@@ -179,18 +242,18 @@ pub fn api_join_family(code: &str) -> Result<JoinFamilyResponse, String> {
         }
     };
 
-    response
+    let resp = response
         .into_json::<JoinFamilyResponse>()
-        .map_err(|e| format!("Failed to parse server response: {e}"))
+        .map_err(|e| format!("Failed to parse server response: {e}"))?;
+
+    set_current_family(Some(resp.family_id.clone()), Some(resp.family_name.clone()));
+    Ok(resp)
 }
 
 /// Calls backend `GET /api/v1/families/invitations` to list pending invitations for the user.
 pub fn api_get_pending_invitations() -> Result<Vec<PendingFamilyInviteDto>, String> {
     let url = format!("{}/families/invitations", api_base_url());
-    let mut req = ureq::get(&url).set("Accept-Language", get_current_language());
-    if let Some(token) = get_current_token() {
-        req = req.set("Authorization", &format!("Bearer {token}"));
-    }
+    let req = authorized_request(ureq::get(&url));
 
     let response = match req.call() {
         Ok(resp) => resp,
@@ -216,10 +279,132 @@ pub fn api_get_pending_invitations() -> Result<Vec<PendingFamilyInviteDto>, Stri
 /// Calls backend `POST /api/v1/families/invitations/{id}/accept` to accept a pending invite.
 pub fn api_accept_invitation(invite_id: &str) -> Result<JoinFamilyResponse, String> {
     let url = format!("{}/families/invitations/{invite_id}/accept", api_base_url());
-    let mut req = ureq::post(&url).set("Accept-Language", get_current_language());
-    if let Some(token) = get_current_token() {
-        req = req.set("Authorization", &format!("Bearer {token}"));
+    let req = authorized_request(ureq::post(&url));
+
+    let response = match req.send_string("") {
+        Ok(resp) => resp,
+        Err(ureq::Error::Status(status, resp)) => {
+            if let Ok(err_body) = resp.into_json::<ErrorResponse>() {
+                return Err(err_body.error);
+            }
+            return Err(format!("Server returned HTTP {status}"));
+        }
+        Err(ureq::Error::Transport(transport)) => {
+            return Err(format!(
+                "Network error: {}",
+                transport.message().unwrap_or("cannot connect to server")
+            ));
+        }
+    };
+
+    let resp = response
+        .into_json::<JoinFamilyResponse>()
+        .map_err(|e| format!("Failed to parse server response: {e}"))?;
+
+    set_current_family(Some(resp.family_id.clone()), Some(resp.family_name.clone()));
+    Ok(resp)
+}
+
+/// Calls backend `GET /api/v1/families/{family_id}/transactions/summary` to fetch treasury metrics.
+pub fn api_get_treasury_summary(family_id: &str) -> Result<TreasurySummaryDto, String> {
+    let url = format!(
+        "{}/families/{family_id}/transactions/summary",
+        api_base_url()
+    );
+    let req = authorized_request(ureq::get(&url));
+
+    let response = match req.call() {
+        Ok(resp) => resp,
+        Err(ureq::Error::Status(status, resp)) => {
+            if let Ok(err_body) = resp.into_json::<ErrorResponse>() {
+                return Err(err_body.error);
+            }
+            return Err(format!("Server returned HTTP {status}"));
+        }
+        Err(ureq::Error::Transport(transport)) => {
+            return Err(format!(
+                "Network error: {}",
+                transport.message().unwrap_or("cannot connect to server")
+            ));
+        }
+    };
+
+    response
+        .into_json::<TreasurySummaryDto>()
+        .map_err(|e| format!("Failed to parse treasury summary: {e}"))
+}
+
+/// Calls backend `GET /api/v1/families/{family_id}/transactions` to fetch transactions list.
+pub fn api_list_transactions(
+    family_id: &str,
+    filter: Option<&str>,
+) -> Result<Vec<TransactionItemDto>, String> {
+    let mut url = format!("{}/families/{family_id}/transactions", api_base_url());
+    if let Some(f) = filter {
+        url = format!("{url}?filter={f}");
     }
+    let req = authorized_request(ureq::get(&url));
+
+    let response = match req.call() {
+        Ok(resp) => resp,
+        Err(ureq::Error::Status(status, resp)) => {
+            if let Ok(err_body) = resp.into_json::<ErrorResponse>() {
+                return Err(err_body.error);
+            }
+            return Err(format!("Server returned HTTP {status}"));
+        }
+        Err(ureq::Error::Transport(transport)) => {
+            return Err(format!(
+                "Network error: {}",
+                transport.message().unwrap_or("cannot connect to server")
+            ));
+        }
+    };
+
+    response
+        .into_json::<Vec<TransactionItemDto>>()
+        .map_err(|e| format!("Failed to parse transactions list: {e}"))
+}
+
+/// Calls backend `POST /api/v1/families/{family_id}/transactions` to record a transaction.
+pub fn api_create_transaction(
+    family_id: &str,
+    payload: &CreateTransactionRequest,
+) -> Result<TransactionItemDto, String> {
+    let url = format!("{}/families/{family_id}/transactions", api_base_url());
+    let req = authorized_request(ureq::post(&url));
+
+    let response = match req.send_json(payload) {
+        Ok(resp) => resp,
+        Err(ureq::Error::Status(status, resp)) => {
+            if let Ok(err_body) = resp.into_json::<ErrorResponse>() {
+                return Err(err_body.error);
+            }
+            return Err(format!("Server returned HTTP {status}"));
+        }
+        Err(ureq::Error::Transport(transport)) => {
+            return Err(format!(
+                "Network error: {}",
+                transport.message().unwrap_or("cannot connect to server")
+            ));
+        }
+    };
+
+    response
+        .into_json::<TransactionItemDto>()
+        .map_err(|e| format!("Failed to parse created transaction: {e}"))
+}
+
+/// Calls backend `POST /api/v1/families/{family_id}/transactions/{id}/approve` to approve a transaction.
+pub fn api_approve_transaction(
+    family_id: &str,
+    transaction_id: &str,
+) -> Result<TransactionItemDto, String> {
+    let url = format!(
+        "{}/families/{family_id}/transactions/{transaction_id}/approve",
+        api_base_url()
+    );
+    let req = authorized_request(ureq::post(&url));
 
     let response = match req.send_string("") {
         Ok(resp) => resp,
@@ -238,6 +423,181 @@ pub fn api_accept_invitation(invite_id: &str) -> Result<JoinFamilyResponse, Stri
     };
 
     response
-        .into_json::<JoinFamilyResponse>()
-        .map_err(|e| format!("Failed to parse server response: {e}"))
+        .into_json::<TransactionItemDto>()
+        .map_err(|e| format!("Failed to parse approved transaction: {e}"))
+}
+
+/// Calls backend `GET /api/v1/families/{family_id}/projects` to fetch communal projects.
+pub fn api_list_projects(family_id: &str) -> Result<Vec<ProjectDto>, String> {
+    let url = format!("{}/families/{family_id}/projects", api_base_url());
+    let req = authorized_request(ureq::get(&url));
+
+    let response = match req.call() {
+        Ok(resp) => resp,
+        Err(ureq::Error::Status(status, resp)) => {
+            if let Ok(err_body) = resp.into_json::<ErrorResponse>() {
+                return Err(err_body.error);
+            }
+            return Err(format!("Server returned HTTP {status}"));
+        }
+        Err(ureq::Error::Transport(transport)) => {
+            return Err(format!(
+                "Network error: {}",
+                transport.message().unwrap_or("cannot connect to server")
+            ));
+        }
+    };
+
+    response
+        .into_json::<Vec<ProjectDto>>()
+        .map_err(|e| format!("Failed to parse projects list: {e}"))
+}
+
+/// Calls backend `POST /api/v1/families/{family_id}/projects` to create a communal project.
+pub fn api_create_project(
+    family_id: &str,
+    payload: &CreateProjectRequest,
+) -> Result<ProjectDto, String> {
+    let url = format!("{}/families/{family_id}/projects", api_base_url());
+    let req = authorized_request(ureq::post(&url));
+
+    let response = match req.send_json(payload) {
+        Ok(resp) => resp,
+        Err(ureq::Error::Status(status, resp)) => {
+            if let Ok(err_body) = resp.into_json::<ErrorResponse>() {
+                return Err(err_body.error);
+            }
+            return Err(format!("Server returned HTTP {status}"));
+        }
+        Err(ureq::Error::Transport(transport)) => {
+            return Err(format!(
+                "Network error: {}",
+                transport.message().unwrap_or("cannot connect to server")
+            ));
+        }
+    };
+
+    response
+        .into_json::<ProjectDto>()
+        .map_err(|e| format!("Failed to parse created project: {e}"))
+}
+
+/// Calls backend `POST /api/v1/families/{family_id}/projects/{id}/contribute` to contribute toward a project.
+#[allow(dead_code)]
+pub fn api_contribute_project(
+    family_id: &str,
+    project_id: &str,
+    payload: &ProjectContributionRequest,
+) -> Result<ProjectDto, String> {
+    let url = format!(
+        "{}/families/{family_id}/projects/{project_id}/contribute",
+        api_base_url()
+    );
+    let req = authorized_request(ureq::post(&url));
+
+    let response = match req.send_json(payload) {
+        Ok(resp) => resp,
+        Err(ureq::Error::Status(status, resp)) => {
+            if let Ok(err_body) = resp.into_json::<ErrorResponse>() {
+                return Err(err_body.error);
+            }
+            return Err(format!("Server returned HTTP {status}"));
+        }
+        Err(ureq::Error::Transport(transport)) => {
+            return Err(format!(
+                "Network error: {}",
+                transport.message().unwrap_or("cannot connect to server")
+            ));
+        }
+    };
+
+    response
+        .into_json::<ProjectDto>()
+        .map_err(|e| format!("Failed to parse updated project: {e}"))
+}
+
+/// Calls backend `GET /api/v1/families/{family_id}/members` to list family members.
+pub fn api_list_members(family_id: &str) -> Result<Vec<FamilyMemberDto>, String> {
+    let url = format!("{}/families/{family_id}/members", api_base_url());
+    let req = authorized_request(ureq::get(&url));
+
+    let response = match req.call() {
+        Ok(resp) => resp,
+        Err(ureq::Error::Status(status, resp)) => {
+            if let Ok(err_body) = resp.into_json::<ErrorResponse>() {
+                return Err(err_body.error);
+            }
+            return Err(format!("Server returned HTTP {status}"));
+        }
+        Err(ureq::Error::Transport(transport)) => {
+            return Err(format!(
+                "Network error: {}",
+                transport.message().unwrap_or("cannot connect to server")
+            ));
+        }
+    };
+
+    response
+        .into_json::<Vec<FamilyMemberDto>>()
+        .map_err(|e| format!("Failed to parse members list: {e}"))
+}
+
+/// Calls backend `POST /api/v1/sync/push` to push local mutations outbox.
+pub fn api_sync_push(mutations: Vec<SyncMutation>) -> Result<SyncPushResponse, String> {
+    let url = format!("{}/sync/push", api_base_url());
+    let payload = SyncPushRequest { mutations };
+    let req = authorized_request(ureq::post(&url));
+
+    let response = match req.send_json(&payload) {
+        Ok(resp) => resp,
+        Err(ureq::Error::Status(status, resp)) => {
+            if let Ok(err_body) = resp.into_json::<ErrorResponse>() {
+                return Err(err_body.error);
+            }
+            return Err(format!("Server returned HTTP {status}"));
+        }
+        Err(ureq::Error::Transport(transport)) => {
+            return Err(format!(
+                "Network error: {}",
+                transport.message().unwrap_or("cannot connect to server")
+            ));
+        }
+    };
+
+    response
+        .into_json::<SyncPushResponse>()
+        .map_err(|e| format!("Failed to parse sync push response: {e}"))
+}
+
+/// Calls backend `POST /api/v1/sync/pull` to pull remote records since cursor.
+pub fn api_sync_pull(family_id: &str, cursor: Option<String>) -> Result<SyncPullResponse, String> {
+    let fam_uuid =
+        uuid::Uuid::parse_str(family_id).map_err(|e| format!("Invalid family ID UUID: {e}"))?;
+
+    let url = format!("{}/sync/pull", api_base_url());
+    let payload = SyncPullRequest {
+        family_id: fam_uuid,
+        cursor,
+    };
+    let req = authorized_request(ureq::post(&url));
+
+    let response = match req.send_json(&payload) {
+        Ok(resp) => resp,
+        Err(ureq::Error::Status(status, resp)) => {
+            if let Ok(err_body) = resp.into_json::<ErrorResponse>() {
+                return Err(err_body.error);
+            }
+            return Err(format!("Server returned HTTP {status}"));
+        }
+        Err(ureq::Error::Transport(transport)) => {
+            return Err(format!(
+                "Network error: {}",
+                transport.message().unwrap_or("cannot connect to server")
+            ));
+        }
+    };
+
+    response
+        .into_json::<SyncPullResponse>()
+        .map_err(|e| format!("Failed to parse sync pull response: {e}"))
 }
