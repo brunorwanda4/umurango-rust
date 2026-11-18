@@ -11,6 +11,20 @@
   "login.signing_in": "Birimo kwinjira...",
   "login.no_account": "Nta konti ufite?",
   "login.ask_admin": "Baza umuyobozi w'umuryango wawe",
+  "login.create_account": "Fungura konti",
   "login.email_required": "Andika nimero ya telefone cyangwa indangamuntu y'umunyamuryango.",
-  "login.password_required": "Ijambo ry'ibanga cyangwa PIN bigomba kugira nibura inyuguti 4."
+  "login.password_required": "Ijambo ry'ibanga cyangwa PIN bigomba kugira nibura inyuguti 4.",
+  "register.name_label": "Amazina yombi",
+  "register.name_placeholder": "Andika amazina yawe yombi",
+  "register.phone_label": "Nimero ya telefone",
+  "register.phone_placeholder": "Andika nimero ya telefone yawe",
+  "register.password_label": "Ijambo ry'ibanga cyangwa PIN y'umutekano",
+  "register.password_placeholder": "Shyiraho ijambo ry'ibanga cyangwa PIN",
+  "register.submit": "Fungura konti",
+  "register.submitting": "Birimo gufungura konti...",
+  "register.have_account": "Usanzwe ufite konti?",
+  "register.sign_in": "Kwinjira",
+  "register.name_required": "Andika amazina yawe yombi.",
+  "register.phone_required": "Andika nimero ya telefone yawe.",
+  "register.password_required": "Ijambo ry'ibanga cyangwa PIN bigomba kugira nibura inyuguti 4."
 }

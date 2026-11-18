@@ -34,3 +34,16 @@ entries at the end, and include validation.
 - Positioned login validation errors immediately above the Sign In button.
 - Replaced the Windows application icon with the Umuryango family-house brand
   icon in `assets/brand/umuryango-app.ico`.
+
+## 2026-11-18
+
+- Extracted reusable GPUI form components (`app/src/components/input.rs`,
+  `app/src/components/checkbox.rs`) and shared auth section helpers in
+  `app/src/auth/layout.rs`.
+- Implemented the native registration view in `app/src/auth/register.rs` with
+  name, phone number, and password inputs, localized strings (`en.json` and
+  `rw.json`), and Login/Register screen navigation in `app/src/main.rs`.
+- Validated via `cargo fmt --all -- --check`,
+  `cargo check -p umuryango-app --all-targets`, and
+  `cargo test -p umuryango-app --lib` (linking GUI test binaries requires host
+  `libxkbcommon-x11`).

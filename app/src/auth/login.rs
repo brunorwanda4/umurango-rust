@@ -1,20 +1,20 @@
 #![allow(dead_code)]
 
-use crate::auth::layout::auth_layout;
-use crate::brand::{apply_theme, colors, ThemeColors, ThemeMode};
-use crate::i18n::{text, Language};
-use crate::icons;
-use gpui_kit::component::{
-    button::{Button, ButtonVariants},
-    input::{Input, InputState},
+use crate::auth::layout::{auth_footer_prompt, auth_layout, auth_submit_section};
+use crate::brand::{apply_theme, colors, ThemeMode};
+use crate::components::{
+    checkbox::checkbox,
+    input::{input_field, password_field},
 };
-use gpui_kit::prelude::FluentBuilder;
+use crate::i18n::{text, Language};
+use gpui_kit::component::input::InputState;
 use gpui_kit::*;
 
 #[derive(Clone, Debug)]
 pub enum LoginEvent {
     ThemeChanged(ThemeMode),
     LanguageChanged(Language),
+    RegisterRequested,
     SignedIn {
         email: String,
         display_name: String,
@@ -101,6 +101,21 @@ impl LoginView {
         cx.notify();
     }
 
+    pub fn sync_preferences(
+        &mut self,
+        theme: ThemeMode,
+        language: Language,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.theme != theme {
+            self.set_theme(theme, cx);
+        }
+        if self.language != language {
+            self.set_language(language, window, cx);
+        }
+    }
+
     fn toggle_password_visibility(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.show_password = !self.show_password;
         let masked = !self.show_password;
@@ -159,11 +174,6 @@ impl Render for LoginView {
         } else {
             text(self.language, "login.show_password")
         };
-        let password_toggle_icon = if self.show_password {
-            "eye-slash"
-        } else {
-            "eye"
-        };
         let language_change = {
             let view = view_entity.clone();
             move |language: Language, window: &mut Window, cx: &mut App| {
@@ -176,172 +186,88 @@ impl Render for LoginView {
             }
         };
 
+        let forgot_pin = div()
+            .text_xs()
+            .text_color(palette.primary_light)
+            .child(text(self.language, "login.forgot_pin"))
+            .into_any_element();
+
         let content = div()
             .child(
                 div()
                     .flex()
                     .flex_col()
                     .gap_4()
-                    .child(login_field(
+                    .child(input_field(
                         palette,
                         text(self.language, "login.phone_label"),
-                        Input::new(&self.email_input)
-                            .cleanable(true)
-                            .cursor_text()
-                            .bg(palette.surface)
-                            .text_color(palette.text_body),
+                        &self.email_input,
                     ))
-                    .child(
-                        div()
-                            .flex()
-                            .flex_col()
-                            .gap_2()
-                            .child(
-                                div()
-                                    .flex()
-                                    .justify_between()
-                                    .items_center()
-                                    .child(
-                                        div()
-                                            .text_xs()
-                                            .text_color(palette.text_body)
-                                            .child(text(self.language, "login.password_label")),
-                                    )
-                                    .child(
-                                        div()
-                                            .text_xs()
-                                            .text_color(palette.primary_light)
-                                            .child(text(self.language, "login.forgot_pin")),
-                                    ),
-                            )
-                            .child({
-                                let view = view_entity.clone();
-                                div()
-                                    .w_full()
-                                    .rounded_lg()
-                                    .bg(palette.surface)
-                                    .p_1()
-                                    .cursor_text()
-                                    .child(
-                                        Input::new(&self.password_input)
-                                            .cleanable(true)
-                                            .cursor_text()
-                                            .bg(palette.surface)
-                                            .text_color(palette.text_body)
-                                            .suffix(
-                                                Button::new("toggle-password-visibility")
-                                                    .icon(
-                                                        icons::button_icon(password_toggle_icon)
-                                                            .text_color(palette.text_muted),
-                                                    )
-                                                    .accessibility_label(
-                                                        password_toggle_label.clone(),
-                                                    )
-                                                    .tooltip(password_toggle_label)
-                                                    .text()
-                                                    .compact()
-                                                    .on_click(move |_event, window, cx| {
-                                                        view.update(cx, |this, cx| {
-                                                            this.toggle_password_visibility(
-                                                                window, cx,
-                                                            );
-                                                        });
-                                                    }),
-                                            ),
-                                    )
-                            }),
-                    )
                     .child({
                         let view = view_entity.clone();
-                        let checked = self.remember_me;
-                        div()
-                            .id("remember-me")
-                            .flex()
-                            .items_center()
-                            .gap_2()
-                            .cursor_pointer()
-                            .child(
-                                div()
-                                    .w(px(18.))
-                                    .h(px(18.))
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .rounded(px(3.))
-                                    .border_1()
-                                    .border_color(palette.border)
-                                    .when(checked, |this| {
-                                        this.bg(palette.primary)
-                                            .border_color(palette.primary)
-                                            .child(
-                                                icons::icon("check")
-                                                    .size(px(12.))
-                                                    .text_color(palette.text_primary),
-                                            )
-                                    }),
-                            )
-                            .child(
-                                div()
-                                    .text_color(palette.text_body)
-                                    .child(text(self.language, "login.remember_me")),
-                            )
-                            .on_click(move |_event, _window, cx| {
+                        password_field(
+                            "toggle-password-visibility",
+                            palette,
+                            text(self.language, "login.password_label"),
+                            Some(forgot_pin),
+                            &self.password_input,
+                            self.show_password,
+                            password_toggle_label,
+                            move |_event, window, cx| {
                                 view.update(cx, |this, cx| {
-                                    this.remember_me = !this.remember_me;
-                                    cx.notify();
+                                    this.toggle_password_visibility(window, cx);
                                 });
-                            })
-                    }),
-            )
-            .child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap_2()
-                    .when_some(self.error_message.as_ref(), |this, error| {
-                        this.child(
-                            div()
-                                .w_full()
-                                .p_3()
-                                .rounded_lg()
-                                .bg(palette.bg)
-                                .text_color(palette.error)
-                                .text_xs()
-                                .child(error.clone()),
+                            },
                         )
                     })
                     .child({
                         let view = view_entity.clone();
-                        Button::new("sign-in")
-                            .mt_4()
-                            .label(if self.is_authenticating {
-                                text(self.language, "login.signing_in")
-                            } else {
-                                text(self.language, "login.sign_in")
-                            })
-                            .primary()
-                            .loading(self.is_authenticating)
-                            .on_click(move |_event, window, cx| {
-                                view.update(cx, |this, cx| this.handle_submit(window, cx));
-                            })
+                        checkbox(
+                            "remember-me",
+                            palette,
+                            self.remember_me,
+                            text(self.language, "login.remember_me"),
+                            move |_event, _window, cx| {
+                                view.update(cx, |this, cx| {
+                                    this.remember_me = !this.remember_me;
+                                    cx.notify();
+                                });
+                            },
+                        )
                     }),
             )
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .my_4()
-                    .gap_1()
-                    .text_xs()
-                    .text_color(palette.text_muted)
-                    .child(text(self.language, "login.no_account"))
-                    .child(
-                        div()
-                            .text_color(palette.primary_light)
-                            .child(text(self.language, "login.ask_admin")),
-                    ),
-            );
+            .child({
+                let view = view_entity.clone();
+                let submit_label = if self.is_authenticating {
+                    text(self.language, "login.signing_in")
+                } else {
+                    text(self.language, "login.sign_in")
+                };
+                auth_submit_section(
+                    "sign-in",
+                    palette,
+                    self.error_message.as_ref(),
+                    submit_label,
+                    self.is_authenticating,
+                    move |_event, window, cx| {
+                        view.update(cx, |this, cx| this.handle_submit(window, cx));
+                    },
+                )
+            })
+            .child({
+                let view = view_entity.clone();
+                auth_footer_prompt(
+                    "login-register-link",
+                    palette,
+                    text(self.language, "login.no_account"),
+                    text(self.language, "login.create_account"),
+                    move |_event, _window, cx| {
+                        view.update(cx, |_this, cx| {
+                            cx.emit(LoginEvent::RegisterRequested);
+                        });
+                    },
+                )
+            });
 
         let theme_change = {
             let view = view_entity;
@@ -361,21 +287,4 @@ impl Render for LoginView {
             content,
         )
     }
-}
-
-fn login_field(palette: ThemeColors, label: String, input: impl IntoElement) -> impl IntoElement {
-    div()
-        .flex()
-        .flex_col()
-        .gap_2()
-        .child(div().text_xs().text_color(palette.text_body).child(label))
-        .child(
-            div()
-                .w_full()
-                .rounded_lg()
-                .bg(palette.surface)
-                .p_1()
-                .cursor_text()
-                .child(input),
-        )
 }

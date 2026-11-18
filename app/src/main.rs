@@ -1,18 +1,32 @@
 mod auth;
 mod brand;
+mod components;
 mod i18n;
 mod icons;
 
-use auth::login::{LoginEvent, LoginView};
+use auth::{
+    login::{LoginEvent, LoginView},
+    register::{RegisterEvent, RegisterView},
+};
 use brand::*;
 use gpui_kit::*;
 use i18n::Language;
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum AuthScreen {
+    #[default]
+    Login,
+    Register,
+}
+
 pub struct UmuryangoApp {
     theme: ThemeMode,
     language: Language,
+    screen: AuthScreen,
     login_view: Entity<LoginView>,
+    register_view: Entity<RegisterView>,
     _login_subscription: Subscription,
+    _register_subscription: Subscription,
 }
 
 impl UmuryangoApp {
@@ -20,6 +34,7 @@ impl UmuryangoApp {
         let theme = ThemeMode::Dark;
         let language = Language::default();
         let login_view = cx.new(|cx| LoginView::new(window, theme, language, cx));
+        let register_view = cx.new(|cx| RegisterView::new(window, theme, language, cx));
 
         let login_subscription = cx.subscribe(
             &login_view,
@@ -32,7 +47,32 @@ impl UmuryangoApp {
                     this.language = *language;
                     cx.notify();
                 }
+                LoginEvent::RegisterRequested => {
+                    this.screen = AuthScreen::Register;
+                    cx.notify();
+                }
                 LoginEvent::SignedIn { .. } => {
+                    cx.notify();
+                }
+            },
+        );
+
+        let register_subscription = cx.subscribe(
+            &register_view,
+            |this, _view, event: &RegisterEvent, cx| match event {
+                RegisterEvent::ThemeChanged(theme) => {
+                    this.theme = *theme;
+                    cx.notify();
+                }
+                RegisterEvent::LanguageChanged(language) => {
+                    this.language = *language;
+                    cx.notify();
+                }
+                RegisterEvent::LoginRequested => {
+                    this.screen = AuthScreen::Login;
+                    cx.notify();
+                }
+                RegisterEvent::Registered { .. } => {
                     cx.notify();
                 }
             },
@@ -41,18 +81,39 @@ impl UmuryangoApp {
         Self {
             theme,
             language,
+            screen: AuthScreen::Login,
             login_view,
+            register_view,
             _login_subscription: login_subscription,
+            _register_subscription: register_subscription,
         }
     }
 }
 
 impl Render for UmuryangoApp {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = self.theme;
+        let language = self.language;
+
+        let active_view: AnyElement = match self.screen {
+            AuthScreen::Login => {
+                self.login_view.update(cx, |view, cx| {
+                    view.sync_preferences(theme, language, window, cx);
+                });
+                self.login_view.clone().into_any_element()
+            }
+            AuthScreen::Register => {
+                self.register_view.update(cx, |view, cx| {
+                    view.sync_preferences(theme, language, window, cx);
+                });
+                self.register_view.clone().into_any_element()
+            }
+        };
+
         div()
             .size_full()
             .bg(colors(self.theme).bg)
-            .child(self.login_view.clone())
+            .child(active_view)
     }
 }
 
