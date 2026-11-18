@@ -5,21 +5,24 @@ use gpui_kit::*;
 
 pub fn checkbox_indicator(palette: ThemeColors, checked: bool) -> impl IntoElement {
     div()
-        .w(px(18.))
-        .h(px(18.))
+        .w(px(28.0))
+        .h(px(28.0))
+        .flex_shrink_0()
         .flex()
         .items_center()
         .justify_center()
-        .rounded(px(3.))
-        .border_1()
-        .border_color(palette.border)
+        .rounded(palette.radius_checkbox)
+        .border(palette.border_width_input)
+        .border_color(palette.border_color)
+        .bg(palette.bg_input)
+        .shadow(palette.checkbox_shadows())
         .when(checked, |this| {
-            this.bg(palette.primary)
-                .border_color(palette.primary)
+            this.bg(palette.accent_primary)
+                .border_color(palette.border_color)
                 .child(
                     icons::icon(icons::ICON_CHECK)
-                        .size(px(12.))
-                        .text_color(palette.text_primary),
+                        .size(px(14.0))
+                        .text_color(palette.text_on_accent),
                 )
         })
 }
@@ -35,10 +38,16 @@ pub fn checkbox(
         .id(id)
         .flex()
         .items_center()
-        .gap_2()
+        .gap_3()
         .cursor_pointer()
         .child(checkbox_indicator(palette, checked))
-        .child(div().text_color(palette.text_body).child(label.into()))
+        .child(
+            div()
+                .text_sm()
+                .font_weight(FontWeight::MEDIUM)
+                .text_color(palette.text_secondary)
+                .child(label.into()),
+        )
         .on_click(on_click)
 }
 
@@ -54,7 +63,7 @@ pub fn checkbox_with_description(
         .id(id)
         .flex()
         .items_start()
-        .gap_2()
+        .gap_3()
         .cursor_pointer()
         .child(div().pt(px(2.)).child(checkbox_indicator(palette, checked)))
         .child(
@@ -65,7 +74,7 @@ pub fn checkbox_with_description(
                 .child(
                     div()
                         .text_sm()
-                        .font_weight(FontWeight::MEDIUM)
+                        .font_weight(FontWeight::SEMIBOLD)
                         .text_color(palette.text_primary)
                         .child(title.into()),
                 )
@@ -92,25 +101,31 @@ pub fn checkbox_with_link(
     div()
         .flex()
         .items_center()
-        .gap_1()
+        .gap_1p5()
         .flex_wrap()
-        .text_xs()
+        .text_sm()
         .child(
             div()
                 .id(id)
                 .flex()
                 .items_center()
-                .gap_2()
+                .gap_3()
                 .cursor_pointer()
                 .child(checkbox_indicator(palette, checked))
-                .child(div().text_color(palette.text_body).child(label.into()))
+                .child(
+                    div()
+                        .font_weight(FontWeight::MEDIUM)
+                        .text_color(palette.text_secondary)
+                        .child(label.into()),
+                )
                 .on_click(on_toggle),
         )
         .child(
             div()
                 .id(link_id)
                 .cursor_pointer()
-                .text_color(palette.primary_light)
+                .font_weight(FontWeight::BOLD)
+                .text_color(palette.accent_link)
                 .child(link_label.into())
                 .on_click(on_link_click),
         )

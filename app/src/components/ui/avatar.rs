@@ -13,10 +13,10 @@ pub enum AvatarSize {
 impl AvatarSize {
     pub fn pixels(self) -> Pixels {
         match self {
-            Self::Sm => px(24.),
-            Self::Md => px(32.),
-            Self::Lg => px(40.),
-            Self::Xl => px(48.),
+            Self::Sm => px(26.),
+            Self::Md => px(34.),
+            Self::Lg => px(42.),
+            Self::Xl => px(50.),
         }
     }
 
@@ -58,12 +58,13 @@ pub fn avatar_initials(
         .items_center()
         .justify_center()
         .rounded_full()
-        .bg(palette.primary.opacity(0.15))
-        .border_1()
-        .border_color(palette.primary)
+        .bg(palette.accent_primary)
+        .border(px(2.0))
+        .border_color(palette.border_color)
+        .shadow(palette.checkbox_shadows())
         .text_size(size.font_size())
         .font_weight(FontWeight::BOLD)
-        .text_color(palette.primary_light)
+        .text_color(palette.text_on_accent)
         .child(initials.into())
 }
 
@@ -87,7 +88,7 @@ pub fn member_avatar(
                 .child(
                     div()
                         .text_sm()
-                        .font_weight(FontWeight::MEDIUM)
+                        .font_weight(FontWeight::BOLD)
                         .text_color(palette.text_primary)
                         .child(name.to_string()),
                 )

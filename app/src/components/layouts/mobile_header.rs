@@ -26,9 +26,9 @@ where
         .justify_between()
         .px_4()
         .py_2()
-        .bg(palette.surface)
-        .border_b_1()
-        .border_color(palette.border)
+        .bg(palette.bg_card)
+        .border_b(palette.border_width)
+        .border_color(palette.border_color)
         .child(
             div()
                 .flex()
@@ -37,18 +37,21 @@ where
                 .min_w_0()
                 .child(
                     div()
-                        .w(px(28.0))
-                        .h(px(28.0))
+                        .w(px(30.0))
+                        .h(px(30.0))
                         .flex_shrink_0()
                         .flex()
                         .items_center()
                         .justify_center()
-                        .rounded_md()
-                        .bg(palette.primary)
+                        .rounded(palette.radius_checkbox)
+                        .bg(palette.accent_primary)
+                        .border(px(2.0))
+                        .border_color(palette.border_color)
+                        .shadow(palette.checkbox_shadows())
                         .child(
-                            icons::icon(icons::ICON_SHIELD_HALVED)
+                            icons::icon(icons::ICON_PEOPLE_ROOF)
                                 .size(px(14.0))
-                                .text_color(palette.text_primary),
+                                .text_color(palette.text_on_accent),
                         ),
                 )
                 .child(

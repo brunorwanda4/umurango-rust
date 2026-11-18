@@ -6,6 +6,7 @@ mod dashboard;
 mod i18n;
 mod icons;
 mod navigation;
+mod theme;
 mod window;
 
 use app::UmuryangoApp;

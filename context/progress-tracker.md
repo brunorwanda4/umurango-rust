@@ -238,4 +238,9 @@ entries at the end, and include validation.
   - Connected `DashboardView` with live treasury stats, activity feed, projects, member roster, pending approval review, and storage sync status.
   - Wired quick actions in `app/src/app.rs` for Record Contribution, Add Expense, New Project, and Sync Now (draining offline SQLite outbox).
 - Validated via `cargo fmt --all -- --check`, `cargo check --workspace`, `cargo test -p umuryango-shared -p umuryango-backend`, `cargo test -p umuryango-app`, and `bun run check` in `web/`.
+- Implemented extensible multi-style UI theme architecture and Cozy Kawaii aesthetic across native GPUI app (`app/`):
+  - Created `app/src/theme/mod.rs` with `UiStyle` (`CozyKawaii`, `NeoBrutalism`, `Claymorphism3D`), `CozyMood` (`Matcha`, `Peach`, `Berry`), and `StyleTokens` stored in GPUI global state (`cx.set_global(...)`) and synced with `gpui-kit` / `rune-kit` theme tokens.
+  - Configured Dark Cozy and Light Cozy palettes with tactile sticker outlines (`2.5px`–`3px`), rounded geometry (`32px` cards, `22px` buttons, `20px` inputs, `10px` checkboxes), and hard unblurred bottom rim shadows.
+  - Updated all shared UI components (`card`, `input`, `button`, `checkbox`, `alert`, `avatar`, `badge`, `divider`, `modal`, `stat_card`, `toggle`), dashboard components, layout shell (`sidebar`, `footer`, `mobile_header`), and auth screens to consume `StyleTokens`.
+  - Updated `LoginView` and `auth/layout.rs` with the custom kawaii family hearth icon, "Forgot PIN?" link, visibility toggle, default-checked remember-me checkbox, tactile primary sign-in button, and live Dark/Light Cozy + `CozyMood` header switcher.
 

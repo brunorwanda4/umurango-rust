@@ -17,11 +17,12 @@ pub fn stat_card(
         .flex()
         .flex_col()
         .gap_2()
-        .p_4()
-        .rounded_lg()
-        .bg(palette.surface)
-        .border_1()
-        .border_color(palette.border)
+        .p_5()
+        .rounded(palette.radius_card)
+        .bg(palette.bg_card)
+        .border(palette.border_width)
+        .border_color(palette.border_color)
+        .shadow(palette.card_shadows())
         .child(
             div()
                 .flex()
@@ -30,15 +31,27 @@ pub fn stat_card(
                 .child(
                     div()
                         .text_xs()
-                        .font_weight(FontWeight::MEDIUM)
-                        .text_color(palette.text_muted)
+                        .font_weight(FontWeight::BOLD)
+                        .text_color(palette.text_secondary)
                         .child(title.into()),
                 )
                 .when_some(icon_name, |this, name| {
                     this.child(
-                        icons::icon(name)
-                            .size(px(16.))
-                            .text_color(palette.primary_light),
+                        div()
+                            .w(px(30.))
+                            .h(px(30.))
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .rounded(palette.radius_checkbox)
+                            .bg(palette.bg_badge)
+                            .border(px(2.0))
+                            .border_color(palette.border_color)
+                            .child(
+                                icons::icon(name)
+                                    .size(px(14.))
+                                    .text_color(palette.accent_primary),
+                            ),
                     )
                 }),
         )
@@ -72,7 +85,7 @@ pub fn stat_card(
                                 .items_center()
                                 .gap_1()
                                 .text_xs()
-                                .font_weight(FontWeight::SEMIBOLD)
+                                .font_weight(FontWeight::BOLD)
                                 .text_color(color)
                                 .child(icons::icon(arrow_icon).size(px(10.)).text_color(color))
                                 .child(trend_text),
@@ -82,7 +95,7 @@ pub fn stat_card(
                         this.child(
                             div()
                                 .text_xs()
-                                .text_color(palette.text_dim)
+                                .text_color(palette.text_muted)
                                 .child(sub.into()),
                         )
                     }),

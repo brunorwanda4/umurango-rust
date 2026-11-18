@@ -9,26 +9,29 @@ pub fn toggle(
     on_toggle: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
 ) -> impl IntoElement {
     let bg_color = if checked {
-        palette.primary
+        palette.accent_primary
     } else {
-        palette.border
+        palette.bg_input
     };
 
     let thumb_bg = if checked {
-        palette.text_primary
+        palette.text_on_accent
     } else {
         palette.text_muted
     };
 
     div()
         .id(id)
-        .w(px(38.))
-        .h(px(22.))
+        .w(px(44.))
+        .h(px(26.))
         .p(px(2.))
         .flex()
         .items_center()
         .rounded_full()
         .bg(bg_color)
+        .border(palette.border_width_input)
+        .border_color(palette.border_color)
+        .shadow(palette.checkbox_shadows())
         .cursor_pointer()
         .when(checked, |this| this.justify_end())
         .child(div().w(px(18.)).h(px(18.)).rounded_full().bg(thumb_bg))
@@ -56,7 +59,7 @@ pub fn toggle_field(
                 .child(
                     div()
                         .text_sm()
-                        .font_weight(FontWeight::MEDIUM)
+                        .font_weight(FontWeight::BOLD)
                         .text_color(palette.text_primary)
                         .child(label.into()),
                 )

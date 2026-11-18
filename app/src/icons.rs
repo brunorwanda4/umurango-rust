@@ -36,6 +36,11 @@ pub const ICON_HAND_HOLDING_DOLLAR: &str = "hand-holding-dollar";
 pub const ICON_BULLSEYE: &str = "bullseye";
 pub const ICON_PIGGY_BANK: &str = "piggy-bank";
 pub const ICON_FILTER: &str = "filter";
+pub const ICON_HEART: &str = "heart";
+pub const ICON_PEOPLE_ROOF: &str = "people-roof";
+pub const ICON_HOUSE_CHIMNEY_USER: &str = "house-chimney-user";
+pub const ICON_SUN: &str = "sun";
+pub const ICON_MOON: &str = "moon";
 
 fn icon_data(set: &str, name: &str) -> &'static [u8] {
     let path = format!("{set}/{name}.svg");

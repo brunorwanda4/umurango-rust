@@ -22,9 +22,9 @@ pub fn app_footer(
         .px_2()
         .pt_1()
         .pb_2()
-        .bg(palette.surface)
-        .border_t_1()
-        .border_color(palette.border)
+        .bg(palette.bg_card)
+        .border_t(palette.border_width)
+        .border_color(palette.border_color)
         .children(
             AppSection::ALL
                 .into_iter()
@@ -63,24 +63,22 @@ fn footer_nav_item(
         .gap_1()
         .px_1()
         .py_1()
-        .rounded_lg()
+        .rounded(palette.radius_checkbox)
         .cursor_pointer()
-        .when(active, |this| this.bg(palette.primary.opacity(0.12)))
-        .when(!active, |this| {
-            this.hover(|s| s.bg(palette.border.opacity(0.4)))
-        })
+        .when(active, |this| this.bg(palette.bg_input_focus))
+        .when(!active, |this| this.hover(|s| s.bg(palette.bg_input)))
         .child(
             div()
                 .w(px(22.0))
                 .h(px(3.0))
                 .rounded_full()
-                .when(active, |this| this.bg(palette.primary_light)),
+                .when(active, |this| this.bg(palette.accent_primary)),
         )
         .child(
             icons::icon(section.icon())
                 .size(px(16.0))
                 .text_color(if active {
-                    palette.primary_light
+                    palette.accent_primary
                 } else {
                     palette.text_muted
                 }),
@@ -93,12 +91,12 @@ fn footer_nav_item(
                 .text_center()
                 .text_size(px(11.0))
                 .font_weight(if active {
-                    FontWeight::SEMIBOLD
+                    FontWeight::BOLD
                 } else {
                     FontWeight::MEDIUM
                 })
                 .text_color(if active {
-                    palette.primary_light
+                    palette.accent_primary
                 } else {
                     palette.text_muted
                 })

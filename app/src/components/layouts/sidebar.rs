@@ -36,9 +36,9 @@ where
         .flex()
         .flex_col()
         .justify_between()
-        .bg(palette.surface)
-        .border_r_1()
-        .border_color(palette.border)
+        .bg(palette.bg_card)
+        .border_r(palette.border_width)
+        .border_color(palette.border_color)
         .child(
             div()
                 .flex()
@@ -51,8 +51,8 @@ where
                         .flex_col()
                         .gap_1()
                         .pb_3()
-                        .border_b_1()
-                        .border_color(palette.border)
+                        .border_b(palette.border_width_input)
+                        .border_color(palette.border_color)
                         .child(
                             img(Arc::new(Image::from_bytes(
                                 ImageFormat::Png,
@@ -69,7 +69,7 @@ where
                         ),
                 )
                 .child(
-                    div().flex().flex_col().gap_1().children(
+                    div().flex().flex_col().gap_1p5().children(
                         AppSection::ALL
                             .into_iter()
                             .enumerate()
@@ -92,15 +92,15 @@ where
                 .flex_col()
                 .gap_3()
                 .p_4()
-                .border_t_1()
-                .border_color(palette.border)
+                .border_t(palette.border_width_input)
+                .border_color(palette.border_color)
                 .child(
                     div()
                         .id("sidebar-member-profile")
                         .p_2()
-                        .rounded_lg()
+                        .rounded(palette.radius_input)
                         .cursor_pointer()
-                        .hover(|s| s.bg(palette.border.opacity(0.45)))
+                        .hover(|s| s.bg(palette.bg_input))
                         .on_click(move |_event, window, cx| {
                             open_profile(AppSection::Profile, window, cx)
                         })
@@ -161,29 +161,30 @@ fn sidebar_nav_item(
         .gap_3()
         .px_3()
         .py_2()
-        .rounded_lg()
-        .border_1()
+        .rounded(palette.radius_input)
+        .border(palette.border_width_input)
         .cursor_pointer()
         .when(active, |this| {
-            this.bg(palette.primary.opacity(0.14))
-                .border_color(palette.primary.opacity(0.35))
+            this.bg(palette.bg_input_focus)
+                .border_color(palette.accent_primary)
+                .shadow(palette.checkbox_shadows())
         })
         .when(!active, |this| {
-            this.border_color(palette.surface)
-                .hover(|s| s.bg(palette.border.opacity(0.45)))
+            this.border_color(palette.bg_card)
+                .hover(|s| s.bg(palette.bg_input).border_color(palette.border_color))
         })
         .child(
             div()
-                .w(px(3.0))
+                .w(px(4.0))
                 .h(px(16.0))
                 .rounded_full()
-                .when(active, |this| this.bg(palette.primary_light)),
+                .when(active, |this| this.bg(palette.accent_primary)),
         )
         .child(
             icons::icon(section.icon())
                 .size(px(15.0))
                 .text_color(if active {
-                    palette.primary_light
+                    palette.accent_primary
                 } else {
                     palette.text_muted
                 }),
@@ -192,14 +193,14 @@ fn sidebar_nav_item(
             div()
                 .text_sm()
                 .font_weight(if active {
-                    FontWeight::SEMIBOLD
+                    FontWeight::BOLD
                 } else {
                     FontWeight::MEDIUM
                 })
                 .text_color(if active {
                     palette.text_primary
                 } else {
-                    palette.text_muted
+                    palette.text_secondary
                 })
                 .child(label),
         )

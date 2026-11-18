@@ -6,13 +6,13 @@ use gpui_kit::*;
 pub fn modal_backdrop(palette: ThemeColors) -> Div {
     div()
         .absolute()
-        .size_full()
         .top_0()
         .left_0()
+        .size_full()
         .flex()
         .items_center()
         .justify_center()
-        .bg(palette.bg.opacity(0.75))
+        .bg(palette.bg_canvas.opacity(0.8))
         .p_6()
 }
 
@@ -24,10 +24,11 @@ pub fn modal_card(id: impl Into<ElementId>, palette: ThemeColors) -> impl IntoEl
         .w(px(480.))
         .max_w_full()
         .p_6()
-        .rounded_xl()
-        .bg(palette.card)
-        .border_1()
-        .border_color(palette.border)
+        .rounded(palette.radius_card)
+        .bg(palette.bg_card)
+        .border(palette.border_width)
+        .border_color(palette.border_color)
+        .shadow(palette.card_shadows())
         .text_color(palette.text_primary)
 }
 
@@ -42,12 +43,12 @@ pub fn modal_header(
         .justify_between()
         .mb_4()
         .pb_3()
-        .border_b_1()
-        .border_color(palette.border)
+        .border_b(palette.border_width_input)
+        .border_color(palette.border_color)
         .child(
             div()
                 .text_lg()
-                .font_weight(FontWeight::SEMIBOLD)
+                .font_weight(FontWeight::BOLD)
                 .text_color(palette.text_primary)
                 .child(title.into()),
         )
@@ -75,6 +76,6 @@ pub fn modal_footer(palette: ThemeColors) -> Div {
         .gap_3()
         .mt_5()
         .pt_3()
-        .border_t_1()
-        .border_color(palette.border)
+        .border_t(palette.border_width_input)
+        .border_color(palette.border_color)
 }

@@ -9,16 +9,13 @@ use crate::components::layouts::sections::{
 use crate::components::layouts::{app_layout, AppLayoutProps, AppSection};
 use crate::components::scroll::touch_scrollable_fill;
 use crate::components::ui::{
-    badge, card_header, card_surface, dismissible_alert, icon_action_button, input_container,
-    member_avatar, search_input, secondary_button, stat_card, vertical_divider, AlertVariant,
-    AvatarSize, BadgeVariant,
+    badge, card_header, card_surface, dismissible_alert, icon_action_button, member_avatar,
+    primary_button, search_input, secondary_button, stat_card, stateful_input_container,
+    vertical_divider, AlertVariant, AvatarSize, BadgeVariant,
 };
 use crate::i18n::{text, Language};
 use crate::icons;
-use gpui_kit::component::{
-    button::{Button, ButtonVariants},
-    input::InputState,
-};
+use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
@@ -353,88 +350,94 @@ impl Render for DashboardView {
                     }
                 };
 
-                let header = div()
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .px_6()
-                    .py_3()
-                    .bg(palette.surface)
-                    .border_b_1()
-                    .border_color(palette.border)
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_3()
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .w(px(32.))
-                                    .h(px(32.))
-                                    .rounded_md()
-                                    .bg(palette.primary)
-                                    .child(
-                                        icons::icon(icons::ICON_SHIELD_HALVED)
-                                            .size(px(16.))
-                                            .text_color(palette.text_primary),
-                                    ),
-                            )
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .child(
-                                        div()
-                                            .text_sm()
-                                            .font_weight(FontWeight::BOLD)
-                                            .text_color(palette.text_primary)
-                                            .child(text(lang, "dashboard.workspace_title")),
-                                    )
-                                    .child(
-                                        div()
-                                            .text_xs()
-                                            .text_color(palette.text_muted)
-                                            .child("Umuryango Governance"),
-                                    ),
-                            )
-                            .child(vertical_divider(palette))
-                            .child(badge(
-                                text(lang, "dashboard.workspace_badge"),
-                                BadgeVariant::Primary,
+                let header =
+                    div()
+                        .flex()
+                        .items_center()
+                        .justify_between()
+                        .px_6()
+                        .py_3()
+                        .bg(palette.bg_card)
+                        .border_b(palette.border_width)
+                        .border_color(palette.border_color)
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap_3()
+                                .child(
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .justify_center()
+                                        .w(px(32.))
+                                        .h(px(32.))
+                                        .rounded(palette.radius_checkbox)
+                                        .bg(palette.accent_primary)
+                                        .border(px(2.0))
+                                        .border_color(palette.border_color)
+                                        .child(
+                                            icons::icon(icons::ICON_PEOPLE_ROOF)
+                                                .size(px(15.))
+                                                .text_color(palette.text_on_accent),
+                                        ),
+                                )
+                                .child(
+                                    div()
+                                        .flex()
+                                        .flex_col()
+                                        .child(
+                                            div()
+                                                .text_sm()
+                                                .font_weight(FontWeight::BOLD)
+                                                .text_color(palette.text_primary)
+                                                .child(text(lang, "dashboard.workspace_title")),
+                                        )
+                                        .child(
+                                            div()
+                                                .text_xs()
+                                                .text_color(palette.text_muted)
+                                                .child("Umuryango Governance"),
+                                        ),
+                                )
+                                .child(vertical_divider(palette))
+                                .child(badge(
+                                    text(lang, "dashboard.workspace_badge"),
+                                    BadgeVariant::Primary,
+                                    palette,
+                                ))
+                                .child(badge(
+                                    text(lang, "dashboard.sync_status_synced"),
+                                    BadgeVariant::Success,
+                                    palette,
+                                )),
+                        )
+                        .child(div().flex_1().max_w(px(360.)).mx_4().child(
+                            stateful_input_container(
                                 palette,
-                            ))
-                            .child(badge(
-                                text(lang, "dashboard.sync_status_synced"),
-                                BadgeVariant::Success,
-                                palette,
-                            )),
-                    )
-                    .child(div().flex_1().max_w(px(360.)).mx_4().child(input_container(
-                        palette,
-                        search_input(&self.search_state, palette),
-                    )))
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_2()
-                            .child(member_avatar(
-                                &self.member_name,
-                                Some("Admin"),
-                                AvatarSize::Sm,
-                                palette,
-                            ))
-                            .child(icon_action_button(
-                                "sign-out-btn",
-                                icons::ICON_RIGHT_FROM_BRACKET,
-                                text(lang, "dashboard.sign_out"),
-                                palette,
-                                sign_out,
-                            )),
-                    );
+                                &self.search_state,
+                                search_input(&self.search_state, palette),
+                            ),
+                        ))
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap_2()
+                                .child(member_avatar(
+                                    &self.member_name,
+                                    Some("Admin"),
+                                    AvatarSize::Sm,
+                                    palette,
+                                ))
+                                .child(icon_action_button(
+                                    "sign-out-btn",
+                                    icons::ICON_RIGHT_FROM_BRACKET,
+                                    text(lang, "dashboard.sign_out"),
+                                    palette,
+                                    sign_out,
+                                )),
+                        );
 
                 let alert_section = if self.show_approval_alert && self.pending_approval_count > 0 {
                     let view = view_entity.clone();
@@ -552,13 +555,12 @@ impl Render for DashboardView {
                             .items_center()
                             .flex_wrap()
                             .gap_3()
-                            .child(
-                                Button::new("record-contrib-btn")
-                                    .primary()
-                                    .label(text(lang, "dashboard.record_contribution"))
-                                    .icon(icons::button_icon(icons::ICON_PLUS))
-                                    .on_click(record_contrib),
-                            )
+                            .child(div().child(primary_button(
+                                "record-contrib-btn",
+                                text(lang, "dashboard.record_contribution"),
+                                palette,
+                                record_contrib,
+                            )))
                             .child(secondary_button(
                                 "add-expense-btn",
                                 text(lang, "dashboard.add_expense"),
@@ -600,17 +602,20 @@ impl Render for DashboardView {
                             .id("filter-tab-all")
                             .px_3()
                             .py_1()
-                            .rounded_md()
+                            .rounded(palette.radius_checkbox)
+                            .border(px(2.0))
+                            .border_color(palette.border_color)
                             .text_xs()
-                            .font_weight(FontWeight::MEDIUM)
+                            .font_weight(FontWeight::BOLD)
                             .cursor_pointer()
                             .when(current_filter == ActivityFilter::All, |this| {
-                                this.bg(palette.primary).text_color(palette.text_primary)
+                                this.bg(palette.accent_primary)
+                                    .text_color(palette.text_on_accent)
                             })
                             .when(current_filter != ActivityFilter::All, |this| {
-                                this.bg(palette.card)
-                                    .text_color(palette.text_muted)
-                                    .hover(|s| s.bg(palette.border))
+                                this.bg(palette.bg_input)
+                                    .text_color(palette.text_secondary)
+                                    .hover(|s| s.bg(palette.bg_input_focus))
                             })
                             .child("All")
                             .on_click(set_filter(ActivityFilter::All)),
@@ -620,17 +625,20 @@ impl Render for DashboardView {
                             .id("filter-tab-contrib")
                             .px_3()
                             .py_1()
-                            .rounded_md()
+                            .rounded(palette.radius_checkbox)
+                            .border(px(2.0))
+                            .border_color(palette.border_color)
                             .text_xs()
-                            .font_weight(FontWeight::MEDIUM)
+                            .font_weight(FontWeight::BOLD)
                             .cursor_pointer()
                             .when(current_filter == ActivityFilter::Contributions, |this| {
-                                this.bg(palette.primary).text_color(palette.text_primary)
+                                this.bg(palette.accent_primary)
+                                    .text_color(palette.text_on_accent)
                             })
                             .when(current_filter != ActivityFilter::Contributions, |this| {
-                                this.bg(palette.card)
-                                    .text_color(palette.text_muted)
-                                    .hover(|s| s.bg(palette.border))
+                                this.bg(palette.bg_input)
+                                    .text_color(palette.text_secondary)
+                                    .hover(|s| s.bg(palette.bg_input_focus))
                             })
                             .child("Contributions")
                             .on_click(set_filter(ActivityFilter::Contributions)),
@@ -640,17 +648,20 @@ impl Render for DashboardView {
                             .id("filter-tab-expenses")
                             .px_3()
                             .py_1()
-                            .rounded_md()
+                            .rounded(palette.radius_checkbox)
+                            .border(px(2.0))
+                            .border_color(palette.border_color)
                             .text_xs()
-                            .font_weight(FontWeight::MEDIUM)
+                            .font_weight(FontWeight::BOLD)
                             .cursor_pointer()
                             .when(current_filter == ActivityFilter::Expenses, |this| {
-                                this.bg(palette.primary).text_color(palette.text_primary)
+                                this.bg(palette.accent_primary)
+                                    .text_color(palette.text_on_accent)
                             })
                             .when(current_filter != ActivityFilter::Expenses, |this| {
-                                this.bg(palette.card)
-                                    .text_color(palette.text_muted)
-                                    .hover(|s| s.bg(palette.border))
+                                this.bg(palette.bg_input)
+                                    .text_color(palette.text_secondary)
+                                    .hover(|s| s.bg(palette.bg_input_focus))
                             })
                             .child("Expenses")
                             .on_click(set_filter(ActivityFilter::Expenses)),
@@ -705,9 +716,9 @@ impl Render for DashboardView {
                     .child(if self.pending_approval_count > 0 {
                         div()
                             .p_3()
-                            .rounded_lg()
-                            .bg(palette.card)
-                            .border_1()
+                            .rounded(palette.radius_input)
+                            .bg(palette.bg_input)
+                            .border(palette.border_width_input)
                             .border_color(palette.accent_gold)
                             .flex()
                             .flex_col()
@@ -720,7 +731,7 @@ impl Render for DashboardView {
                                     .child(
                                         div()
                                             .text_sm()
-                                            .font_weight(FontWeight::SEMIBOLD)
+                                            .font_weight(FontWeight::BOLD)
                                             .text_color(palette.text_primary)
                                             .child(
                                                 self.pending_approval_tx_title
@@ -743,15 +754,14 @@ impl Render for DashboardView {
                                     "Submitted by Family Member • Needs 1 admin confirmation",
                                 ),
                             )
-                            .child(
-                                div().flex().items_center().gap_2().mt_1().child(
-                                    Button::new("approve-tx-btn")
-                                        .primary()
-                                        .label(text(lang, "dashboard.review_approve"))
-                                        .compact()
-                                        .on_click(approve_action),
+                            .child(div().flex().items_center().gap_2().mt_1().child(
+                                primary_button(
+                                    "approve-tx-btn",
+                                    text(lang, "dashboard.review_approve"),
+                                    palette,
+                                    approve_action,
                                 ),
-                            )
+                            ))
                     } else {
                         div()
                             .p_3()

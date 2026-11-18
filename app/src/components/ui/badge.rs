@@ -13,14 +13,13 @@ pub enum BadgeVariant {
 
 impl BadgeVariant {
     pub fn colors(self, palette: &ThemeColors) -> (Rgba, Rgba) {
-        // Returns (text_color, bg_color)
         match self {
-            Self::Primary => (palette.primary_light, palette.primary.opacity(0.15)),
-            Self::Success => (palette.success, palette.success.opacity(0.15)),
-            Self::Warning => (palette.accent_gold, palette.accent_gold.opacity(0.15)),
-            Self::Error => (palette.error, palette.error.opacity(0.15)),
-            Self::Neutral => (palette.text_muted, palette.border),
-            Self::Info => (palette.accent_blue, palette.accent_blue.opacity(0.15)),
+            Self::Primary => (palette.accent_primary, palette.bg_badge),
+            Self::Success => (palette.success, palette.bg_badge),
+            Self::Warning => (palette.accent_gold, palette.bg_badge),
+            Self::Error => (palette.error, palette.bg_badge),
+            Self::Neutral => (palette.text_secondary, palette.bg_badge),
+            Self::Info => (palette.accent_blue, palette.bg_badge),
         }
     }
 }
@@ -34,12 +33,14 @@ pub fn badge(
     div()
         .flex()
         .items_center()
-        .px_2()
-        .py(px(2.))
+        .px_2p5()
+        .py(px(3.))
         .rounded_full()
         .bg(bg_color)
+        .border(px(1.5))
+        .border_color(palette.border_color)
         .text_xs()
-        .font_weight(FontWeight::MEDIUM)
+        .font_weight(FontWeight::BOLD)
         .text_color(text_color)
         .child(label.into())
 }
@@ -58,8 +59,10 @@ pub fn status_pill(
         .py_1()
         .rounded_full()
         .bg(bg_color)
+        .border(px(1.5))
+        .border_color(palette.border_color)
         .text_xs()
-        .font_weight(FontWeight::MEDIUM)
+        .font_weight(FontWeight::BOLD)
         .text_color(text_color)
         .child(div().w(px(6.)).h(px(6.)).rounded_full().bg(text_color))
         .child(label.into())

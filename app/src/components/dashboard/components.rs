@@ -27,11 +27,15 @@ pub fn transaction_row(
         .items_center()
         .justify_between()
         .p_3()
-        .rounded_lg()
-        .bg(palette.card)
-        .border_1()
-        .border_color(palette.border)
-        .hover(|s| s.border_color(palette.border_hover))
+        .rounded(palette.radius_input)
+        .bg(palette.bg_input)
+        .border(palette.border_width_input)
+        .border_color(palette.border_color)
+        .shadow(palette.checkbox_shadows())
+        .hover(|s| {
+            s.border_color(palette.accent_primary)
+                .bg(palette.bg_input_focus)
+        })
         .child(
             div()
                 .flex()
@@ -39,17 +43,15 @@ pub fn transaction_row(
                 .gap_3()
                 .child(
                     div()
-                        .w(px(34.))
-                        .h(px(34.))
+                        .w(px(36.))
+                        .h(px(36.))
                         .flex()
                         .items_center()
                         .justify_center()
-                        .rounded_full()
-                        .bg(if *is_income {
-                            palette.success.opacity(0.15)
-                        } else {
-                            palette.primary.opacity(0.15)
-                        })
+                        .rounded(palette.radius_checkbox)
+                        .bg(palette.bg_badge)
+                        .border(px(2.0))
+                        .border_color(palette.border_color)
                         .child(
                             icons::icon(if *is_income {
                                 icons::ICON_ARROW_DOWN
@@ -60,7 +62,7 @@ pub fn transaction_row(
                             .text_color(if *is_income {
                                 palette.success
                             } else {
-                                palette.primary_light
+                                palette.accent_primary
                             }),
                         ),
                 )
@@ -72,7 +74,7 @@ pub fn transaction_row(
                         .child(
                             div()
                                 .text_sm()
-                                .font_weight(FontWeight::SEMIBOLD)
+                                .font_weight(FontWeight::BOLD)
                                 .text_color(palette.text_primary)
                                 .child(title.clone()),
                         )
@@ -108,10 +110,11 @@ pub fn transaction_row(
 pub fn project_card(project: &ProjectSummary, palette: ThemeColors) -> impl IntoElement {
     div()
         .p_3()
-        .rounded_lg()
-        .bg(palette.card)
-        .border_1()
-        .border_color(palette.border)
+        .rounded(palette.radius_input)
+        .bg(palette.bg_input)
+        .border(palette.border_width_input)
+        .border_color(palette.border_color)
+        .shadow(palette.checkbox_shadows())
         .child(
             div()
                 .flex()
@@ -125,7 +128,7 @@ pub fn project_card(project: &ProjectSummary, palette: ThemeColors) -> impl Into
                         .child(
                             div()
                                 .text_sm()
-                                .font_weight(FontWeight::SEMIBOLD)
+                                .font_weight(FontWeight::BOLD)
                                 .text_color(palette.text_primary)
                                 .child(project.name.clone()),
                         )
@@ -141,16 +144,16 @@ pub fn project_card(project: &ProjectSummary, palette: ThemeColors) -> impl Into
         .child(
             div()
                 .w_full()
-                .h(px(8.))
+                .h(px(10.))
                 .rounded_full()
-                .bg(palette.surface)
-                .border_1()
-                .border_color(palette.border)
+                .bg(palette.bg_canvas)
+                .border(px(1.5))
+                .border_color(palette.border_color)
                 .child(div().h_full().w(px(240.)).rounded_full().bg(
                     if project.variant == BadgeVariant::Success {
                         palette.success
                     } else {
-                        palette.primary
+                        palette.accent_primary
                     },
                 )),
         )

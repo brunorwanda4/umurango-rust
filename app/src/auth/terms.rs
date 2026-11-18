@@ -3,9 +3,9 @@
 use crate::auth::layout::{auth_footer_prompt, auth_layout};
 use crate::brand::{apply_theme, colors, ThemeColors, ThemeMode};
 use crate::components::scroll::touch_scrollable;
+use crate::components::ui::primary_button;
 use crate::i18n::{text, Language};
 use crate::icons;
-use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::*;
 
 #[derive(Clone, Debug)]
@@ -125,15 +125,16 @@ impl Render for TermsView {
             )
             .child({
                 let view = view_entity.clone();
-                Button::new("terms-accept")
-                    .mt_2()
-                    .label(text(self.language, "terms.accept"))
-                    .primary()
-                    .on_click(move |_event, _window, cx| {
+                div().mt_2().child(primary_button(
+                    "terms-accept",
+                    text(self.language, "terms.accept"),
+                    palette,
+                    move |_event, _window, cx| {
                         view.update(cx, |_this, cx| {
                             cx.emit(TermsEvent::Accepted);
                         });
-                    })
+                    },
+                ))
             })
             .child({
                 let view = view_entity;

@@ -3,10 +3,11 @@
 use crate::auth::client::api_create_family;
 use crate::auth::layout::auth_layout;
 use crate::brand::{apply_theme, colors, ThemeMode};
-use crate::components::ui::{input_field, text_input};
+use crate::components::ui::{
+    input_field, primary_button_with_state, secondary_button, stateful_input_container, text_input,
+};
 use crate::i18n::{text, Language};
 use crate::icons;
-use gpui_kit::base::Disableable;
 use gpui_kit::component::{
     button::{Button, ButtonVariants},
     input::InputState,
@@ -246,14 +247,11 @@ impl Render for CreateFamilyView {
                             .flex()
                             .gap_2()
                             .items_center()
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .rounded_lg()
-                                    .bg(palette.surface)
-                                    .p_1()
-                                    .child(text_input(&self.phone_input, palette)),
-                            )
+                            .child(div().flex_1().child(stateful_input_container(
+                                palette,
+                                &self.phone_input,
+                                text_input(&self.phone_input, palette),
+                            )))
                             .child({
                                 let view = view_entity.clone();
                                 let add_member_label =
@@ -299,10 +297,10 @@ impl Render for CreateFamilyView {
                             .justify_between()
                             .px_3()
                             .py_1p5()
-                            .rounded_md()
-                            .bg(palette.surface)
-                            .border_1()
-                            .border_color(palette.border)
+                            .rounded(palette.radius_checkbox)
+                            .bg(palette.bg_input)
+                            .border(palette.border_width_input)
+                            .border_color(palette.border_color)
                             .child(
                                 div()
                                     .flex()
@@ -343,10 +341,10 @@ impl Render for CreateFamilyView {
                     div()
                         .w_full()
                         .p_3()
-                        .rounded_lg()
-                        .border_1()
+                        .rounded(palette.radius_input)
+                        .border(palette.border_width_input)
                         .border_color(palette.error)
-                        .bg(palette.surface)
+                        .bg(palette.bg_input)
                         .text_color(palette.error)
                         .text_xs()
                         .child(msg.clone()),
@@ -357,10 +355,10 @@ impl Render for CreateFamilyView {
                     div()
                         .w_full()
                         .p_3()
-                        .rounded_lg()
-                        .border_1()
+                        .rounded(palette.radius_input)
+                        .border(palette.border_width_input)
                         .border_color(palette.success)
-                        .bg(palette.surface)
+                        .bg(palette.bg_input)
                         .text_color(palette.success)
                         .text_xs()
                         .font_weight(FontWeight::BOLD)
@@ -375,25 +373,31 @@ impl Render for CreateFamilyView {
                     text(self.language, "create_family.submit")
                 };
 
-                Button::new("submit-create-family")
-                    .primary()
-                    .label(submit_label)
-                    .disabled(self.is_creating)
-                    .on_click(move |_event, window, cx| {
+                primary_button_with_state(
+                    "submit-create-family",
+                    submit_label,
+                    palette,
+                    self.is_creating,
+                    self.is_creating,
+                    move |_event, window, cx| {
                         view.update(cx, |this, cx| {
                             this.handle_submit(window, cx);
                         });
-                    })
+                    },
+                )
             })
             .child({
                 let view = view_entity;
-                Button::new("back-family-setup")
-                    .label(text(self.language, "create_family.back"))
-                    .on_click(move |_event, _window, cx| {
+                secondary_button(
+                    "back-family-setup",
+                    text(self.language, "create_family.back"),
+                    palette,
+                    move |_event, _window, cx| {
                         view.update(cx, |_this, cx| {
                             cx.emit(CreateFamilyEvent::BackRequested);
                         });
-                    })
+                    },
+                )
             });
 
         auth_layout(

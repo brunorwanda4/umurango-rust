@@ -13,28 +13,19 @@ pub enum AlertVariant {
 
 impl AlertVariant {
     pub fn config(self, palette: &ThemeColors) -> (Rgba, Rgba, &'static str) {
-        // (text_and_border_color, bg_color, icon_name)
         match self {
             Self::Info => (
                 palette.accent_blue,
-                palette.accent_blue.opacity(0.1),
+                palette.bg_input,
                 icons::ICON_CIRCLE_INFO,
             ),
-            Self::Success => (
-                palette.success,
-                palette.success.opacity(0.1),
-                icons::ICON_CIRCLE_CHECK,
-            ),
+            Self::Success => (palette.success, palette.bg_input, icons::ICON_CIRCLE_CHECK),
             Self::Warning => (
                 palette.accent_gold,
-                palette.accent_gold.opacity(0.1),
+                palette.bg_input,
                 icons::ICON_TRIANGLE_EXCLAMATION,
             ),
-            Self::Error => (
-                palette.error,
-                palette.error.opacity(0.1),
-                icons::ICON_CIRCLE_XMARK,
-            ),
+            Self::Error => (palette.error, palette.bg_input, icons::ICON_CIRCLE_XMARK),
         }
     }
 }
@@ -53,10 +44,11 @@ pub fn alert(
         .items_start()
         .gap_3()
         .p_3()
-        .rounded_lg()
+        .rounded(palette.radius_input)
         .bg(bg_color)
-        .border_1()
-        .border_color(accent_color.opacity(0.3))
+        .border(palette.border_width_input)
+        .border_color(accent_color)
+        .shadow(palette.checkbox_shadows())
         .child(
             div().pt(px(2.)).child(
                 icons::icon(icon_name)
@@ -73,7 +65,7 @@ pub fn alert(
                     this.child(
                         div()
                             .text_xs()
-                            .font_weight(FontWeight::SEMIBOLD)
+                            .font_weight(FontWeight::BOLD)
                             .text_color(palette.text_primary)
                             .child(t.into()),
                     )
@@ -81,7 +73,7 @@ pub fn alert(
                 .child(
                     div()
                         .text_xs()
-                        .text_color(palette.text_body)
+                        .text_color(palette.text_secondary)
                         .child(message.into()),
                 ),
         )
@@ -104,15 +96,16 @@ pub fn dismissible_alert(
         .justify_between()
         .gap_3()
         .p_3()
-        .rounded_lg()
+        .rounded(palette.radius_input)
         .bg(bg_color)
-        .border_1()
-        .border_color(accent_color.opacity(0.3))
+        .border(palette.border_width_input)
+        .border_color(accent_color)
+        .shadow(palette.checkbox_shadows())
         .child(
             div()
                 .flex()
                 .items_center()
-                .gap_2()
+                .gap_2p5()
                 .child(
                     icons::icon(icon_name)
                         .size(px(14.))
@@ -121,13 +114,14 @@ pub fn dismissible_alert(
                 .child(
                     div()
                         .text_xs()
-                        .text_color(palette.text_body)
+                        .font_weight(FontWeight::MEDIUM)
+                        .text_color(palette.text_secondary)
                         .child(message.into()),
                 ),
         )
         .child(
             div()
-                .id("dismiss-icon")
+                .id("alert-dismiss-btn")
                 .cursor_pointer()
                 .p_1()
                 .child(

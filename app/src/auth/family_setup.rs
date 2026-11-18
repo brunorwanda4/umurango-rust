@@ -3,10 +3,9 @@
 use crate::auth::client::{api_accept_invitation, api_get_pending_invitations};
 use crate::auth::layout::{auth_footer_prompt, auth_layout};
 use crate::brand::{apply_theme, colors, ThemeMode};
-use crate::components::ui::option_card;
+use crate::components::ui::{option_card, primary_button, secondary_button};
 use crate::i18n::{text, Language};
 use crate::icons;
-use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use umuryango_shared::PendingFamilyInviteDto;
@@ -250,19 +249,16 @@ impl Render for FamilySetupView {
                                                         ),
                                                 ),
                                         )
-                                        .child(
-                                            Button::new(("accept-inv", idx))
-                                                .primary()
-                                                .label(text(
-                                                    self.language,
-                                                    "family_setup.accept_invite",
-                                                ))
-                                                .on_click(move |_event, _window, cx| {
-                                                    view.update(cx, |this, cx| {
-                                                        this.handle_accept_invite(&inv_id, cx);
-                                                    });
-                                                }),
-                                        )
+                                        .child(div().flex_shrink_0().child(primary_button(
+                                            ("accept-inv", idx),
+                                            text(self.language, "family_setup.accept_invite"),
+                                            palette,
+                                            move |_event, _window, cx| {
+                                                view.update(cx, |this, cx| {
+                                                    this.handle_accept_invite(&inv_id, cx);
+                                                });
+                                            },
+                                        )))
                                 }),
                         ),
                 )
@@ -272,10 +268,10 @@ impl Render for FamilySetupView {
                     div()
                         .w_full()
                         .p_3()
-                        .rounded_lg()
-                        .border_1()
+                        .rounded(palette.radius_input)
+                        .border(palette.border_width_input)
                         .border_color(palette.error)
-                        .bg(palette.surface)
+                        .bg(palette.bg_input)
                         .text_color(palette.error)
                         .text_xs()
                         .child(msg.clone()),
@@ -286,10 +282,10 @@ impl Render for FamilySetupView {
                     div()
                         .w_full()
                         .p_3()
-                        .rounded_lg()
-                        .border_1()
+                        .rounded(palette.radius_input)
+                        .border(palette.border_width_input)
                         .border_color(palette.success)
-                        .bg(palette.surface)
+                        .bg(palette.bg_input)
                         .text_color(palette.success)
                         .text_xs()
                         .child(msg.clone()),
@@ -335,13 +331,16 @@ impl Render for FamilySetupView {
             )
             .child({
                 let view = view_entity.clone();
-                Button::new("family-setup-skip")
-                    .label(text(self.language, "family_setup.skip"))
-                    .on_click(move |_event, _window, cx| {
+                secondary_button(
+                    "family-setup-skip",
+                    text(self.language, "family_setup.skip"),
+                    palette,
+                    move |_event, _window, cx| {
                         view.update(cx, |this, cx| {
                             this.select_choice(FamilySetupChoice::Skip, cx);
                         });
-                    })
+                    },
+                )
             })
             .child({
                 let view = view_entity;

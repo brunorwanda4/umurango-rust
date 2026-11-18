@@ -8,11 +8,12 @@ pub fn card(palette: ThemeColors) -> Div {
         .flex()
         .flex_col()
         .w_full()
-        .p_5()
-        .rounded_xl()
-        .bg(palette.card)
-        .border_1()
-        .border_color(palette.border)
+        .p_6()
+        .rounded(palette.radius_card)
+        .bg(palette.bg_card)
+        .border(palette.border_width)
+        .border_color(palette.border_color)
+        .shadow(palette.card_shadows())
         .text_color(palette.text_primary)
 }
 
@@ -21,11 +22,12 @@ pub fn card_surface(palette: ThemeColors) -> Div {
         .flex()
         .flex_col()
         .w_full()
-        .p_4()
-        .rounded_lg()
-        .bg(palette.surface)
-        .border_1()
-        .border_color(palette.border)
+        .p_5()
+        .rounded(palette.radius_card)
+        .bg(palette.bg_card)
+        .border(palette.border_width)
+        .border_color(palette.border_color)
+        .shadow(palette.card_shadows())
         .text_color(palette.text_primary)
 }
 
@@ -36,16 +38,24 @@ pub fn interactive_card(
 ) -> impl IntoElement {
     div()
         .id(id)
+        .relative()
         .flex()
         .flex_col()
         .w_full()
-        .p_4()
-        .rounded_lg()
-        .bg(palette.surface)
-        .border_1()
-        .border_color(palette.border)
+        .p_5()
+        .rounded(palette.radius_card)
+        .bg(palette.bg_card)
+        .border(palette.border_width)
+        .border_color(palette.border_color)
+        .shadow(palette.card_shadows())
         .cursor_pointer()
-        .hover(|style| style.border_color(palette.border_hover))
+        .hover(|style| {
+            style
+                .top(px(-2.0))
+                .border_color(palette.accent_primary)
+                .bg(palette.bg_input_focus)
+        })
+        .active(|style| style.top(px(4.0)).shadow(palette.button_active_shadows()))
         .on_click(on_click)
 }
 
@@ -62,7 +72,7 @@ pub fn card_header(
         .child(
             div()
                 .text_base()
-                .font_weight(FontWeight::SEMIBOLD)
+                .font_weight(FontWeight::BOLD)
                 .text_color(palette.text_primary)
                 .child(title.into()),
         )
@@ -70,7 +80,7 @@ pub fn card_header(
             this.child(
                 div()
                     .text_xs()
-                    .text_color(palette.text_muted)
+                    .text_color(palette.text_secondary)
                     .child(sub.into()),
             )
         })
@@ -83,8 +93,8 @@ pub fn card_footer(palette: ThemeColors) -> Div {
         .justify_between()
         .mt_4()
         .pt_3()
-        .border_t_1()
-        .border_color(palette.border)
+        .border_t(palette.border_width_input)
+        .border_color(palette.border_color)
 }
 
 type ClickHandler = Box<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
@@ -125,8 +135,9 @@ impl RenderOnce for OptionCard {
             .justify_between()
             .gap_3()
             .p_4()
-            .rounded_lg()
-            .border_1()
+            .rounded(palette.radius_input)
+            .border(palette.border_width_input)
+            .shadow(palette.button_shadows())
             .cursor_pointer()
             .on_hover(move |hovered, _window, cx| {
                 hovered_state.update(cx, |state, cx| {
@@ -143,16 +154,21 @@ impl RenderOnce for OptionCard {
                     .to(AnimationPhase(target_phase))
                     .with_epsilon(0.005),
                 move |card, phase| {
-                    let border_color = phase.interpolate_clamped(palette.border, palette.primary);
+                    let border_color =
+                        phase.interpolate_clamped(palette.border_color, palette.accent_primary);
                     let icon_border_color =
-                        phase.interpolate_clamped(palette.border, palette.primary_light);
+                        phase.interpolate_clamped(palette.border_color, palette.accent_primary);
                     let arrow_color =
-                        phase.interpolate_clamped(palette.text_muted, palette.primary_light);
+                        phase.interpolate_clamped(palette.text_muted, palette.accent_primary);
                     let arrow_offset_left = phase.interpolate_clamped(px(0.), px(6.));
                     let arrow_offset_right = phase.interpolate_clamped(px(6.), px(0.));
 
                     card.border_color(border_color)
-                        .bg(palette.surface)
+                        .bg(if active {
+                            palette.bg_input_focus
+                        } else {
+                            palette.bg_input
+                        })
                         .child(
                             div()
                                 .flex_1()
@@ -162,20 +178,20 @@ impl RenderOnce for OptionCard {
                                 .gap_3()
                                 .child(
                                     div()
-                                        .w(px(36.))
-                                        .h(px(36.))
+                                        .w(px(38.))
+                                        .h(px(38.))
                                         .flex_shrink_0()
                                         .flex()
                                         .items_center()
                                         .justify_center()
-                                        .rounded_lg()
-                                        .bg(palette.card)
-                                        .border_1()
+                                        .rounded(palette.radius_checkbox)
+                                        .bg(palette.bg_card)
+                                        .border(palette.border_width_input)
                                         .border_color(icon_border_color)
                                         .child(
                                             icons::icon(icon_name)
                                                 .size(px(16.))
-                                                .text_color(palette.primary_light),
+                                                .text_color(palette.accent_primary),
                                         ),
                                 )
                                 .child(
@@ -191,7 +207,7 @@ impl RenderOnce for OptionCard {
                                                 .w_full()
                                                 .text_sm()
                                                 .whitespace_normal()
-                                                .font_weight(FontWeight::SEMIBOLD)
+                                                .font_weight(FontWeight::BOLD)
                                                 .text_color(palette.text_primary)
                                                 .child(title.clone()),
                                         )
@@ -200,7 +216,7 @@ impl RenderOnce for OptionCard {
                                                 .w_full()
                                                 .text_xs()
                                                 .whitespace_normal()
-                                                .text_color(palette.text_muted)
+                                                .text_color(palette.text_secondary)
                                                 .child(description.clone()),
                                         ),
                                 ),

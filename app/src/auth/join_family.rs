@@ -3,10 +3,9 @@
 use crate::auth::client::api_join_family;
 use crate::auth::layout::auth_layout;
 use crate::brand::{apply_theme, colors, ThemeMode};
+use crate::components::ui::{primary_button_with_state, secondary_button};
 use crate::i18n::{text, Language};
-use gpui_kit::base::Disableable;
 use gpui_kit::component::{
-    button::{Button, ButtonVariants},
     input::{OtpEvent, OtpInput, OtpState},
     Sizable, Size,
 };
@@ -216,15 +215,16 @@ impl Render for JoinFamilyView {
                     .justify_center()
                     .gap_3()
                     .p_6()
-                    .rounded_xl()
-                    .bg(palette.surface)
-                    .border_1()
-                    .border_color(palette.border)
+                    .rounded(palette.radius_input)
+                    .bg(palette.bg_input)
+                    .border(palette.border_width_input)
+                    .border_color(palette.border_color)
+                    .shadow(palette.input_shadows())
                     .child(
                         div()
                             .text_xs()
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(palette.text_body)
+                            .font_weight(FontWeight::BOLD)
+                            .text_color(palette.text_secondary)
                             .child(text(self.language, "join_family.code_label")),
                     )
                     .child(
@@ -245,7 +245,7 @@ impl Render for JoinFamilyView {
                             div()
                                 .text_xs()
                                 .font_weight(FontWeight::BOLD)
-                                .text_color(palette.primary)
+                                .text_color(palette.accent_primary)
                                 .child(code_value),
                         )
                     }),
@@ -255,10 +255,10 @@ impl Render for JoinFamilyView {
                     div()
                         .w_full()
                         .p_3()
-                        .rounded_lg()
-                        .border_1()
+                        .rounded(palette.radius_input)
+                        .border(palette.border_width_input)
                         .border_color(palette.error)
-                        .bg(palette.surface)
+                        .bg(palette.bg_input)
                         .text_color(palette.error)
                         .text_xs()
                         .child(msg.clone()),
@@ -269,10 +269,10 @@ impl Render for JoinFamilyView {
                     div()
                         .w_full()
                         .p_3()
-                        .rounded_lg()
-                        .border_1()
+                        .rounded(palette.radius_input)
+                        .border(palette.border_width_input)
                         .border_color(palette.success)
-                        .bg(palette.surface)
+                        .bg(palette.bg_input)
                         .text_color(palette.success)
                         .text_xs()
                         .font_weight(FontWeight::BOLD)
@@ -287,25 +287,31 @@ impl Render for JoinFamilyView {
                     text(self.language, "join_family.submit")
                 };
 
-                Button::new("submit-join-family")
-                    .primary()
-                    .label(submit_label)
-                    .disabled(self.is_joining)
-                    .on_click(move |_event, window, cx| {
+                primary_button_with_state(
+                    "submit-join-family",
+                    submit_label,
+                    palette,
+                    self.is_joining,
+                    self.is_joining,
+                    move |_event, window, cx| {
                         view.update(cx, |this, cx| {
                             this.handle_submit(window, cx);
                         });
-                    })
+                    },
+                )
             })
             .child({
                 let view = view_entity;
-                Button::new("back-family-setup")
-                    .label(text(self.language, "join_family.back"))
-                    .on_click(move |_event, _window, cx| {
+                secondary_button(
+                    "back-family-setup",
+                    text(self.language, "join_family.back"),
+                    palette,
+                    move |_event, _window, cx| {
                         view.update(cx, |_this, cx| {
                             cx.emit(JoinFamilyEvent::BackRequested);
                         });
-                    })
+                    },
+                )
             });
 
         auth_layout(

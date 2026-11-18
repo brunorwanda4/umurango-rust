@@ -1,9 +1,10 @@
 #![allow(dead_code)]
 
-use crate::auth::layout::{auth_footer_prompt, auth_layout, auth_submit_section};
-use crate::brand::{apply_theme, colors, ThemeMode};
+use crate::auth::layout::{auth_footer_prompt, auth_layout_with_mood, auth_submit_section};
+use crate::brand::{apply_style_and_mood, CozyMood, StyleTokens, ThemeMode, UiStyle};
 use crate::components::ui::{checkbox, input_field, password_field};
 use crate::i18n::{text, Language};
+use crate::theme::active_mood;
 use gpui_kit::component::input::InputState;
 use gpui_kit::*;
 
@@ -27,7 +28,9 @@ pub struct LoginView {
     remember_me: bool,
     error_message: Option<String>,
     is_authenticating: bool,
+    style: UiStyle,
     theme: ThemeMode,
+    mood: CozyMood,
     language: Language,
 }
 
@@ -40,7 +43,9 @@ impl LoginView {
         language: Language,
         cx: &mut Context<Self>,
     ) -> Self {
-        apply_theme(theme, cx);
+        let style = UiStyle::CozyKawaii;
+        let mood = CozyMood::Matcha;
+        apply_style_and_mood(style, theme, mood, cx);
 
         let email_input = cx.new(|cx| {
             InputState::new(window, cx).placeholder(text(language, "login.phone_placeholder"))
@@ -62,14 +67,22 @@ impl LoginView {
             remember_me: true,
             error_message: None,
             is_authenticating: false,
+            style,
             theme,
+            mood,
             language,
         }
     }
 
     pub fn set_theme(&mut self, theme: ThemeMode, cx: &mut Context<Self>) {
         self.theme = theme;
-        apply_theme(theme, cx);
+        apply_style_and_mood(self.style, self.theme, self.mood, cx);
+        cx.notify();
+    }
+
+    pub fn set_mood(&mut self, mood: CozyMood, cx: &mut Context<Self>) {
+        self.mood = mood;
+        apply_style_and_mood(self.style, self.theme, self.mood, cx);
         cx.notify();
     }
 
@@ -105,6 +118,10 @@ impl LoginView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        let global_mood = active_mood();
+        if self.mood != global_mood {
+            self.mood = global_mood;
+        }
         if self.theme != theme {
             self.set_theme(theme, cx);
         }
@@ -174,7 +191,7 @@ impl LoginView {
 impl Render for LoginView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let view_entity = cx.entity().clone();
-        let palette = colors(self.theme);
+        let palette = StyleTokens::new(self.style, self.theme, self.mood);
         let password_toggle_label = if self.show_password {
             text(self.language, "login.hide_password")
         } else {
@@ -193,8 +210,12 @@ impl Render for LoginView {
         };
 
         let forgot_pin = div()
+            .id("login-forgot-pin-link")
+            .cursor_pointer()
             .text_xs()
-            .text_color(palette.primary_light)
+            .font_weight(FontWeight::BOLD)
+            .text_color(palette.accent_link)
+            .hover(|s| s.text_color(palette.accent_secondary))
             .child(text(self.language, "login.forgot_pin"))
             .into_any_element();
 
@@ -276,7 +297,7 @@ impl Render for LoginView {
             });
 
         let theme_change = {
-            let view = view_entity;
+            let view = view_entity.clone();
             move |theme: ThemeMode, cx: &mut App| {
                 view.update(cx, |this, cx| {
                     this.set_theme(theme, cx);
@@ -285,12 +306,24 @@ impl Render for LoginView {
             }
         };
 
-        auth_layout(
+        let mood_change = {
+            let view = view_entity;
+            move |mood: CozyMood, cx: &mut App| {
+                view.update(cx, |this, cx| {
+                    this.set_mood(mood, cx);
+                    cx.emit(LoginEvent::ThemeChanged(this.theme));
+                });
+            }
+        };
+
+        auth_layout_with_mood(
             self.theme,
+            self.mood,
             self.language,
             text(self.language, "login.title"),
             language_change,
             theme_change,
+            mood_change,
             content,
         )
     }
