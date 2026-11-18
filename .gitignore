@@ -3,3 +3,9 @@ web/node_modules/
 web/.next/
 web/tsconfig.tsbuildinfo
 *.db
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+!.env.example

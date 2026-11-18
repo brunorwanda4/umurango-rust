@@ -57,8 +57,8 @@ entries at the end, and include validation.
   Terms & Charter copy (free to use, no data used for profit, restricted family
   access, and as-is no-liability disclaimer) in `en.json` and `rw.json`.
 - Validated via `cargo fmt --all -- --check`,
-  `cargo check -p umuryango-app --all-targets`, and
   `cargo test -p umuryango-app --lib` (linking GUI test binaries requires host
+  `libxkbcommon-x11`).
 - Generated full PostgreSQL database schema DDL from `schema.prisma` in
   `backend/schema.sql` and `backend/migrations/0002_prisma_schema.sql` covering
   all 38 enum types, 31 tables, foreign key constraints, and indexes. Preserved
@@ -69,6 +69,9 @@ entries at the end, and include validation.
   exports in `backend/src/lib.rs`.
 - Added integration test `backend/tests/schema_test.rs` validating schema
   execution and table presence against PostgreSQL via `tokio-postgres`.
+- Added `.env.example` at root workspace and in `backend/.env.example` documenting
+  `DATABASE_URL`, `TEST_DATABASE_URL`, `BIND_ADDRESS`, and `NEXT_PUBLIC_API_URL`,
+  and updated `.gitignore` to prevent committing local `.env` files.
 - Validated via `cargo fmt --all -- --check`, `cargo check -p umuryango-backend`,
   and `cargo test -p umuryango-shared -p umuryango-backend`.
 
