@@ -5,6 +5,7 @@
   "scripts": {
     "build": "cargo build -p umuryango-app",
     "dev": "bun run scripts/dev-native.js",
+    "dev:backend": "bun run scripts/dev-backend.js",
     "check": "cargo check -p umuryango-app",
     "fmt": "cargo fmt --all -- --check"
   },

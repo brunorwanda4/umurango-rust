@@ -60,6 +60,16 @@ bun run
 `bun run` starts a development watcher. Changes under `app/`, `crates/`, or
 `assets/` automatically stop, rebuild, and relaunch the native application.
 
+Start the backend in development watch mode with:
+
+```powershell
+bun run dev:backend
+```
+
+It watches `backend/`, `crates/`, and workspace Cargo files, then stops and
+restarts the Actix server after source changes. Cargo's incremental build cache
+keeps subsequent restarts fast.
+
 The backend defaults to `127.0.0.1:8080` and reads `DATABASE_URL` and
 `BIND_ADDRESS` from the environment.
 

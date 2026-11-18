@@ -113,5 +113,6 @@ entries at the end, and include validation.
 - Wired screens and navigation in `app/src/main.rs`.
 - Validated via `cargo fmt --all -- --check`, `cargo check --workspace`,
   `cargo test -p umuryango-shared -p umuryango-backend`, and `cargo test -p umuryango-app --lib`.
-
-
+- Added `bun run dev:backend`, a Bun-based backend development watcher that
+  restarts the Actix server after backend or shared-crate changes and uses
+  Cargo incremental builds for fast subsequent startup.
