@@ -201,9 +201,12 @@ impl Render for FamilySetupView {
                                     let role = invite.role.clone();
                                     let view = view_entity.clone();
                                     div()
+                                        .w_full()
+                                        .overflow_hidden()
                                         .flex()
                                         .items_center()
                                         .justify_between()
+                                        .gap_3()
                                         .p_3()
                                         .rounded_lg()
                                         .bg(palette.surface)
@@ -212,6 +215,7 @@ impl Render for FamilySetupView {
                                         .child(
                                             div()
                                                 .flex_1()
+                                                .min_w_0()
                                                 .flex()
                                                 .items_center()
                                                 .gap_3()
@@ -223,17 +227,22 @@ impl Render for FamilySetupView {
                                                 .child(
                                                     div()
                                                         .flex_1()
+                                                        .min_w_0()
+                                                        .overflow_hidden()
                                                         .flex()
                                                         .flex_col()
                                                         .child(
                                                             div()
+                                                                .w_full()
                                                                 .text_sm()
+                                                                .whitespace_normal()
                                                                 .font_weight(FontWeight::SEMIBOLD)
                                                                 .text_color(palette.text_primary)
                                                                 .child(fam_name),
                                                         )
                                                         .child(
                                                             div()
+                                                                .w_full()
                                                                 .text_xs()
                                                                 .whitespace_normal()
                                                                 .text_color(palette.text_muted)

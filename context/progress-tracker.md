@@ -170,3 +170,9 @@ entries at the end, and include validation.
   name so their authenticated calls keep working; these are deleted whenever
   the user moves to a screen that does not need them, and a missing token falls
   back to login. Covered by navigation and `app_state` unit tests.
+- Split the native app entrypoint into focused `app/src/app.rs`,
+  `app/src/window.rs`, and a minimal `app/src/main.rs` bootstrap without
+  changing navigation or screen behavior.
+- Replaced the Create Family text-only Add Member button with a compact plus
+  icon button and localized tooltip/accessibility label. Applied the secondary
+  outline variant so the button follows both dark and light themes.

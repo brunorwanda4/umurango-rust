@@ -256,8 +256,18 @@ impl Render for CreateFamilyView {
                             )
                             .child({
                                 let view = view_entity.clone();
+                                let add_member_label =
+                                    text(self.language, "create_family.add_member");
                                 Button::new("add-member-btn")
-                                    .label(text(self.language, "create_family.add_member"))
+                                    .icon(
+                                        icons::button_icon(icons::ICON_PLUS)
+                                            .text_color(palette.text_primary),
+                                    )
+                                    .accessibility_label(add_member_label.clone())
+                                    .tooltip(add_member_label)
+                                    .secondary()
+                                    .outline()
+                                    .compact()
                                     .on_click(move |_event, window, cx| {
                                         view.update(cx, |this, cx| {
                                             this.add_phone(window, cx);

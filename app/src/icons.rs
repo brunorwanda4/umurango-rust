@@ -12,6 +12,7 @@ pub const ICON_EYE: &str = "eye";
 pub const ICON_EYE_SLASH: &str = "eye-slash";
 pub const ICON_USERS: &str = "users";
 pub const ICON_USER_PLUS: &str = "user-plus";
+pub const ICON_PLUS: &str = "plus";
 pub const ICON_ARROW_RIGHT: &str = "arrow-right";
 pub const ICON_SHIELD_HALVED: &str = "shield-halved";
 pub const ICON_PHONE: &str = "phone";

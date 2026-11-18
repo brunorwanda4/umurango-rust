@@ -16,9 +16,16 @@ async fn main() -> std::io::Result<()> {
     dotenvy::dotenv().ok();
     let config = Config::from_env();
     let pool = PgPoolOptions::new()
+        .min_connections(2)
         .max_connections(10)
         .connect_lazy(&config.database_url)
         .map_err(|error| std::io::Error::other(error.to_string()))?;
+
+    // Warm up a database connection in the background so incoming requests don't pay connect latency
+    let warmup_pool = pool.clone();
+    tokio::spawn(async move {
+        let _ = sqlx::query("SELECT 1").execute(&warmup_pool).await;
+    });
 
     let bind_address = config.bind_address.clone();
     let openapi = ApiDoc::openapi();
