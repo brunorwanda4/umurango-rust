@@ -51,11 +51,11 @@ entries at the end, and include validation.
 - Added the post-registration Family Setup screen (`app/src/auth/family_setup.rs`)
   with **Create Family**, **Join Family**, and **Skip** actions, wired in
   `app/src/main.rs`.
-- Added vertical scrolling (`overflow_y_scrollbar`) to `TermsView` and
-  `auth_layout` so all terms and action buttons remain reachable, and updated
-  the Umuryango Terms & Charter copy (free to use, no data used for profit,
-  restricted family access, and as-is no-liability disclaimer) in `en.json`
-  and `rw.json`.
+- Added vertical scrolling (`touch_scrollable` in `app/src/components/scroll.rs`)
+  supporting finger touch drag (`TouchDragEvent`), pointer drag, and wheel
+  scrolling to `TermsView` (`app/src/auth/terms.rs`), and updated the Umuryango
+  Terms & Charter copy (free to use, no data used for profit, restricted family
+  access, and as-is no-liability disclaimer) in `en.json` and `rw.json`.
 - Validated via `cargo fmt --all -- --check`,
   `cargo check -p umuryango-app --all-targets`, and
   `cargo test -p umuryango-app --lib` (linking GUI test binaries requires host
@@ -71,6 +71,7 @@ entries at the end, and include validation.
   execution and table presence against PostgreSQL via `tokio-postgres`.
 - Validated via `cargo fmt --all -- --check`, `cargo check -p umuryango-backend`,
   and `cargo test -p umuryango-shared -p umuryango-backend`.
+
 
 
 
