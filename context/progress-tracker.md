@@ -32,3 +32,5 @@ entries at the end, and include validation.
 - Added an explicit Font Awesome check icon and controlled checked state to
   the login remember-me checkbox.
 - Positioned login validation errors immediately above the Sign In button.
+- Replaced the Windows application icon with the Umuryango family-house brand
+  icon in `assets/brand/umuryango-app.ico`.
