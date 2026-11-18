@@ -4,7 +4,10 @@ use umuryango_backend::schema::{apply_schema, connect, list_tables, SCHEMA_SQL};
 fn schema_sql_is_valid_and_non_empty() {
     assert!(!SCHEMA_SQL.is_empty());
     assert!(SCHEMA_SQL.contains("CREATE TABLE IF NOT EXISTS \"User\""));
+    assert!(SCHEMA_SQL.contains("\"email\" TEXT"));
+    assert!(SCHEMA_SQL.contains("ALTER TABLE \"User\" ALTER COLUMN \"email\" DROP NOT NULL"));
     assert!(SCHEMA_SQL.contains("CREATE TABLE IF NOT EXISTS \"Family\""));
+    assert!(SCHEMA_SQL.contains("\"joinCode\" TEXT"));
     assert!(SCHEMA_SQL.contains("CREATE TABLE IF NOT EXISTS \"FamilyMember\""));
     assert!(SCHEMA_SQL.contains("CREATE TABLE IF NOT EXISTS \"FamilyTransaction\""));
     assert!(SCHEMA_SQL.contains("CREATE TABLE IF NOT EXISTS \"FamilyLoan\""));

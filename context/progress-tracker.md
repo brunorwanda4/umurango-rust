@@ -124,3 +124,6 @@ entries at the end, and include validation.
 - Integrated `set_current_language` and `get_current_language` into app HTTP client (`app/src/auth/client.rs`) to pass `Accept-Language` headers on every backend API call (`api_login`, `api_register`, `api_create_family`, `api_join_family`, `api_get_pending_invitations`, `api_accept_invitation`).
 - Synchronized app language preferences with the client on launch and language toggle events in `app/src/main.rs`.
 - Validated with unit tests for language extraction and error translations in both English and Kinyarwanda.
+- Fixed phone-based account registration by making `User.email` nullable and
+  aligning live `Family.joinCode` and `FamilyInvite.phone` columns with the
+  Prisma and PostgreSQL schema. Verified registration with a real HTTP request.

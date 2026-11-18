@@ -334,7 +334,7 @@ enum FamilyInviteStatus {
 
 model User {
   id                           String                      @id @default(cuid())
-  email                        String                      @unique
+  email                        String?                     @unique
   pendingEmail                 String?                     @unique
   phoneNumber                  String?                     @unique
   fullName                     String
@@ -481,6 +481,7 @@ model Family {
   id                    String                      @id @default(cuid())
   name                  String
   slug                  String                      @unique
+  joinCode              String?                     @unique
   country               String
   defaultCurrency       String
   contributionCadence   String
@@ -547,7 +548,8 @@ model FamilyInvite {
   id            String             @id @default(cuid())
   familyId      String
   invitedById   String?
-  email         String
+  email         String?
+  phone         String?
   authority     FamilyAuthority    @default(MEMBER)
   kinshipLabel  FamilyKinship?
   kinshipCustom String?

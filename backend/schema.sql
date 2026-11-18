@@ -258,6 +258,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS "User_pendingEmail_key" ON "User"("pendingEmai
 CREATE UNIQUE INDEX IF NOT EXISTS "User_phoneNumber_key" ON "User"("phoneNumber");
 CREATE UNIQUE INDEX IF NOT EXISTS "User_googleId_key" ON "User"("googleId");
 CREATE INDEX IF NOT EXISTS "User_status_idx" ON "User"("status");
+ALTER TABLE "User" ALTER COLUMN "email" DROP NOT NULL;
 
 
 -- 2. PersonPlan
@@ -383,6 +384,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS "Family_joinCode_key" ON "Family"("joinCode");
 CREATE UNIQUE INDEX IF NOT EXISTS "Family_personalOwnerId_key" ON "Family"("personalOwnerId");
 CREATE INDEX IF NOT EXISTS "Family_createdById_idx" ON "Family"("createdById");
 CREATE INDEX IF NOT EXISTS "Family_updatedAt_id_idx" ON "Family"("updatedAt", "id");
+ALTER TABLE "Family" ADD COLUMN IF NOT EXISTS "joinCode" TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS "Family_joinCode_key" ON "Family"("joinCode");
 
 
 -- 8. FamilyMember

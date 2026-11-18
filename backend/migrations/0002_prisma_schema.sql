@@ -253,6 +253,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS "User_pendingEmail_key" ON "User"("pendingEmai
 CREATE UNIQUE INDEX IF NOT EXISTS "User_phoneNumber_key" ON "User"("phoneNumber");
 CREATE UNIQUE INDEX IF NOT EXISTS "User_googleId_key" ON "User"("googleId");
 CREATE INDEX IF NOT EXISTS "User_status_idx" ON "User"("status");
+ALTER TABLE "User" ALTER COLUMN "email" DROP NOT NULL;
 
 
 -- 2. PersonPlan
