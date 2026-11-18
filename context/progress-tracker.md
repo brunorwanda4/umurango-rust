@@ -45,8 +45,15 @@ entries at the end, and include validation.
   `rw.json`), and Login/Register screen navigation in `app/src/main.rs`.
 - Added localized page titles (`Login` / `Create account`) to the shared
   `auth_layout` for both `LoginView` and `RegisterView`.
+- Updated `RegisterView` (`app/src/auth/register.rs`) to require explicit
+  consent to the Umuryango Terms & Charter via `checkbox_with_link` and added
+  the Terms & Charter screen (`app/src/auth/terms.rs`).
+- Added the post-registration Family Setup screen (`app/src/auth/family_setup.rs`)
+  with **Create Family**, **Join Family**, and **Skip** actions, wired in
+  `app/src/main.rs`.
 - Validated via `cargo fmt --all -- --check`,
   `cargo check -p umuryango-app --all-targets`, and
   `cargo test -p umuryango-app --lib` (linking GUI test binaries requires host
   `libxkbcommon-x11`).
+
 

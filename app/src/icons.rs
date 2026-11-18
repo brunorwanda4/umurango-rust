@@ -7,6 +7,14 @@ use std::path::Path;
 
 static FONT_AWESOME: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../assets/fontawesome");
 
+pub const ICON_CHECK: &str = "check";
+pub const ICON_EYE: &str = "eye";
+pub const ICON_EYE_SLASH: &str = "eye-slash";
+pub const ICON_USERS: &str = "users";
+pub const ICON_USER_PLUS: &str = "user-plus";
+pub const ICON_ARROW_RIGHT: &str = "arrow-right";
+pub const ICON_SHIELD_HALVED: &str = "shield-halved";
+
 fn icon_data(set: &str, name: &str) -> &'static [u8] {
     let path = format!("{set}/{name}.svg");
     FONT_AWESOME

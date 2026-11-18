@@ -3,7 +3,7 @@
 use crate::auth::layout::{auth_footer_prompt, auth_layout, auth_submit_section};
 use crate::brand::{apply_theme, colors, ThemeMode};
 use crate::components::{
-    checkbox::checkbox,
+    checkbox::checkbox_with_link,
     input::{input_field, password_field},
 };
 use crate::i18n::{text, Language};
@@ -15,6 +15,7 @@ pub enum RegisterEvent {
     ThemeChanged(ThemeMode),
     LanguageChanged(Language),
     LoginRequested,
+    TermsRequested,
     Registered {
         name: String,
         phone: String,
@@ -29,7 +30,7 @@ pub struct RegisterView {
     phone_input: Entity<InputState>,
     password_input: Entity<InputState>,
     show_password: bool,
-    remember_me: bool,
+    agreed_to_terms: bool,
     error_message: Option<String>,
     is_registering: bool,
     theme: ThemeMode,
@@ -68,7 +69,7 @@ impl RegisterView {
             phone_input,
             password_input,
             show_password: false,
-            remember_me: true,
+            agreed_to_terms: false,
             error_message: None,
             is_registering: false,
             theme,
@@ -128,6 +129,12 @@ impl RegisterView {
         }
     }
 
+    pub fn accept_terms(&mut self, cx: &mut Context<Self>) {
+        self.agreed_to_terms = true;
+        self.error_message = None;
+        cx.notify();
+    }
+
     fn toggle_password_visibility(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.show_password = !self.show_password;
         let masked = !self.show_password;
@@ -142,14 +149,16 @@ impl RegisterView {
         let phone = self.phone_input.read(cx).value().trim().to_string();
         let password = self.password_input.read(cx).value().trim().to_string();
 
-        if let Err(error_key) = validate_registration_input(&name, &phone, &password) {
+        if let Err(error_key) =
+            validate_registration_input(&name, &phone, &password, self.agreed_to_terms)
+        {
             self.error_message = Some(text(self.language, error_key));
             cx.notify();
             return;
         }
 
         self.error_message = None;
-        self.is_registering = true;
+        self.is_registering = false;
         cx.notify();
 
         cx.emit(RegisterEvent::Registered {
@@ -166,6 +175,7 @@ pub fn validate_registration_input(
     name: &str,
     phone: &str,
     password: &str,
+    agreed_to_terms: bool,
 ) -> Result<(), &'static str> {
     if name.trim().is_empty() {
         return Err("register.name_required");
@@ -175,6 +185,9 @@ pub fn validate_registration_input(
     }
     if password.trim().len() < 4 {
         return Err("register.password_required");
+    }
+    if !agreed_to_terms {
+        return Err("register.terms_required");
     }
     Ok(())
 }
@@ -234,16 +247,24 @@ impl Render for RegisterView {
                         )
                     })
                     .child({
-                        let view = view_entity.clone();
-                        checkbox(
-                            "register-remember-me",
+                        let toggle_view = view_entity.clone();
+                        let link_view = view_entity.clone();
+                        checkbox_with_link(
+                            "register-terms-checkbox",
+                            "register-terms-link",
                             palette,
-                            self.remember_me,
-                            text(self.language, "login.remember_me"),
+                            self.agreed_to_terms,
+                            text(self.language, "register.agree_prefix"),
+                            text(self.language, "register.terms_link"),
                             move |_event, _window, cx| {
-                                view.update(cx, |this, cx| {
-                                    this.remember_me = !this.remember_me;
+                                toggle_view.update(cx, |this, cx| {
+                                    this.agreed_to_terms = !this.agreed_to_terms;
                                     cx.notify();
+                                });
+                            },
+                            move |_event, _window, cx| {
+                                link_view.update(cx, |_this, cx| {
+                                    cx.emit(RegisterEvent::TermsRequested);
                                 });
                             },
                         )
@@ -309,27 +330,31 @@ mod tests {
     use crate::i18n::{text, Language};
 
     #[test]
-    fn registration_validation_checks_name_phone_and_password() {
+    fn registration_validation_checks_name_phone_password_and_terms() {
         assert_eq!(
-            validate_registration_input("", "+250788123456", "1234"),
+            validate_registration_input("", "+250788123456", "1234", true),
             Err("register.name_required")
         );
         assert_eq!(
-            validate_registration_input("Keza", "   ", "1234"),
+            validate_registration_input("Keza", "   ", "1234", true),
             Err("register.phone_required")
         );
         assert_eq!(
-            validate_registration_input("Keza", "+250788123456", "123"),
+            validate_registration_input("Keza", "+250788123456", "123", true),
             Err("register.password_required")
         );
         assert_eq!(
-            validate_registration_input("Keza", "+250788123456", "1234"),
+            validate_registration_input("Keza", "+250788123456", "1234", false),
+            Err("register.terms_required")
+        );
+        assert_eq!(
+            validate_registration_input("Keza", "+250788123456", "1234", true),
             Ok(())
         );
     }
 
     #[test]
-    fn registration_locale_keys_exist_in_both_languages() {
+    fn registration_terms_and_family_setup_locale_keys_exist_in_both_languages() {
         for key in [
             "login.title",
             "register.title",
@@ -339,6 +364,9 @@ mod tests {
             "register.phone_placeholder",
             "register.password_label",
             "register.password_placeholder",
+            "register.agree_prefix",
+            "register.terms_link",
+            "register.terms_required",
             "register.submit",
             "register.submitting",
             "register.have_account",
@@ -346,6 +374,29 @@ mod tests {
             "register.name_required",
             "register.phone_required",
             "register.password_required",
+            "terms.title",
+            "terms.subtitle",
+            "terms.section1_title",
+            "terms.section1_body",
+            "terms.section2_title",
+            "terms.section2_body",
+            "terms.section3_title",
+            "terms.section3_body",
+            "terms.section4_title",
+            "terms.section4_body",
+            "terms.accept",
+            "terms.back_prompt",
+            "terms.back_action",
+            "family_setup.title",
+            "family_setup.subtitle",
+            "family_setup.create_title",
+            "family_setup.create_desc",
+            "family_setup.join_title",
+            "family_setup.join_desc",
+            "family_setup.skip",
+            "family_setup.selected_create",
+            "family_setup.selected_join",
+            "family_setup.selected_skip",
         ] {
             assert_ne!(text(Language::English, key), key);
             assert_ne!(text(Language::Kinyarwanda, key), key);

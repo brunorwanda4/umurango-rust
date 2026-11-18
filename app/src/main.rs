@@ -5,8 +5,10 @@ mod i18n;
 mod icons;
 
 use auth::{
+    family_setup::{FamilySetupEvent, FamilySetupView},
     login::{LoginEvent, LoginView},
     register::{RegisterEvent, RegisterView},
+    terms::{TermsEvent, TermsView},
 };
 use brand::*;
 use gpui_kit::*;
@@ -17,6 +19,8 @@ enum AuthScreen {
     #[default]
     Login,
     Register,
+    Terms,
+    FamilySetup,
 }
 
 pub struct UmuryangoApp {
@@ -25,8 +29,12 @@ pub struct UmuryangoApp {
     screen: AuthScreen,
     login_view: Entity<LoginView>,
     register_view: Entity<RegisterView>,
+    terms_view: Entity<TermsView>,
+    family_setup_view: Entity<FamilySetupView>,
     _login_subscription: Subscription,
     _register_subscription: Subscription,
+    _terms_subscription: Subscription,
+    _family_setup_subscription: Subscription,
 }
 
 impl UmuryangoApp {
@@ -35,6 +43,8 @@ impl UmuryangoApp {
         let language = Language::default();
         let login_view = cx.new(|cx| LoginView::new(window, theme, language, cx));
         let register_view = cx.new(|cx| RegisterView::new(window, theme, language, cx));
+        let terms_view = cx.new(|cx| TermsView::new(theme, language, cx));
+        let family_setup_view = cx.new(|cx| FamilySetupView::new(theme, language, cx));
 
         let login_subscription = cx.subscribe(
             &login_view,
@@ -72,7 +82,62 @@ impl UmuryangoApp {
                     this.screen = AuthScreen::Login;
                     cx.notify();
                 }
-                RegisterEvent::Registered { .. } => {
+                RegisterEvent::TermsRequested => {
+                    this.screen = AuthScreen::Terms;
+                    cx.notify();
+                }
+                RegisterEvent::Registered { display_name, .. } => {
+                    let name = display_name.clone();
+                    this.family_setup_view.update(cx, |view, cx| {
+                        view.set_member_name(name, cx);
+                    });
+                    this.screen = AuthScreen::FamilySetup;
+                    cx.notify();
+                }
+            },
+        );
+
+        let terms_subscription = cx.subscribe(
+            &terms_view,
+            |this, _view, event: &TermsEvent, cx| match event {
+                TermsEvent::ThemeChanged(theme) => {
+                    this.theme = *theme;
+                    cx.notify();
+                }
+                TermsEvent::LanguageChanged(language) => {
+                    this.language = *language;
+                    cx.notify();
+                }
+                TermsEvent::Accepted => {
+                    this.register_view.update(cx, |view, cx| {
+                        view.accept_terms(cx);
+                    });
+                    this.screen = AuthScreen::Register;
+                    cx.notify();
+                }
+                TermsEvent::BackRequested => {
+                    this.screen = AuthScreen::Register;
+                    cx.notify();
+                }
+            },
+        );
+
+        let family_setup_subscription = cx.subscribe(
+            &family_setup_view,
+            |this, _view, event: &FamilySetupEvent, cx| match event {
+                FamilySetupEvent::ThemeChanged(theme) => {
+                    this.theme = *theme;
+                    cx.notify();
+                }
+                FamilySetupEvent::LanguageChanged(language) => {
+                    this.language = *language;
+                    cx.notify();
+                }
+                FamilySetupEvent::ChoiceSelected(_) => {
+                    cx.notify();
+                }
+                FamilySetupEvent::LoginRequested => {
+                    this.screen = AuthScreen::Login;
                     cx.notify();
                 }
             },
@@ -84,8 +149,12 @@ impl UmuryangoApp {
             screen: AuthScreen::Login,
             login_view,
             register_view,
+            terms_view,
+            family_setup_view,
             _login_subscription: login_subscription,
             _register_subscription: register_subscription,
+            _terms_subscription: terms_subscription,
+            _family_setup_subscription: family_setup_subscription,
         }
     }
 }
@@ -107,6 +176,18 @@ impl Render for UmuryangoApp {
                     view.sync_preferences(theme, language, window, cx);
                 });
                 self.register_view.clone().into_any_element()
+            }
+            AuthScreen::Terms => {
+                self.terms_view.update(cx, |view, cx| {
+                    view.sync_preferences(theme, language, cx);
+                });
+                self.terms_view.clone().into_any_element()
+            }
+            AuthScreen::FamilySetup => {
+                self.family_setup_view.update(cx, |view, cx| {
+                    view.sync_preferences(theme, language, cx);
+                });
+                self.family_setup_view.clone().into_any_element()
             }
         };
 
