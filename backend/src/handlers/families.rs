@@ -40,12 +40,12 @@ pub async fn create_family(
 ) -> impl Responder {
     let user_id = match extract_user_id(&http_req, &config.jwt_secret) {
         Ok(id) => id,
-        Err(err) => return error_to_response(err),
+        Err(err) => return error_to_response(err, &http_req),
     };
 
     match svc_create_family(pool.get_ref(), &user_id, &req).await {
         Ok(resp) => HttpResponse::Created().json(resp),
-        Err(err) => error_to_response(err),
+        Err(err) => error_to_response(err, &http_req),
     }
 }
 
@@ -75,12 +75,12 @@ pub async fn join_family(
 ) -> impl Responder {
     let user_id = match extract_user_id(&http_req, &config.jwt_secret) {
         Ok(id) => id,
-        Err(err) => return error_to_response(err),
+        Err(err) => return error_to_response(err, &http_req),
     };
 
     match svc_join_family_by_code(pool.get_ref(), &user_id, &req.code).await {
         Ok(resp) => HttpResponse::Ok().json(resp),
-        Err(err) => error_to_response(err),
+        Err(err) => error_to_response(err, &http_req),
     }
 }
 
@@ -106,12 +106,12 @@ pub async fn get_pending_invitations(
 ) -> impl Responder {
     let user_id = match extract_user_id(&http_req, &config.jwt_secret) {
         Ok(id) => id,
-        Err(err) => return error_to_response(err),
+        Err(err) => return error_to_response(err, &http_req),
     };
 
     match svc_get_pending_invitations(pool.get_ref(), &user_id).await {
         Ok(invites) => HttpResponse::Ok().json(invites),
-        Err(err) => error_to_response(err),
+        Err(err) => error_to_response(err, &http_req),
     }
 }
 
@@ -142,13 +142,13 @@ pub async fn accept_invitation(
 ) -> impl Responder {
     let user_id = match extract_user_id(&http_req, &config.jwt_secret) {
         Ok(id) => id,
-        Err(err) => return error_to_response(err),
+        Err(err) => return error_to_response(err, &http_req),
     };
 
     let invite_id = path.into_inner();
     match svc_accept_invitation(pool.get_ref(), &user_id, &invite_id).await {
         Ok(resp) => HttpResponse::Ok().json(resp),
-        Err(err) => error_to_response(err),
+        Err(err) => error_to_response(err, &http_req),
     }
 }
 

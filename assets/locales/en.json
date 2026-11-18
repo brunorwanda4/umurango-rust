@@ -80,5 +80,23 @@
   "join_family.submitting": "Joining family...",
   "join_family.back": "Back to Family Setup",
   "join_family.code_required": "Please enter the complete 4-character code.",
-  "join_family.success": "Successfully joined family!"
+  "join_family.success": "Successfully joined family!",
+  "error.name_required": "Full name is required",
+  "error.phone_required": "Phone number is required",
+  "error.password_min": "Password or PIN must be at least 4 characters",
+  "error.account_exists": "An account with this phone number or email already exists",
+  "error.identifier_required": "Phone number or email is required",
+  "error.password_required": "Password is required",
+  "error.invalid_credentials": "Invalid phone number or password",
+  "error.account_disabled": "Account is suspended or deactivated",
+  "error.user_not_found": "User not found",
+  "error.family_name_empty": "Family name cannot be empty",
+  "error.join_code_required": "Family join code is required",
+  "error.invalid_join_code": "Invalid family code. Please check the code and try again.",
+  "error.invite_not_found": "Invitation not found or expired",
+  "error.unauthorized_missing_token": "Missing or invalid Authorization header",
+  "error.unauthorized_invalid_token": "Invalid or expired token",
+  "error.unauthorized": "Unauthorized access",
+  "error.internal_error": "Internal server error occurred. Please try again later."
 }
+

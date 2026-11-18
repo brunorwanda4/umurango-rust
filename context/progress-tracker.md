@@ -117,3 +117,10 @@ entries at the end, and include validation.
   restarts the Actix server after backend or shared-crate changes and uses
   Cargo incremental builds for fast subsequent startup.
 - Updated the local backend and API client defaults to port `4433`.
+- Implemented backend multilingual error response localization supporting English (`en`) and Kinyarwanda (`rw`).
+- Added backend `i18n` module (`backend/src/i18n.rs`) with `extract_language` supporting `Accept-Language` headers, custom `x-lang` headers, and `?lang=` query parameters.
+- Expanded localization dictionaries (`assets/locales/en.json`, `assets/locales/rw.json`) with localized error strings and mapped backend `ServiceError` variants to locale keys.
+- Updated `error_to_response` in `backend/src/handlers/mod.rs` and all endpoints in `auth.rs` and `families.rs` to inspect request locale and translate errors accordingly.
+- Integrated `set_current_language` and `get_current_language` into app HTTP client (`app/src/auth/client.rs`) to pass `Accept-Language` headers on every backend API call (`api_login`, `api_register`, `api_create_family`, `api_join_family`, `api_get_pending_invitations`, `api_accept_invitation`).
+- Synchronized app language preferences with the client on launch and language toggle events in `app/src/main.rs`.
+- Validated with unit tests for language extraction and error translations in both English and Kinyarwanda.

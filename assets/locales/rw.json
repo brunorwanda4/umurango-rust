@@ -80,5 +80,23 @@
   "join_family.submitting": "Birimo kwinjira...",
   "join_family.back": "Subira inyuma",
   "join_family.code_required": "Andika kode yose y'inyuguti 4.",
-  "join_family.success": "Winjiye mu muryango neza!"
+  "join_family.success": "Winjiye mu muryango neza!",
+  "error.name_required": "Amazina yombi arakenewe",
+  "error.phone_required": "Nimero ya telefone irakenewe",
+  "error.password_min": "Ijambo ry'ibanga cyangwa PIN bigomba kugira nibura inyuguti 4",
+  "error.account_exists": "Konti ifite iyi nimero ya telefone cyangwa imeri isanzwe ihari",
+  "error.identifier_required": "Nimero ya telefone cyangwa imeri irakenewe",
+  "error.password_required": "Ijambo ry'ibanga rirakenewe",
+  "error.invalid_credentials": "Nimero ya telefone cyangwa ijambo ry'ibanga sibyo",
+  "error.account_disabled": "Konti yawe yahagaritswe by'agateganyo cyangwa yarafunzwe",
+  "error.user_not_found": "Umukoresha ntabonetse",
+  "error.family_name_empty": "Izina ry'umuryango ntirishobora kuba ririmo ubusa",
+  "error.join_code_required": "Kode yo kwinjira mu muryango irakenewe",
+  "error.invalid_join_code": "Kode y'umuryango si yo. Nyamuneka ongera uyigenzure.",
+  "error.invite_not_found": "Ubutumire ntibubonetse cyangwa bwarataye agaciro",
+  "error.unauthorized_missing_token": "Nta cyemezo cyo kwinjira cyatanzwe cyangwa si cyo",
+  "error.unauthorized_invalid_token": "Icyemezo cyo kwinjira cyarangiye cyangwa si cyo",
+  "error.unauthorized": "Ntabwo wemerewe kwinjira",
+  "error.internal_error": "Habaye ikibazo cya tekiniki. Nyamuneka ongera ugerageze mukanya."
 }
+

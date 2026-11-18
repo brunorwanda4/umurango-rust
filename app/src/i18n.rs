@@ -25,6 +25,13 @@ impl Language {
         }
     }
 
+    pub fn locale_code(self) -> &'static str {
+        match self {
+            Self::English => "en",
+            Self::Kinyarwanda => "rw",
+        }
+    }
+
     pub fn label(self) -> &'static str {
         match self {
             Self::English => "Kinyarwanda",

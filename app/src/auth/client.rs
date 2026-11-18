@@ -8,6 +8,7 @@ use umuryango_shared::{
 };
 
 static CURRENT_TOKEN: RwLock<Option<String>> = RwLock::new(None);
+static CURRENT_LANGUAGE: RwLock<&'static str> = RwLock::new("en");
 
 /// Stores the current user's session token.
 pub fn set_current_token(token: Option<String>) {
@@ -19,6 +20,18 @@ pub fn set_current_token(token: Option<String>) {
 /// Retrieves the current user's session token.
 pub fn get_current_token() -> Option<String> {
     CURRENT_TOKEN.read().ok().and_then(|lock| lock.clone())
+}
+
+/// Stores the current app language code ("en", "rw").
+pub fn set_current_language(lang: &'static str) {
+    if let Ok(mut lock) = CURRENT_LANGUAGE.write() {
+        *lock = lang;
+    }
+}
+
+/// Retrieves the current app language code.
+pub fn get_current_language() -> &'static str {
+    CURRENT_LANGUAGE.read().map(|lock| *lock).unwrap_or("en")
 }
 
 /// Resolves the backend API base URL from environment or defaults to local dev server.
@@ -36,7 +49,10 @@ pub fn api_login(identifier: &str, password: &str) -> Result<AuthResponse, Strin
         password: password.to_string(),
     };
 
-    let response = match ureq::post(&url).send_json(&payload) {
+    let response = match ureq::post(&url)
+        .set("Accept-Language", get_current_language())
+        .send_json(&payload)
+    {
         Ok(resp) => resp,
         Err(ureq::Error::Status(status, resp)) => {
             if let Ok(err_body) = resp.into_json::<ErrorResponse>() {
@@ -70,7 +86,10 @@ pub fn api_register(name: &str, phone: &str, password: &str) -> Result<AuthRespo
         password: password.to_string(),
     };
 
-    let response = match ureq::post(&url).send_json(&payload) {
+    let response = match ureq::post(&url)
+        .set("Accept-Language", get_current_language())
+        .send_json(&payload)
+    {
         Ok(resp) => resp,
         Err(ureq::Error::Status(status, resp)) => {
             if let Ok(err_body) = resp.into_json::<ErrorResponse>() {
@@ -105,7 +124,7 @@ pub fn api_create_family(
         member_phones,
     };
 
-    let mut req = ureq::post(&url);
+    let mut req = ureq::post(&url).set("Accept-Language", get_current_language());
     if let Some(token) = get_current_token() {
         req = req.set("Authorization", &format!("Bearer {token}"));
     }
@@ -138,7 +157,7 @@ pub fn api_join_family(code: &str) -> Result<JoinFamilyResponse, String> {
         code: code.to_string(),
     };
 
-    let mut req = ureq::post(&url);
+    let mut req = ureq::post(&url).set("Accept-Language", get_current_language());
     if let Some(token) = get_current_token() {
         req = req.set("Authorization", &format!("Bearer {token}"));
     }
@@ -167,7 +186,7 @@ pub fn api_join_family(code: &str) -> Result<JoinFamilyResponse, String> {
 /// Calls backend `GET /api/v1/families/invitations` to list pending invitations for the user.
 pub fn api_get_pending_invitations() -> Result<Vec<PendingFamilyInviteDto>, String> {
     let url = format!("{}/families/invitations", api_base_url());
-    let mut req = ureq::get(&url);
+    let mut req = ureq::get(&url).set("Accept-Language", get_current_language());
     if let Some(token) = get_current_token() {
         req = req.set("Authorization", &format!("Bearer {token}"));
     }
@@ -196,7 +215,7 @@ pub fn api_get_pending_invitations() -> Result<Vec<PendingFamilyInviteDto>, Stri
 /// Calls backend `POST /api/v1/families/invitations/{id}/accept` to accept a pending invite.
 pub fn api_accept_invitation(invite_id: &str) -> Result<JoinFamilyResponse, String> {
     let url = format!("{}/families/invitations/{invite_id}/accept", api_base_url());
-    let mut req = ureq::post(&url);
+    let mut req = ureq::post(&url).set("Accept-Language", get_current_language());
     if let Some(token) = get_current_token() {
         req = req.set("Authorization", &format!("Bearer {token}"));
     }

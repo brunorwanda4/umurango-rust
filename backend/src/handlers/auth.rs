@@ -4,23 +4,9 @@ use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 use sqlx::PgPool;
 use umuryango_shared::{AuthResponse, ErrorResponse, LoginRequest, RegisterRequest};
 
-use crate::auth::{
-    get_user_profile, login_user, register_user, verify_token, MeResponse, ServiceError,
-};
+use crate::auth::{get_user_profile, login_user, register_user, MeResponse};
 use crate::config::Config;
-
-fn error_to_response(error: ServiceError) -> HttpResponse {
-    let message = error.to_string();
-    let body = ErrorResponse { error: message };
-    match error {
-        ServiceError::BadRequest(_) => HttpResponse::BadRequest().json(body),
-        ServiceError::Unauthorized(_) => HttpResponse::Unauthorized().json(body),
-        ServiceError::Forbidden(_) => HttpResponse::Forbidden().json(body),
-        ServiceError::NotFound(_) => HttpResponse::NotFound().json(body),
-        ServiceError::Conflict(_) => HttpResponse::Conflict().json(body),
-        ServiceError::Internal(_) => HttpResponse::InternalServerError().json(body),
-    }
-}
+use crate::handlers::{error_to_response, extract_user_id};
 
 /// Register a new user account.
 #[utoipa::path(
@@ -39,11 +25,12 @@ fn error_to_response(error: ServiceError) -> HttpResponse {
 pub async fn register(
     pool: web::Data<PgPool>,
     config: web::Data<Config>,
+    http_req: HttpRequest,
     req: web::Json<RegisterRequest>,
 ) -> impl Responder {
     match register_user(pool.get_ref(), &req, &config.jwt_secret).await {
         Ok(auth_resp) => HttpResponse::Created().json(auth_resp),
-        Err(err) => error_to_response(err),
+        Err(err) => error_to_response(err, &http_req),
     }
 }
 
@@ -87,7 +74,7 @@ pub async fn login(
     .await
     {
         Ok(auth_resp) => HttpResponse::Ok().json(auth_resp),
-        Err(err) => error_to_response(err),
+        Err(err) => error_to_response(err, &http_req),
     }
 }
 
@@ -111,31 +98,13 @@ pub async fn me(
     config: web::Data<Config>,
     http_req: HttpRequest,
 ) -> impl Responder {
-    let auth_header = http_req
-        .headers()
-        .get("Authorization")
-        .and_then(|h| h.to_str().ok());
-
-    let token = match auth_header {
-        Some(header) if header.starts_with("Bearer ") => &header[7..],
-        _ => {
-            return HttpResponse::Unauthorized().json(ErrorResponse {
-                error: "Missing or invalid Authorization header".into(),
-            });
-        }
+    let user_id = match extract_user_id(&http_req, &config.jwt_secret) {
+        Ok(id) => id,
+        Err(err) => return error_to_response(err, &http_req),
     };
 
-    let claims = match verify_token(token, &config.jwt_secret) {
-        Ok(c) => c,
-        Err(_) => {
-            return HttpResponse::Unauthorized().json(ErrorResponse {
-                error: "Invalid or expired token".into(),
-            });
-        }
-    };
-
-    match get_user_profile(pool.get_ref(), &claims.sub).await {
+    match get_user_profile(pool.get_ref(), &user_id).await {
         Ok(user) => HttpResponse::Ok().json(MeResponse { user }),
-        Err(err) => error_to_response(err),
+        Err(err) => error_to_response(err, &http_req),
     }
 }

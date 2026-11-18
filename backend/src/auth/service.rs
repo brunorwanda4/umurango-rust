@@ -36,6 +36,21 @@ impl fmt::Display for ServiceError {
     }
 }
 
+impl ServiceError {
+    /// Returns the error message translated to the requested language.
+    pub fn localized_message(&self, lang: crate::i18n::SupportedLanguage) -> String {
+        let raw = match self {
+            ServiceError::BadRequest(msg)
+            | ServiceError::Unauthorized(msg)
+            | ServiceError::Forbidden(msg)
+            | ServiceError::NotFound(msg)
+            | ServiceError::Conflict(msg)
+            | ServiceError::Internal(msg) => msg,
+        };
+        crate::i18n::translate_error(raw, lang)
+    }
+}
+
 impl std::error::Error for ServiceError {}
 
 /// Registers a new user, hashes password with Argon2id, and provisions initial workspace.

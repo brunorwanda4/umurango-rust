@@ -49,6 +49,7 @@ impl UmuryangoApp {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let theme = ThemeMode::Dark;
         let language = Language::default();
+        crate::auth::client::set_current_language(language.locale_code());
         let login_view = cx.new(|cx| LoginView::new(window, theme, language, cx));
         let register_view = cx.new(|cx| RegisterView::new(window, theme, language, cx));
         let terms_view = cx.new(|cx| TermsView::new(theme, language, cx));
@@ -65,6 +66,7 @@ impl UmuryangoApp {
                 }
                 LoginEvent::LanguageChanged(language) => {
                     this.language = *language;
+                    crate::auth::client::set_current_language(language.locale_code());
                     cx.notify();
                 }
                 LoginEvent::RegisterRequested => {
@@ -86,6 +88,7 @@ impl UmuryangoApp {
                 }
                 RegisterEvent::LanguageChanged(language) => {
                     this.language = *language;
+                    crate::auth::client::set_current_language(language.locale_code());
                     cx.notify();
                 }
                 RegisterEvent::LoginRequested => {
@@ -116,6 +119,7 @@ impl UmuryangoApp {
                 }
                 TermsEvent::LanguageChanged(language) => {
                     this.language = *language;
+                    crate::auth::client::set_current_language(language.locale_code());
                     cx.notify();
                 }
                 TermsEvent::Accepted => {
@@ -141,6 +145,7 @@ impl UmuryangoApp {
                 }
                 FamilySetupEvent::LanguageChanged(language) => {
                     this.language = *language;
+                    crate::auth::client::set_current_language(language.locale_code());
                     cx.notify();
                 }
                 FamilySetupEvent::CreateFamilyRequested => {
@@ -178,6 +183,7 @@ impl UmuryangoApp {
                 }
                 CreateFamilyEvent::LanguageChanged(language) => {
                     this.language = *language;
+                    crate::auth::client::set_current_language(language.locale_code());
                     cx.notify();
                 }
                 CreateFamilyEvent::BackRequested => {
@@ -200,6 +206,7 @@ impl UmuryangoApp {
                 }
                 JoinFamilyEvent::LanguageChanged(language) => {
                     this.language = *language;
+                    crate::auth::client::set_current_language(language.locale_code());
                     cx.notify();
                 }
                 JoinFamilyEvent::BackRequested => {
@@ -237,6 +244,7 @@ impl Render for UmuryangoApp {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = self.theme;
         let language = self.language;
+        crate::auth::client::set_current_language(language.locale_code());
 
         let active_view: AnyElement = match self.screen {
             AuthScreen::Login => {

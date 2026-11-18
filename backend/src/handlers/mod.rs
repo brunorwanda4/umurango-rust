@@ -5,8 +5,9 @@ use crate::auth::{verify_token, ServiceError};
 use actix_web::{HttpRequest, HttpResponse};
 use umuryango_shared::ErrorResponse;
 
-pub fn error_to_response(error: ServiceError) -> HttpResponse {
-    let message = error.to_string();
+pub fn error_to_response(error: ServiceError, http_req: &HttpRequest) -> HttpResponse {
+    let lang = crate::i18n::extract_language(http_req);
+    let message = error.localized_message(lang);
     let body = ErrorResponse { error: message };
     match error {
         ServiceError::BadRequest(_) => HttpResponse::BadRequest().json(body),
