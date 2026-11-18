@@ -1,12 +1,14 @@
 #![allow(dead_code)]
 
+use crate::auth::client::{api_accept_invitation, api_get_pending_invitations};
 use crate::auth::layout::{auth_footer_prompt, auth_layout};
 use crate::brand::{apply_theme, colors, ThemeColors, ThemeMode};
 use crate::i18n::{text, Language};
 use crate::icons;
-use gpui_kit::component::button::Button;
+use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
+use umuryango_shared::PendingFamilyInviteDto;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FamilySetupChoice {
@@ -20,12 +22,23 @@ pub enum FamilySetupEvent {
     ThemeChanged(ThemeMode),
     LanguageChanged(Language),
     ChoiceSelected(FamilySetupChoice),
+    CreateFamilyRequested,
+    JoinFamilyRequested,
+    SkipRequested,
     LoginRequested,
+    FamilyJoined {
+        id: String,
+        name: String,
+        role: String,
+    },
 }
 
 pub struct FamilySetupView {
     member_name: String,
     selected_choice: Option<FamilySetupChoice>,
+    pending_invites: Vec<PendingFamilyInviteDto>,
+    error_message: Option<String>,
+    success_message: Option<String>,
     theme: ThemeMode,
     language: Language,
 }
@@ -38,6 +51,9 @@ impl FamilySetupView {
         Self {
             member_name: String::new(),
             selected_choice: None,
+            pending_invites: Vec::new(),
+            error_message: None,
+            success_message: None,
             theme,
             language,
         }
@@ -46,7 +62,15 @@ impl FamilySetupView {
     pub fn set_member_name(&mut self, member_name: String, cx: &mut Context<Self>) {
         self.member_name = member_name;
         self.selected_choice = None;
+        self.refresh_invitations(cx);
         cx.notify();
+    }
+
+    pub fn refresh_invitations(&mut self, cx: &mut Context<Self>) {
+        if let Ok(invites) = api_get_pending_invitations() {
+            self.pending_invites = invites;
+            cx.notify();
+        }
     }
 
     pub fn set_theme(&mut self, theme: ThemeMode, cx: &mut Context<Self>) {
@@ -76,8 +100,37 @@ impl FamilySetupView {
 
     fn select_choice(&mut self, choice: FamilySetupChoice, cx: &mut Context<Self>) {
         self.selected_choice = Some(choice);
+        match choice {
+            FamilySetupChoice::CreateFamily => {
+                cx.emit(FamilySetupEvent::CreateFamilyRequested);
+            }
+            FamilySetupChoice::JoinFamily => {
+                cx.emit(FamilySetupEvent::JoinFamilyRequested);
+            }
+            FamilySetupChoice::Skip => {
+                cx.emit(FamilySetupEvent::SkipRequested);
+            }
+        }
         cx.emit(FamilySetupEvent::ChoiceSelected(choice));
         cx.notify();
+    }
+
+    fn handle_accept_invite(&mut self, invite_id: &str, cx: &mut Context<Self>) {
+        match api_accept_invitation(invite_id) {
+            Ok(resp) => {
+                self.success_message = Some(format!("Joined {}!", resp.family_name));
+                cx.emit(FamilySetupEvent::FamilyJoined {
+                    id: resp.family_id,
+                    name: resp.family_name,
+                    role: resp.role,
+                });
+                self.refresh_invitations(cx);
+            }
+            Err(err) => {
+                self.error_message = Some(err);
+                cx.notify();
+            }
+        }
     }
 }
 
@@ -108,12 +161,6 @@ impl Render for FamilySetupView {
             }
         };
 
-        let status_key = self.selected_choice.map(|choice| match choice {
-            FamilySetupChoice::CreateFamily => "family_setup.selected_create",
-            FamilySetupChoice::JoinFamily => "family_setup.selected_join",
-            FamilySetupChoice::Skip => "family_setup.selected_skip",
-        });
-
         let content = div()
             .flex()
             .flex_col()
@@ -124,6 +171,117 @@ impl Render for FamilySetupView {
                     .text_color(palette.text_muted)
                     .child(text(self.language, "family_setup.subtitle")),
             )
+            .when(!self.pending_invites.is_empty(), |this| {
+                this.child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap_2()
+                        .child(
+                            div()
+                                .text_xs()
+                                .font_weight(FontWeight::BOLD)
+                                .text_color(palette.primary)
+                                .child(text(self.language, "family_setup.invited_families_title")),
+                        )
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(palette.text_muted)
+                                .child(text(self.language, "family_setup.invited_families_desc")),
+                        )
+                        .children(
+                            self.pending_invites
+                                .iter()
+                                .enumerate()
+                                .map(|(idx, invite)| {
+                                    let inv_id = invite.invite_id.clone();
+                                    let fam_name = invite.family_name.clone();
+                                    let role = invite.role.clone();
+                                    let view = view_entity.clone();
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .justify_between()
+                                        .p_3()
+                                        .rounded_lg()
+                                        .bg(palette.surface)
+                                        .border_1()
+                                        .border_color(palette.primary)
+                                        .child(
+                                            div()
+                                                .flex()
+                                                .items_center()
+                                                .gap_3()
+                                                .child(
+                                                    icons::icon(icons::ICON_USERS)
+                                                        .size(px(16.))
+                                                        .text_color(palette.primary_light),
+                                                )
+                                                .child(
+                                                    div()
+                                                        .flex()
+                                                        .flex_col()
+                                                        .child(
+                                                            div()
+                                                                .text_sm()
+                                                                .font_weight(FontWeight::SEMIBOLD)
+                                                                .text_color(palette.text_primary)
+                                                                .child(fam_name),
+                                                        )
+                                                        .child(
+                                                            div()
+                                                                .text_xs()
+                                                                .text_color(palette.text_muted)
+                                                                .child(format!("Role: {role}")),
+                                                        ),
+                                                ),
+                                        )
+                                        .child(
+                                            Button::new(("accept-inv", idx))
+                                                .primary()
+                                                .label(text(
+                                                    self.language,
+                                                    "family_setup.accept_invite",
+                                                ))
+                                                .on_click(move |_event, _window, cx| {
+                                                    view.update(cx, |this, cx| {
+                                                        this.handle_accept_invite(&inv_id, cx);
+                                                    });
+                                                }),
+                                        )
+                                }),
+                        ),
+                )
+            })
+            .when_some(self.error_message.as_ref(), |this, msg| {
+                this.child(
+                    div()
+                        .w_full()
+                        .p_3()
+                        .rounded_lg()
+                        .border_1()
+                        .border_color(palette.error)
+                        .bg(palette.surface)
+                        .text_color(palette.error)
+                        .text_xs()
+                        .child(msg.clone()),
+                )
+            })
+            .when_some(self.success_message.as_ref(), |this, msg| {
+                this.child(
+                    div()
+                        .w_full()
+                        .p_3()
+                        .rounded_lg()
+                        .border_1()
+                        .border_color(palette.success)
+                        .bg(palette.surface)
+                        .text_color(palette.success)
+                        .text_xs()
+                        .child(msg.clone()),
+                )
+            })
             .child(
                 div()
                     .flex()
@@ -162,20 +320,6 @@ impl Render for FamilySetupView {
                         )
                     }),
             )
-            .when_some(status_key, |this, key| {
-                this.child(
-                    div()
-                        .w_full()
-                        .p_3()
-                        .rounded_lg()
-                        .border_1()
-                        .border_color(palette.primary)
-                        .bg(palette.surface)
-                        .text_color(palette.success)
-                        .text_xs()
-                        .child(text(self.language, key)),
-                )
-            })
             .child({
                 let view = view_entity.clone();
                 Button::new("family-setup-skip")

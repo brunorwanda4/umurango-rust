@@ -361,6 +361,7 @@ CREATE TABLE IF NOT EXISTS "Family" (
     "id" TEXT PRIMARY KEY,
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
+    "joinCode" TEXT,
     "country" TEXT NOT NULL,
     "defaultCurrency" TEXT NOT NULL,
     "contributionCadence" TEXT NOT NULL,
@@ -373,6 +374,7 @@ CREATE TABLE IF NOT EXISTS "Family" (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS "Family_slug_key" ON "Family"("slug");
+CREATE UNIQUE INDEX IF NOT EXISTS "Family_joinCode_key" ON "Family"("joinCode");
 CREATE UNIQUE INDEX IF NOT EXISTS "Family_personalOwnerId_key" ON "Family"("personalOwnerId");
 CREATE INDEX IF NOT EXISTS "Family_createdById_idx" ON "Family"("createdById");
 CREATE INDEX IF NOT EXISTS "Family_updatedAt_id_idx" ON "Family"("updatedAt", "id");
@@ -402,7 +404,8 @@ CREATE TABLE IF NOT EXISTS "FamilyInvite" (
     "id" TEXT PRIMARY KEY,
     "familyId" TEXT NOT NULL REFERENCES "Family"("id") ON DELETE CASCADE ON UPDATE CASCADE,
     "invitedById" TEXT REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE,
-    "email" TEXT NOT NULL,
+    "email" TEXT,
+    "phone" TEXT,
     "authority" "FamilyAuthority" NOT NULL DEFAULT 'MEMBER',
     "kinshipLabel" "FamilyKinship",
     "kinshipCustom" TEXT,
@@ -411,11 +414,11 @@ CREATE TABLE IF NOT EXISTS "FamilyInvite" (
     "tokenHash" TEXT NOT NULL,
     "expiresAt" TIMESTAMPTZ NOT NULL,
     "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "FamilyInvite_familyId_email_key" UNIQUE ("familyId", "email")
+    "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS "FamilyInvite_email_idx" ON "FamilyInvite"("email");
+CREATE INDEX IF NOT EXISTS "FamilyInvite_phone_idx" ON "FamilyInvite"("phone");
 CREATE INDEX IF NOT EXISTS "FamilyInvite_invitedById_idx" ON "FamilyInvite"("invitedById");
 
 

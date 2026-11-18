@@ -170,3 +170,49 @@ pub struct AuthResponse {
 pub struct ErrorResponse {
     pub error: String,
 }
+
+/// Request payload to create a new family workspace with member phone numbers.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+pub struct CreateFamilyRequest {
+    pub name: String,
+    #[serde(default)]
+    pub member_phones: Vec<String>,
+}
+
+/// Response returned after successfully creating a family workspace.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+pub struct CreateFamilyResponse {
+    pub id: String,
+    pub name: String,
+    pub code: String,
+    pub members_count: usize,
+}
+
+/// Request payload to join an existing family using a 4-character code.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+pub struct JoinFamilyRequest {
+    pub code: String,
+}
+
+/// Response returned after successfully joining a family.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+pub struct JoinFamilyResponse {
+    pub family_id: String,
+    pub family_name: String,
+    pub role: String,
+}
+
+/// A pending family invitation or membership created by phone number.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+pub struct PendingFamilyInviteDto {
+    pub invite_id: String,
+    pub family_id: String,
+    pub family_name: String,
+    pub role: String,
+    pub created_at: String,
+}

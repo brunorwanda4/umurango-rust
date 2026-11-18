@@ -12,6 +12,10 @@ use utoipa::{
         crate::handlers::auth::login,
         crate::handlers::auth::me,
         crate::handlers::families::list_families,
+        crate::handlers::families::create_family,
+        crate::handlers::families::join_family,
+        crate::handlers::families::get_pending_invitations,
+        crate::handlers::families::accept_invitation,
     ),
     components(
         schemas(
@@ -21,9 +25,15 @@ use utoipa::{
             umuryango_shared::AuthResponse,
             umuryango_shared::ErrorResponse,
             umuryango_shared::Family,
+            umuryango_shared::CreateFamilyRequest,
+            umuryango_shared::CreateFamilyResponse,
+            umuryango_shared::JoinFamilyRequest,
+            umuryango_shared::JoinFamilyResponse,
+            umuryango_shared::PendingFamilyInviteDto,
             crate::auth::MeResponse,
         )
     ),
+
     modifiers(&SecurityAddon),
     tags(
         (name = "auth", description = "Authentication and registration endpoints"),

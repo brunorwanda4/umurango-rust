@@ -40,7 +40,14 @@ async fn main() -> std::io::Result<()> {
                             .service(handlers::auth::login)
                             .service(handlers::auth::me),
                     )
-                    .service(web::scope("/families").service(handlers::families::list_families)),
+                    .service(
+                        web::scope("/families")
+                            .service(handlers::families::list_families)
+                            .service(handlers::families::create_family)
+                            .service(handlers::families::join_family)
+                            .service(handlers::families::get_pending_invitations)
+                            .service(handlers::families::accept_invitation),
+                    ),
             )
     })
     .bind(bind_address)?

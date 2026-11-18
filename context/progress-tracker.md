@@ -100,4 +100,18 @@ entries at the end, and include validation.
   `umuryango_test` databases.
 - Initialized the main database schema successfully; verified 31 public tables
   are present.
+- Implemented Create Family page (`app/src/auth/create_family.rs`) allowing users to create
+  a family workspace with family name and invite household members by phone number.
+- Implemented Join Family page (`app/src/auth/join_family.rs`) using GPUI-kit's `OtpInput`
+  component with 4 uppercase alphanumeric code cells (e.g. "HO92") and auto-focus handling.
+- Updated `FamilySetupView` (`app/src/auth/family_setup.rs`) to display pending family
+  invitations when members were added by phone number, allowing direct "Accept & Join".
+- Added backend family endpoints (`POST /api/v1/families`, `POST /api/v1/families/join`,
+  `GET /api/v1/families/invitations`, `POST /api/v1/families/invitations/{id}/accept`),
+  unique 4-character join code generator (`generate_join_code`), and OpenAPI Swagger specs.
+- Updated database schema with `Family.joinCode` and `FamilyInvite.phone`.
+- Wired screens and navigation in `app/src/main.rs`.
+- Validated via `cargo fmt --all -- --check`, `cargo check --workspace`,
+  `cargo test -p umuryango-shared -p umuryango-backend`, and `cargo test -p umuryango-app --lib`.
+
 

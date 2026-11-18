@@ -1,7 +1,25 @@
-//! HTTP API client for backend authentication.
+//! HTTP API client for backend authentication and family management.
 
 use std::env;
-use umuryango_shared::{AuthResponse, ErrorResponse, LoginRequest, RegisterRequest};
+use std::sync::RwLock;
+use umuryango_shared::{
+    AuthResponse, CreateFamilyRequest, CreateFamilyResponse, ErrorResponse, JoinFamilyRequest,
+    JoinFamilyResponse, LoginRequest, PendingFamilyInviteDto, RegisterRequest,
+};
+
+static CURRENT_TOKEN: RwLock<Option<String>> = RwLock::new(None);
+
+/// Stores the current user's session token.
+pub fn set_current_token(token: Option<String>) {
+    if let Ok(mut lock) = CURRENT_TOKEN.write() {
+        *lock = token;
+    }
+}
+
+/// Retrieves the current user's session token.
+pub fn get_current_token() -> Option<String> {
+    CURRENT_TOKEN.read().ok().and_then(|lock| lock.clone())
+}
 
 /// Resolves the backend API base URL from environment or defaults to local dev server.
 pub fn api_base_url() -> String {
@@ -34,9 +52,12 @@ pub fn api_login(identifier: &str, password: &str) -> Result<AuthResponse, Strin
         }
     };
 
-    response
+    let auth_resp = response
         .into_json::<AuthResponse>()
-        .map_err(|e| format!("Failed to parse server response: {e}"))
+        .map_err(|e| format!("Failed to parse server response: {e}"))?;
+
+    set_current_token(Some(auth_resp.token.clone()));
+    Ok(auth_resp)
 }
 
 /// Calls backend `POST /api/v1/auth/register` to register a new user account.
@@ -65,7 +86,138 @@ pub fn api_register(name: &str, phone: &str, password: &str) -> Result<AuthRespo
         }
     };
 
-    response
+    let auth_resp = response
         .into_json::<AuthResponse>()
+        .map_err(|e| format!("Failed to parse server response: {e}"))?;
+
+    set_current_token(Some(auth_resp.token.clone()));
+    Ok(auth_resp)
+}
+
+/// Calls backend `POST /api/v1/families` to create a new family and invite members by phone.
+pub fn api_create_family(
+    name: &str,
+    member_phones: Vec<String>,
+) -> Result<CreateFamilyResponse, String> {
+    let url = format!("{}/families", api_base_url());
+    let payload = CreateFamilyRequest {
+        name: name.to_string(),
+        member_phones,
+    };
+
+    let mut req = ureq::post(&url);
+    if let Some(token) = get_current_token() {
+        req = req.set("Authorization", &format!("Bearer {token}"));
+    }
+
+    let response = match req.send_json(&payload) {
+        Ok(resp) => resp,
+        Err(ureq::Error::Status(status, resp)) => {
+            if let Ok(err_body) = resp.into_json::<ErrorResponse>() {
+                return Err(err_body.error);
+            }
+            return Err(format!("Server returned HTTP {status}"));
+        }
+        Err(ureq::Error::Transport(transport)) => {
+            return Err(format!(
+                "Network error: {}",
+                transport.message().unwrap_or("cannot connect to server")
+            ));
+        }
+    };
+
+    response
+        .into_json::<CreateFamilyResponse>()
+        .map_err(|e| format!("Failed to parse server response: {e}"))
+}
+
+/// Calls backend `POST /api/v1/families/join` to join a family with a 4-character code.
+pub fn api_join_family(code: &str) -> Result<JoinFamilyResponse, String> {
+    let url = format!("{}/families/join", api_base_url());
+    let payload = JoinFamilyRequest {
+        code: code.to_string(),
+    };
+
+    let mut req = ureq::post(&url);
+    if let Some(token) = get_current_token() {
+        req = req.set("Authorization", &format!("Bearer {token}"));
+    }
+
+    let response = match req.send_json(&payload) {
+        Ok(resp) => resp,
+        Err(ureq::Error::Status(status, resp)) => {
+            if let Ok(err_body) = resp.into_json::<ErrorResponse>() {
+                return Err(err_body.error);
+            }
+            return Err(format!("Server returned HTTP {status}"));
+        }
+        Err(ureq::Error::Transport(transport)) => {
+            return Err(format!(
+                "Network error: {}",
+                transport.message().unwrap_or("cannot connect to server")
+            ));
+        }
+    };
+
+    response
+        .into_json::<JoinFamilyResponse>()
+        .map_err(|e| format!("Failed to parse server response: {e}"))
+}
+
+/// Calls backend `GET /api/v1/families/invitations` to list pending invitations for the user.
+pub fn api_get_pending_invitations() -> Result<Vec<PendingFamilyInviteDto>, String> {
+    let url = format!("{}/families/invitations", api_base_url());
+    let mut req = ureq::get(&url);
+    if let Some(token) = get_current_token() {
+        req = req.set("Authorization", &format!("Bearer {token}"));
+    }
+
+    let response = match req.call() {
+        Ok(resp) => resp,
+        Err(ureq::Error::Status(status, resp)) => {
+            if let Ok(err_body) = resp.into_json::<ErrorResponse>() {
+                return Err(err_body.error);
+            }
+            return Err(format!("Server returned HTTP {status}"));
+        }
+        Err(ureq::Error::Transport(transport)) => {
+            return Err(format!(
+                "Network error: {}",
+                transport.message().unwrap_or("cannot connect to server")
+            ));
+        }
+    };
+
+    response
+        .into_json::<Vec<PendingFamilyInviteDto>>()
+        .map_err(|e| format!("Failed to parse server response: {e}"))
+}
+
+/// Calls backend `POST /api/v1/families/invitations/{id}/accept` to accept a pending invite.
+pub fn api_accept_invitation(invite_id: &str) -> Result<JoinFamilyResponse, String> {
+    let url = format!("{}/families/invitations/{invite_id}/accept", api_base_url());
+    let mut req = ureq::post(&url);
+    if let Some(token) = get_current_token() {
+        req = req.set("Authorization", &format!("Bearer {token}"));
+    }
+
+    let response = match req.send_string("") {
+        Ok(resp) => resp,
+        Err(ureq::Error::Status(status, resp)) => {
+            if let Ok(err_body) = resp.into_json::<ErrorResponse>() {
+                return Err(err_body.error);
+            }
+            return Err(format!("Server returned HTTP {status}"));
+        }
+        Err(ureq::Error::Transport(transport)) => {
+            return Err(format!(
+                "Network error: {}",
+                transport.message().unwrap_or("cannot connect to server")
+            ));
+        }
+    };
+
+    response
+        .into_json::<JoinFamilyResponse>()
         .map_err(|e| format!("Failed to parse server response: {e}"))
 }

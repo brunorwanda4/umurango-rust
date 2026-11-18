@@ -5,7 +5,9 @@ mod i18n;
 mod icons;
 
 use auth::{
+    create_family::{CreateFamilyEvent, CreateFamilyView},
     family_setup::{FamilySetupEvent, FamilySetupView},
+    join_family::{JoinFamilyEvent, JoinFamilyView},
     login::{LoginEvent, LoginView},
     register::{RegisterEvent, RegisterView},
     terms::{TermsEvent, TermsView},
@@ -21,6 +23,8 @@ enum AuthScreen {
     Register,
     Terms,
     FamilySetup,
+    CreateFamily,
+    JoinFamily,
 }
 
 pub struct UmuryangoApp {
@@ -31,10 +35,14 @@ pub struct UmuryangoApp {
     register_view: Entity<RegisterView>,
     terms_view: Entity<TermsView>,
     family_setup_view: Entity<FamilySetupView>,
+    create_family_view: Entity<CreateFamilyView>,
+    join_family_view: Entity<JoinFamilyView>,
     _login_subscription: Subscription,
     _register_subscription: Subscription,
     _terms_subscription: Subscription,
     _family_setup_subscription: Subscription,
+    _create_family_subscription: Subscription,
+    _join_family_subscription: Subscription,
 }
 
 impl UmuryangoApp {
@@ -45,6 +53,8 @@ impl UmuryangoApp {
         let register_view = cx.new(|cx| RegisterView::new(window, theme, language, cx));
         let terms_view = cx.new(|cx| TermsView::new(theme, language, cx));
         let family_setup_view = cx.new(|cx| FamilySetupView::new(theme, language, cx));
+        let create_family_view = cx.new(|cx| CreateFamilyView::new(window, theme, language, cx));
+        let join_family_view = cx.new(|cx| JoinFamilyView::new(window, theme, language, cx));
 
         let login_subscription = cx.subscribe(
             &login_view,
@@ -133,10 +143,70 @@ impl UmuryangoApp {
                     this.language = *language;
                     cx.notify();
                 }
+                FamilySetupEvent::CreateFamilyRequested => {
+                    this.screen = AuthScreen::CreateFamily;
+                    cx.notify();
+                }
+                FamilySetupEvent::JoinFamilyRequested => {
+                    this.screen = AuthScreen::JoinFamily;
+                    cx.notify();
+                }
+                FamilySetupEvent::SkipRequested => {
+                    this.screen = AuthScreen::Login;
+                    cx.notify();
+                }
+                FamilySetupEvent::FamilyJoined { .. } => {
+                    this.screen = AuthScreen::Login;
+                    cx.notify();
+                }
                 FamilySetupEvent::ChoiceSelected(_) => {
                     cx.notify();
                 }
                 FamilySetupEvent::LoginRequested => {
+                    this.screen = AuthScreen::Login;
+                    cx.notify();
+                }
+            },
+        );
+
+        let create_family_subscription = cx.subscribe(
+            &create_family_view,
+            |this, _view, event: &CreateFamilyEvent, cx| match event {
+                CreateFamilyEvent::ThemeChanged(theme) => {
+                    this.theme = *theme;
+                    cx.notify();
+                }
+                CreateFamilyEvent::LanguageChanged(language) => {
+                    this.language = *language;
+                    cx.notify();
+                }
+                CreateFamilyEvent::BackRequested => {
+                    this.screen = AuthScreen::FamilySetup;
+                    cx.notify();
+                }
+                CreateFamilyEvent::FamilyCreated { .. } => {
+                    this.screen = AuthScreen::Login;
+                    cx.notify();
+                }
+            },
+        );
+
+        let join_family_subscription = cx.subscribe(
+            &join_family_view,
+            |this, _view, event: &JoinFamilyEvent, cx| match event {
+                JoinFamilyEvent::ThemeChanged(theme) => {
+                    this.theme = *theme;
+                    cx.notify();
+                }
+                JoinFamilyEvent::LanguageChanged(language) => {
+                    this.language = *language;
+                    cx.notify();
+                }
+                JoinFamilyEvent::BackRequested => {
+                    this.screen = AuthScreen::FamilySetup;
+                    cx.notify();
+                }
+                JoinFamilyEvent::FamilyJoined { .. } => {
                     this.screen = AuthScreen::Login;
                     cx.notify();
                 }
@@ -151,10 +221,14 @@ impl UmuryangoApp {
             register_view,
             terms_view,
             family_setup_view,
+            create_family_view,
+            join_family_view,
             _login_subscription: login_subscription,
             _register_subscription: register_subscription,
             _terms_subscription: terms_subscription,
             _family_setup_subscription: family_setup_subscription,
+            _create_family_subscription: create_family_subscription,
+            _join_family_subscription: join_family_subscription,
         }
     }
 }
@@ -188,6 +262,18 @@ impl Render for UmuryangoApp {
                     view.sync_preferences(theme, language, cx);
                 });
                 self.family_setup_view.clone().into_any_element()
+            }
+            AuthScreen::CreateFamily => {
+                self.create_family_view.update(cx, |view, cx| {
+                    view.sync_preferences(theme, language, window, cx);
+                });
+                self.create_family_view.clone().into_any_element()
+            }
+            AuthScreen::JoinFamily => {
+                self.join_family_view.update(cx, |view, cx| {
+                    view.sync_preferences(theme, language, cx);
+                });
+                self.join_family_view.clone().into_any_element()
             }
         };
 

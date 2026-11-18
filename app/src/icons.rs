@@ -14,6 +14,8 @@ pub const ICON_USERS: &str = "users";
 pub const ICON_USER_PLUS: &str = "user-plus";
 pub const ICON_ARROW_RIGHT: &str = "arrow-right";
 pub const ICON_SHIELD_HALVED: &str = "shield-halved";
+pub const ICON_PHONE: &str = "phone";
+pub const ICON_XMARK: &str = "xmark";
 
 fn icon_data(set: &str, name: &str) -> &'static [u8] {
     let path = format!("{set}/{name}.svg");
