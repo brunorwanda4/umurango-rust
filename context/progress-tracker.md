@@ -91,10 +91,6 @@ entries at the end, and include validation.
 - Validated via `cargo fmt --all -- --check`, `cargo check -p umuryango-backend`,
   `cargo check -p umuryango-app`, `cargo test -p umuryango-app --lib`, and
   `cargo test -p umuryango-shared -p umuryango-backend`.
-
-
-## 2026-11-18
-
 - Added local `.env` files for workspace and backend PostgreSQL configuration
   using the local `postgres` password, and created `umuryango` and
   `umuryango_test` databases.
@@ -156,7 +152,7 @@ entries at the end, and include validation.
   - `avatar.rs`: Initial extraction, `avatar_initials`, and `member_avatar` with `AvatarSize`.
   - `modal.rs`: `modal_backdrop`, `modal_card`, `modal_header` with close button, and `modal_footer`.
   - `toggle.rs`: Animated switch components `toggle` and `toggle_field`.
-  - `button.rs`: Reusable action buttons: `icon_action_button`, `secondary_button`, and `destructive_button`.
+  - `button.rs`: Reusable action buttons: `icon_action_button`, `secondary_button`, and `destructive_button``.
   - Added new Font Awesome Free icons in `app/src/icons.rs` (`ICON_CIRCLE_CHECK`, `ICON_CIRCLE_XMARK`,
     `ICON_CIRCLE_INFO`, `ICON_TRIANGLE_EXCLAMATION`, `ICON_MAGNIFYING_GLASS`, `ICON_WALLET`,
     `ICON_CREDIT_CARD`, `ICON_ARROW_UP`, `ICON_ARROW_DOWN`).
@@ -211,6 +207,21 @@ entries at the end, and include validation.
 - Added unit tests in `umuryango-shared` and end-to-end integration test
   `backend/tests/auth_avatar_test.rs` against live PostgreSQL verifying avatar
   generation, persistence, and profile/login retrieval.
-- Validated via `cargo fmt --all -- --check`, `cargo test -p umuryango-shared`,
-  `cargo test -p umuryango-backend`, `cargo test -p umuryango-app --lib`, and
-  `bun run check` in `web/`.
+- Built modular responsive app layout under `app/src/components/layouts/`:
+  - `sidebar.rs`: Permanent navigation sidebar on big screens (`>= 768px`) with
+    brand wordmark, workspace title, 5 navigation items (`Home`, `Money`,
+    `Projects`, `Members`, `Profile`), member profile snippet, theme/language
+    toggles, and sign-out control.
+  - `footer.rs`: Fixed bottom `app-footer` navigation bar on small screens
+    (`< 768px`) providing one-tap access to all 5 sections with touch feedback
+    and active status pills.
+  - `mobile_header.rs`: Compact top header on mobile screens with workspace
+    branding, current section title, theme toggle, and language switch.
+  - `nav.rs`: Typed `AppSection` enum, labels, and Font Awesome icon bindings.
+  - `responsive.rs`: Breakpoint logic and responsive content width calculation.
+  - `sections.rs`: Dedicated section views for Money, Projects, Members, and
+    Profile.
+  - `app_layout.rs`: Clean layout orchestrator providing seamless responsive
+    switching and section routing.
+  - Validated via unit tests for navigation order, breakpoint switching,
+    content width calculations, and localized label availability.
