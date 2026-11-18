@@ -210,6 +210,7 @@ impl Render for FamilySetupView {
                                         .border_color(palette.primary)
                                         .child(
                                             div()
+                                                .flex_1()
                                                 .flex()
                                                 .items_center()
                                                 .gap_3()
@@ -220,6 +221,7 @@ impl Render for FamilySetupView {
                                                 )
                                                 .child(
                                                     div()
+                                                        .flex_1()
                                                         .flex()
                                                         .flex_col()
                                                         .child(
@@ -232,6 +234,7 @@ impl Render for FamilySetupView {
                                                         .child(
                                                             div()
                                                                 .text_xs()
+                                                                .whitespace_normal()
                                                                 .text_color(palette.text_muted)
                                                                 .child(format!("Role: {role}")),
                                                         ),
@@ -384,6 +387,7 @@ fn family_option_card(
         .hover(|style| style.border_color(palette.border_hover))
         .child(
             div()
+                .flex_1()
                 .flex()
                 .items_center()
                 .gap_3()
@@ -406,6 +410,7 @@ fn family_option_card(
                 )
                 .child(
                     div()
+                        .flex_1()
                         .flex()
                         .flex_col()
                         .gap_1()
@@ -419,6 +424,7 @@ fn family_option_card(
                         .child(
                             div()
                                 .text_xs()
+                                .whitespace_normal()
                                 .text_color(palette.text_muted)
                                 .child(description),
                         ),
