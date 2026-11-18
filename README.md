@@ -73,6 +73,31 @@ keeps subsequent restarts fast.
 The backend defaults to `127.0.0.1:4433` and reads `DATABASE_URL` and
 `BIND_ADDRESS` from the environment.
 
+### Concurrent Development (Backend & Frontend)
+
+To run both the backend API and the web frontend at the same time:
+
+```powershell
+bun run dev:all
+```
+
+This starts the Actix backend watcher and Next.js Turbopack dev server
+concurrently with prefixed, color-coded logs and synchronized shutdown on
+`Ctrl+C`. Aliases include `bun run dev:both` and `bun run dev:fullstack`.
+
+To run the backend and the native desktop client concurrently:
+
+```powershell
+bun run dev:native:all
+```
+
+To run individual frontend services from the root workspace:
+
+```powershell
+bun run dev:frontend    # Next.js web portal (alias: bun run dev:web)
+bun run dev:native      # GPUI native application (alias: bun run dev)
+```
+
 ### Web portal
 
 Use Bun for JavaScript and TypeScript tooling:

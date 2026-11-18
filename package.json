@@ -6,6 +6,13 @@
     "build": "cargo build -p umuryango-app",
     "dev": "bun run scripts/dev-native.js",
     "dev:backend": "bun run scripts/dev-backend.js",
+    "dev:frontend": "bun run --cwd web dev",
+    "dev:web": "bun run --cwd web dev",
+    "dev:all": "bun run scripts/dev-all.js",
+    "dev:both": "bun run scripts/dev-all.js",
+    "dev:fullstack": "bun run scripts/dev-all.js",
+    "dev:native": "bun run scripts/dev-native.js",
+    "dev:native:all": "bun run scripts/dev-all.js --native",
     "check": "cargo check -p umuryango-app",
     "fmt": "cargo fmt --all -- --check"
   },

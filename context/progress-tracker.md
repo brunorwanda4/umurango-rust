@@ -127,3 +127,9 @@ entries at the end, and include validation.
 - Fixed phone-based account registration by making `User.email` nullable and
   aligning live `Family.joinCode` and `FamilyInvite.phone` columns with the
   Prisma and PostgreSQL schema. Verified registration with a real HTTP request.
+- Added concurrent development script (`scripts/dev-all.js`) and root scripts
+  in `package.json` (`dev:all`, `dev:both`, `dev:fullstack`, `dev:native:all`,
+  `dev:frontend`, `dev:web`) to run backend and frontend services concurrently
+  with color-coded log prefixing, unified signal handling (`Ctrl+C`), and
+  options for web portal (`--cwd web dev`) or native desktop app (`--native`).
+  Updated `README.md` and `.gitignore`.
