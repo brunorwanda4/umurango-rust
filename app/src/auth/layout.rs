@@ -158,6 +158,7 @@ pub fn auth_submit_section(
         })
         .child(
             Button::new(button_id)
+                .mt_4()
                 .label(label)
                 .primary()
                 .loading(loading)
@@ -176,7 +177,7 @@ pub fn auth_footer_prompt(
         .flex()
         .items_center()
         .justify_center()
-        .mt_4()
+        .my_4()
         .gap_1()
         .text_xs()
         .text_color(palette.text_muted)
