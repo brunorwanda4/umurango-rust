@@ -1,9 +1,6 @@
-mod config;
-mod handlers;
-
 use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
-use config::Config;
 use sqlx::{postgres::PgPoolOptions, PgPool};
+use umuryango_backend::{config::Config, handlers};
 
 #[get("/health")]
 async fn health() -> impl Responder {

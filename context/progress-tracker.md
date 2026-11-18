@@ -59,7 +59,18 @@ entries at the end, and include validation.
 - Validated via `cargo fmt --all -- --check`,
   `cargo check -p umuryango-app --all-targets`, and
   `cargo test -p umuryango-app --lib` (linking GUI test binaries requires host
-  `libxkbcommon-x11`).
+- Generated full PostgreSQL database schema DDL from `schema.prisma` in
+  `backend/schema.sql` and `backend/migrations/0002_prisma_schema.sql` covering
+  all 38 enum types, 31 tables, foreign key constraints, and indexes. Preserved
+  `schema.prisma` in `backend/schema.prisma`.
+- Implemented `tokio-postgres` schema management module (`backend/src/schema.rs`)
+  with `apply_schema`, `connect`, `init_db`, and `list_tables`.
+- Added `init-schema` CLI binary in `backend/src/bin/init_schema.rs` and library
+  exports in `backend/src/lib.rs`.
+- Added integration test `backend/tests/schema_test.rs` validating schema
+  execution and table presence against PostgreSQL via `tokio-postgres`.
+- Validated via `cargo fmt --all -- --check`, `cargo check -p umuryango-backend`,
+  and `cargo test -p umuryango-shared -p umuryango-backend`.
 
 
 
