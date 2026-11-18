@@ -456,13 +456,21 @@ pub async fn create_family(
         code = generate_join_code();
     }
 
+    let creator_member_id = Uuid::new_v4().to_string();
     sqlx::query(
         r#"
-        INSERT INTO "Family" (
-            "id", "name", "slug", "joinCode", "country", "defaultCurrency", "contributionCadence",
-            "type", "createdById", "createdAt", "updatedAt"
+        WITH new_family AS (
+            INSERT INTO "Family" (
+                "id", "name", "slug", "joinCode", "country", "defaultCurrency", "contributionCadence",
+                "type", "createdById", "createdAt", "updatedAt"
+            )
+            VALUES ($1, $2, $3, $4, 'RW', 'RWF', 'MONTHLY', 'NUCLEAR', $5, NOW(), NOW())
         )
-        VALUES ($1, $2, $3, $4, 'RW', 'RWF', 'MONTHLY', 'NUCLEAR', $5, NOW(), NOW());
+        INSERT INTO "FamilyMember" (
+            "id", "familyId", "userId", "authority", "capabilities", "createdAt", "updatedAt"
+        )
+        VALUES ($6, $1, $5, 'HEAD', '{}', NOW(), NOW())
+        ON CONFLICT ("familyId", "userId") DO NOTHING;
         "#,
     )
     .bind(&family_id)
@@ -470,81 +478,55 @@ pub async fn create_family(
     .bind(&slug)
     .bind(&code)
     .bind(user_id)
+    .bind(&creator_member_id)
     .execute(pool)
     .await
     .map_err(|e| ServiceError::Internal(format!("Failed to create family: {e}")))?;
 
-    // Add creator as HEAD of the family
-    let creator_member_id = Uuid::new_v4().to_string();
-    sqlx::query(
-        r#"
-        INSERT INTO "FamilyMember" (
-            "id", "familyId", "userId", "authority", "capabilities", "createdAt", "updatedAt"
-        )
-        VALUES ($1, $2, $3, 'HEAD', '{}', NOW(), NOW())
-        ON CONFLICT ("familyId", "userId") DO NOTHING;
-        "#,
-    )
-    .bind(&creator_member_id)
-    .bind(&family_id)
-    .bind(user_id)
-    .execute(pool)
-    .await
-    .map_err(|e| ServiceError::Internal(format!("Failed to add creator as member: {e}")))?;
-
     let mut members_count = 1;
 
-    // Process invited member phone numbers
-    for phone in &req.member_phones {
-        let clean_phone = phone.trim();
-        if clean_phone.is_empty() {
-            continue;
-        }
+    // Process invited member phone numbers in a single batch query
+    let clean_phones: Vec<String> = req
+        .member_phones
+        .iter()
+        .map(|p| p.trim().to_string())
+        .filter(|p| !p.is_empty())
+        .collect();
 
-        // Look up if a user exists with this phone number
-        let existing_user = sqlx::query_scalar::<_, String>(
-            r#"SELECT "id" FROM "User" WHERE "phoneNumber" = $1 LIMIT 1;"#,
-        )
-        .bind(clean_phone)
-        .fetch_optional(pool)
-        .await
-        .unwrap_or(None);
-
-        if let Some(target_user_id) = existing_user {
-            let target_member_id = Uuid::new_v4().to_string();
-            let _ = sqlx::query(
-                r#"
+    if !clean_phones.is_empty() {
+        let added = sqlx::query_scalar::<_, i64>(
+            r#"
+            WITH input_phones AS (
+                SELECT DISTINCT unnest($1::text[]) AS phone
+            ),
+            ins_invites AS (
+                INSERT INTO "FamilyInvite" (
+                    "id", "familyId", "invitedById", "phone", "authority", "status", "tokenHash", "expiresAt", "createdAt", "updatedAt"
+                )
+                SELECT md5(random()::text || clock_timestamp()::text || ip.phone), $2, $3, ip.phone, 'MEMBER', 'PENDING', '', NOW() + INTERVAL '30 days', NOW(), NOW()
+                FROM input_phones ip
+            ),
+            ins_members AS (
                 INSERT INTO "FamilyMember" (
                     "id", "familyId", "userId", "authority", "capabilities", "createdAt", "updatedAt"
                 )
-                VALUES ($1, $2, $3, 'MEMBER', '{}', NOW(), NOW())
-                ON CONFLICT ("familyId", "userId") DO NOTHING;
-                "#,
+                SELECT md5(random()::text || clock_timestamp()::text || u."id"), $2, u."id", 'MEMBER', '{}', NOW(), NOW()
+                FROM "User" u
+                JOIN input_phones ip ON u."phoneNumber" = ip.phone
+                ON CONFLICT ("familyId", "userId") DO NOTHING
+                RETURNING 1
             )
-            .bind(&target_member_id)
-            .bind(&family_id)
-            .bind(&target_user_id)
-            .execute(pool)
-            .await;
-            members_count += 1;
-        }
-
-        // Also record FamilyInvite so it appears under pending invites
-        let invite_id = Uuid::new_v4().to_string();
-        let _ = sqlx::query(
-            r#"
-            INSERT INTO "FamilyInvite" (
-                "id", "familyId", "invitedById", "phone", "authority", "status", "tokenHash", "expiresAt", "createdAt", "updatedAt"
-            )
-            VALUES ($1, $2, $3, $4, 'MEMBER', 'PENDING', '', NOW() + INTERVAL '30 days', NOW(), NOW());
+            SELECT COUNT(*) FROM ins_members;
             "#,
         )
-        .bind(&invite_id)
+        .bind(&clean_phones)
         .bind(&family_id)
         .bind(user_id)
-        .bind(clean_phone)
-        .execute(pool)
-        .await;
+        .fetch_one(pool)
+        .await
+        .unwrap_or(0);
+
+        members_count += added as usize;
     }
 
     Ok(CreateFamilyResponse {
@@ -568,14 +550,42 @@ pub async fn join_family_by_code(
         ));
     }
 
-    let family_row =
-        sqlx::query(r#"SELECT "id", "name" FROM "Family" WHERE UPPER("joinCode") = $1 LIMIT 1;"#)
-            .bind(&clean_code)
-            .fetch_optional(pool)
-            .await
-            .map_err(|e| ServiceError::Internal(format!("Database error: {e}")))?;
+    let member_id = Uuid::new_v4().to_string();
+    let row = sqlx::query(
+        r#"
+        WITH target_family AS (
+            SELECT "id", "name"
+            FROM "Family"
+            WHERE "joinCode" = $1 OR UPPER("joinCode") = $1
+            LIMIT 1
+        ),
+        ins_member AS (
+            INSERT INTO "FamilyMember" (
+                "id", "familyId", "userId", "authority", "capabilities", "createdAt", "updatedAt"
+            )
+            SELECT $2, tf."id", $3, 'MEMBER', '{}', NOW(), NOW()
+            FROM target_family tf
+            ON CONFLICT ("familyId", "userId") DO NOTHING
+        ),
+        upd_invite AS (
+            UPDATE "FamilyInvite" fi
+            SET "status" = 'ACCEPTED', "updatedAt" = NOW()
+            FROM target_family tf, "User" u
+            WHERE fi."familyId" = tf."id"
+              AND u."id" = $3
+              AND (fi."phone" = u."phoneNumber" OR fi."email" = u."email")
+        )
+        SELECT "id", "name" FROM target_family;
+        "#,
+    )
+    .bind(&clean_code)
+    .bind(&member_id)
+    .bind(user_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| ServiceError::Internal(format!("Database error: {e}")))?;
 
-    let family = match family_row {
+    let family = match row {
         Some(f) => f,
         None => {
             return Err(ServiceError::NotFound(
@@ -584,44 +594,9 @@ pub async fn join_family_by_code(
         }
     };
 
-    let family_id: String = family.get("id");
-    let family_name: String = family.get("name");
-
-    let member_id = Uuid::new_v4().to_string();
-    sqlx::query(
-        r#"
-        INSERT INTO "FamilyMember" (
-            "id", "familyId", "userId", "authority", "capabilities", "createdAt", "updatedAt"
-        )
-        VALUES ($1, $2, $3, 'MEMBER', '{}', NOW(), NOW())
-        ON CONFLICT ("familyId", "userId") DO NOTHING;
-        "#,
-    )
-    .bind(&member_id)
-    .bind(&family_id)
-    .bind(user_id)
-    .execute(pool)
-    .await
-    .map_err(|e| ServiceError::Internal(format!("Failed to join family: {e}")))?;
-
-    // Mark pending invites as accepted
-    let _ = sqlx::query(
-        r#"
-        UPDATE "FamilyInvite"
-        SET "status" = 'ACCEPTED', "updatedAt" = NOW()
-        WHERE "familyId" = $1
-          AND ("phone" = (SELECT "phoneNumber" FROM "User" WHERE "id" = $2)
-               OR "email" = (SELECT "email" FROM "User" WHERE "id" = $2));
-        "#,
-    )
-    .bind(&family_id)
-    .bind(user_id)
-    .execute(pool)
-    .await;
-
     Ok(JoinFamilyResponse {
-        family_id,
-        family_name,
+        family_id: family.get("id"),
+        family_name: family.get("name"),
         role: "MEMBER".into(),
     })
 }
@@ -631,31 +606,21 @@ pub async fn get_pending_invitations(
     pool: &PgPool,
     user_id: &str,
 ) -> Result<Vec<PendingFamilyInviteDto>, ServiceError> {
-    let user_phone = sqlx::query_scalar::<_, Option<String>>(
-        r#"SELECT "phoneNumber" FROM "User" WHERE "id" = $1;"#,
-    )
-    .bind(user_id)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| ServiceError::Internal(format!("Database error: {e}")))?
-    .flatten();
-
-    let phone = match user_phone {
-        Some(p) if !p.is_empty() => p,
-        _ => return Ok(vec![]),
-    };
-
     let rows = sqlx::query(
         r#"
-        SELECT i."id" as invite_id, i."familyId" as family_id, f."name" as family_name,
-               i."authority"::TEXT as role, i."createdAt"::TEXT as created_at
-        FROM "FamilyInvite" i
+        SELECT i."id" AS invite_id, i."familyId" AS family_id, f."name" AS family_name,
+               i."authority"::TEXT AS role, i."createdAt"::TEXT AS created_at
+        FROM "User" u
+        JOIN "FamilyInvite" i ON i."phone" = u."phoneNumber"
         JOIN "Family" f ON i."familyId" = f."id"
-        WHERE i."phone" = $1 AND i."status" = 'PENDING'
+        WHERE u."id" = $1
+          AND u."phoneNumber" IS NOT NULL
+          AND u."phoneNumber" <> ''
+          AND i."status" = 'PENDING'
         ORDER BY i."createdAt" DESC;
         "#,
     )
-    .bind(&phone)
+    .bind(user_id)
     .fetch_all(pool)
     .await
     .map_err(|e| ServiceError::Internal(format!("Database error: {e}")))?;
@@ -680,15 +645,31 @@ pub async fn accept_invitation(
     user_id: &str,
     invite_id: &str,
 ) -> Result<JoinFamilyResponse, ServiceError> {
+    let member_id = Uuid::new_v4().to_string();
     let invite_row = sqlx::query(
         r#"
-        SELECT i."id", i."familyId", f."name" as "familyName", i."authority"::TEXT as role, i."phone"
-        FROM "FamilyInvite" i
-        JOIN "Family" f ON i."familyId" = f."id"
-        WHERE i."id" = $1 AND i."status" = 'PENDING';
+        WITH target_invite AS (
+            UPDATE "FamilyInvite"
+            SET "status" = 'ACCEPTED', "updatedAt" = NOW()
+            WHERE "id" = $1 AND "status" = 'PENDING'
+            RETURNING "id", "familyId", "authority"
+        ),
+        ins_member AS (
+            INSERT INTO "FamilyMember" (
+                "id", "familyId", "userId", "authority", "capabilities", "createdAt", "updatedAt"
+            )
+            SELECT $2, ti."familyId", $3, ti."authority", '{}', NOW(), NOW()
+            FROM target_invite ti
+            ON CONFLICT ("familyId", "userId") DO NOTHING
+        )
+        SELECT ti."familyId", f."name" AS "familyName", ti."authority"::TEXT AS role
+        FROM target_invite ti
+        JOIN "Family" f ON ti."familyId" = f."id";
         "#,
     )
     .bind(invite_id)
+    .bind(&member_id)
+    .bind(user_id)
     .fetch_optional(pool)
     .await
     .map_err(|e| ServiceError::Internal(format!("Database error: {e}")))?;
@@ -702,39 +683,10 @@ pub async fn accept_invitation(
         }
     };
 
-    let family_id: String = invite.get("familyId");
-    let family_name: String = invite.get("familyName");
-    let role: String = invite.get("role");
-
-    let member_id = Uuid::new_v4().to_string();
-    sqlx::query(
-        r#"
-        INSERT INTO "FamilyMember" (
-            "id", "familyId", "userId", "authority", "capabilities", "createdAt", "updatedAt"
-        )
-        VALUES ($1, $2, $3, $4::"FamilyAuthority", '{}', NOW(), NOW())
-        ON CONFLICT ("familyId", "userId") DO NOTHING;
-        "#,
-    )
-    .bind(&member_id)
-    .bind(&family_id)
-    .bind(user_id)
-    .bind(&role)
-    .execute(pool)
-    .await
-    .map_err(|e| ServiceError::Internal(format!("Failed to join family: {e}")))?;
-
-    let _ = sqlx::query(
-        r#"UPDATE "FamilyInvite" SET "status" = 'ACCEPTED', "updatedAt" = NOW() WHERE "id" = $1;"#,
-    )
-    .bind(invite_id)
-    .execute(pool)
-    .await;
-
     Ok(JoinFamilyResponse {
-        family_id,
-        family_name,
-        role,
+        family_id: invite.get("familyId"),
+        family_name: invite.get("familyName"),
+        role: invite.get("role"),
     })
 }
 
