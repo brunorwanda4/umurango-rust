@@ -26,6 +26,14 @@ pub const ICON_WALLET: &str = "wallet";
 pub const ICON_CREDIT_CARD: &str = "credit-card";
 pub const ICON_ARROW_UP: &str = "arrow-up";
 pub const ICON_ARROW_DOWN: &str = "arrow-down";
+pub const ICON_SYNC: &str = "sync";
+pub const ICON_BELL: &str = "bell";
+pub const ICON_GEAR: &str = "gear";
+pub const ICON_RIGHT_FROM_BRACKET: &str = "right-from-bracket";
+pub const ICON_HAND_HOLDING_DOLLAR: &str = "hand-holding-dollar";
+pub const ICON_BULLSEYE: &str = "bullseye";
+pub const ICON_PIGGY_BANK: &str = "piggy-bank";
+pub const ICON_FILTER: &str = "filter";
 
 fn icon_data(set: &str, name: &str) -> &'static [u8] {
     let path = format!("{set}/{name}.svg");

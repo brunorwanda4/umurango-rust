@@ -16,6 +16,7 @@ pub enum AuthScreen {
     FamilySetup,
     CreateFamily,
     JoinFamily,
+    Dashboard,
 }
 
 impl AuthScreen {
@@ -27,6 +28,7 @@ impl AuthScreen {
             Self::FamilySetup => "family_setup",
             Self::CreateFamily => "create_family",
             Self::JoinFamily => "join_family",
+            Self::Dashboard => "dashboard",
         }
     }
 
@@ -38,6 +40,7 @@ impl AuthScreen {
             "family_setup" => Some(Self::FamilySetup),
             "create_family" => Some(Self::CreateFamily),
             "join_family" => Some(Self::JoinFamily),
+            "dashboard" => Some(Self::Dashboard),
             _ => None,
         }
     }
@@ -46,7 +49,7 @@ impl AuthScreen {
     pub fn requires_session(self) -> bool {
         matches!(
             self,
-            Self::FamilySetup | Self::CreateFamily | Self::JoinFamily
+            Self::FamilySetup | Self::CreateFamily | Self::JoinFamily | Self::Dashboard
         )
     }
 }
@@ -164,7 +167,7 @@ mod tests {
     #[test]
     fn unknown_saved_screen_falls_back_to_login() {
         let connection = database();
-        set_app_state(&connection, SCREEN_KEY, Some("dashboard")).unwrap();
+        set_app_state(&connection, SCREEN_KEY, Some("unknown_screen")).unwrap();
 
         assert_eq!(load(&connection).screen, AuthScreen::Login);
     }
@@ -178,6 +181,7 @@ mod tests {
             AuthScreen::FamilySetup,
             AuthScreen::CreateFamily,
             AuthScreen::JoinFamily,
+            AuthScreen::Dashboard,
         ] {
             assert_eq!(AuthScreen::from_key(screen.key()), Some(screen));
         }

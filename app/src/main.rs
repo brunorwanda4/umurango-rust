@@ -2,6 +2,7 @@ mod app;
 mod auth;
 mod brand;
 mod components;
+mod dashboard;
 mod i18n;
 mod icons;
 mod navigation;

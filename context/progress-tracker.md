@@ -176,3 +176,19 @@ entries at the end, and include validation.
 - Replaced the Create Family text-only Add Member button with a compact plus
   icon button and localized tooltip/accessibility label. Applied the secondary
   outline variant so the button follows both dark and light themes.
+- Built native Family Financial Dashboard page (`app/src/dashboard/mod.rs`)
+  utilizing the existing UI component library (`stat_card`, `badge`, `alert`,
+  `member_avatar`, `card_surface`, `secondary_button`, `search_input`, `touch_scrollable`):
+  - Top header with family workspace name, active status badge, sync indicator,
+    search bar, theme toggle, language toggle, user profile avatar, and sign-out button.
+  - Four financial metric overview cards: Total Family Treasury, Monthly Contributions,
+    Monthly Expenses, and Emergency Reserve with trend badges.
+  - Quick action controls: Record Contribution, Add Expense, New Project, and Sync Now.
+  - Left column: Recent Financial Activity with filter tabs (`All`, `Contributions`,
+    `Expenses`) and Active Communal Projects with progress bars and contributor counts.
+  - Right column: Pending Approvals card with review action, Household Members roster
+    with avatars, and Local Outbox & SQLite Sync Health card.
+  - Added `AuthScreen::Dashboard` to `navigation.rs` with session persistence,
+    wired navigation flows in `app.rs`, and added full English (`en.json`) and
+    Kinyarwanda (`rw.json`) localization dictionaries.
+  - Validated via `cargo fmt --all -- --check`, `cargo check --workspace`, and all test suites.

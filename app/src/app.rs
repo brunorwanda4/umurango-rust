@@ -7,6 +7,7 @@ use crate::auth::{
     terms::{TermsEvent, TermsView},
 };
 use crate::brand::*;
+use crate::dashboard::{DashboardEvent, DashboardView};
 use crate::i18n::Language;
 use crate::navigation::{self, AuthScreen, SavedNavigation};
 use gpui_kit::*;
@@ -24,12 +25,14 @@ pub struct UmuryangoApp {
     family_setup_view: Entity<FamilySetupView>,
     create_family_view: Entity<CreateFamilyView>,
     join_family_view: Entity<JoinFamilyView>,
+    dashboard_view: Entity<DashboardView>,
     _login_subscription: Subscription,
     _register_subscription: Subscription,
     _terms_subscription: Subscription,
     _family_setup_subscription: Subscription,
     _create_family_subscription: Subscription,
     _join_family_subscription: Subscription,
+    _dashboard_subscription: Subscription,
 }
 
 impl UmuryangoApp {
@@ -49,10 +52,14 @@ impl UmuryangoApp {
         let family_setup_view = cx.new(|cx| FamilySetupView::new(theme, language, cx));
         let create_family_view = cx.new(|cx| CreateFamilyView::new(window, theme, language, cx));
         let join_family_view = cx.new(|cx| JoinFamilyView::new(window, theme, language, cx));
+        let dashboard_view = cx.new(|cx| DashboardView::new(window, theme, language, cx));
 
         if saved.screen.requires_session() {
             let name = saved.member_name.clone().unwrap_or_default();
             family_setup_view.update(cx, |view, cx| {
+                view.set_member_name(name.clone(), cx);
+            });
+            dashboard_view.update(cx, |view, cx| {
                 view.set_member_name(name, cx);
             });
         }
@@ -70,8 +77,13 @@ impl UmuryangoApp {
                     cx.notify();
                 }
                 LoginEvent::RegisterRequested => this.set_screen(AuthScreen::Register, cx),
-                LoginEvent::SignedIn { .. } => {
-                    cx.notify();
+                LoginEvent::SignedIn { display_name, .. } => {
+                    let name = display_name.clone();
+                    this.member_name = Some(name.clone());
+                    this.dashboard_view.update(cx, |view, cx| {
+                        view.set_member_name(name, cx);
+                    });
+                    this.set_screen(AuthScreen::Dashboard, cx);
                 }
             },
         );
@@ -141,9 +153,13 @@ impl UmuryangoApp {
                 FamilySetupEvent::JoinFamilyRequested => {
                     this.set_screen(AuthScreen::JoinFamily, cx)
                 }
-                FamilySetupEvent::SkipRequested
-                | FamilySetupEvent::FamilyJoined { .. }
-                | FamilySetupEvent::LoginRequested => this.set_screen(AuthScreen::Login, cx),
+                FamilySetupEvent::SkipRequested => {
+                    this.set_screen(AuthScreen::Dashboard, cx);
+                }
+                FamilySetupEvent::FamilyJoined { .. } => {
+                    this.set_screen(AuthScreen::Dashboard, cx);
+                }
+                FamilySetupEvent::LoginRequested => this.set_screen(AuthScreen::Login, cx),
                 FamilySetupEvent::ChoiceSelected(_) => {
                     cx.notify();
                 }
@@ -163,7 +179,9 @@ impl UmuryangoApp {
                     cx.notify();
                 }
                 CreateFamilyEvent::BackRequested => this.set_screen(AuthScreen::FamilySetup, cx),
-                CreateFamilyEvent::FamilyCreated { .. } => this.set_screen(AuthScreen::Login, cx),
+                CreateFamilyEvent::FamilyCreated { .. } => {
+                    this.set_screen(AuthScreen::Dashboard, cx);
+                }
             },
         );
 
@@ -180,7 +198,35 @@ impl UmuryangoApp {
                     cx.notify();
                 }
                 JoinFamilyEvent::BackRequested => this.set_screen(AuthScreen::FamilySetup, cx),
-                JoinFamilyEvent::FamilyJoined { .. } => this.set_screen(AuthScreen::Login, cx),
+                JoinFamilyEvent::FamilyJoined { .. } => {
+                    this.set_screen(AuthScreen::Dashboard, cx);
+                }
+            },
+        );
+
+        let dashboard_subscription = cx.subscribe(
+            &dashboard_view,
+            |this, _view, event: &DashboardEvent, cx| match event {
+                DashboardEvent::ThemeChanged(theme) => {
+                    this.theme = *theme;
+                    cx.notify();
+                }
+                DashboardEvent::LanguageChanged(language) => {
+                    this.language = *language;
+                    crate::auth::client::set_current_language(language.locale_code());
+                    cx.notify();
+                }
+                DashboardEvent::SignOutRequested => {
+                    this.member_name = None;
+                    crate::auth::client::set_current_token(None);
+                    this.set_screen(AuthScreen::Login, cx);
+                }
+                DashboardEvent::RecordContributionRequested
+                | DashboardEvent::AddExpenseRequested
+                | DashboardEvent::NewProjectRequested
+                | DashboardEvent::SyncRequested => {
+                    cx.notify();
+                }
             },
         );
 
@@ -196,12 +242,14 @@ impl UmuryangoApp {
             family_setup_view,
             create_family_view,
             join_family_view,
+            dashboard_view,
             _login_subscription: login_subscription,
             _register_subscription: register_subscription,
             _terms_subscription: terms_subscription,
             _family_setup_subscription: family_setup_subscription,
             _create_family_subscription: create_family_subscription,
             _join_family_subscription: join_family_subscription,
+            _dashboard_subscription: dashboard_subscription,
         }
     }
 
@@ -262,6 +310,12 @@ impl Render for UmuryangoApp {
                     view.sync_preferences(theme, language, cx);
                 });
                 self.join_family_view.clone().into_any_element()
+            }
+            AuthScreen::Dashboard => {
+                self.dashboard_view.update(cx, |view, cx| {
+                    view.sync_preferences(theme, language, window, cx);
+                });
+                self.dashboard_view.clone().into_any_element()
             }
         };
 
