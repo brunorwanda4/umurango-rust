@@ -192,3 +192,14 @@ entries at the end, and include validation.
     wired navigation flows in `app.rs`, and added full English (`en.json`) and
     Kinyarwanda (`rw.json`) localization dictionaries.
   - Validated via `cargo fmt --all -- --check`, `cargo check --workspace`, and all test suites.
+- Split dashboard transaction and communal-project presentation into reusable
+  components (`app/src/dashboard/components.rs`) and typed dashboard data
+  definitions (`app/src/dashboard/data.rs`), reducing the screen module by
+  roughly 300 lines without changing navigation or dashboard behavior.
+- Added a project-wide “less is more” rule to `AGENTS.md` and the coding
+  context so AI changes favor focused components and avoid speculative
+  abstractions.
+- Applied the feature-folder convention to the dashboard by organizing its
+  reusable components and data under `app/src/components/dashboard/`, while
+  leaving page state and navigation in `app/src/dashboard/`. This convention
+  applies to future features as they grow.

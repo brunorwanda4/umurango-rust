@@ -29,6 +29,14 @@ working, then read the context files in the order below:
   to `web/` through WebAssembly instead of duplicating financial or domain
   algorithms in TypeScript.
 - Keep handlers, screens, and modules focused; reuse existing patterns.
+- Less is more: prefer the smallest clear change, avoid over-engineering, and
+  create a new component or abstraction only when it has a clear responsibility
+  or a real reuse case.
+- Keep related pages and reusable components organized by feature. Page
+  modules may live under `app/src/<feature>/`, while shared feature
+  components belong under `app/src/components/<feature>/`. When a feature
+  grows beyond one component, create a dedicated feature folder instead of
+  putting every component in one file. `dashboard` is only an example.
 - Use the bundled Font Awesome Free SVG icons for native app UI. Add new
   icon constants in `app/src/icons.rs` and render them with
   `icons::icon(...)`; do not duplicate raw asset includes in screens.

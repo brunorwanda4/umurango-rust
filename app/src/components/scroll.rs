@@ -1,4 +1,5 @@
 use gpui_kit::component::scroll::ScrollableElement;
+use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
 #[derive(Default)]
@@ -11,7 +12,7 @@ struct TouchScrollState {
 #[derive(IntoElement)]
 pub struct TouchScrollable {
     id: ElementId,
-    max_height: Pixels,
+    max_height: Option<Pixels>,
     children: Vec<AnyElement>,
 }
 
@@ -19,7 +20,15 @@ impl TouchScrollable {
     pub fn new(id: impl Into<ElementId>, max_height: Pixels) -> Self {
         Self {
             id: id.into(),
-            max_height,
+            max_height: Some(max_height),
+            children: Vec::new(),
+        }
+    }
+
+    pub fn fill(id: impl Into<ElementId>) -> Self {
+        Self {
+            id: id.into(),
+            max_height: None,
             children: Vec::new(),
         }
     }
@@ -90,7 +99,8 @@ impl RenderOnce for TouchScrollable {
             .id(self.id.clone())
             .relative()
             .w_full()
-            .h(self.max_height)
+            .when_some(self.max_height, |this, height| this.h(height))
+            .when(self.max_height.is_none(), |this| this.h_full())
             .overflow_hidden()
             .cursor_grab()
             .on_mouse_down(MouseButton::Left, {
@@ -169,4 +179,8 @@ impl RenderOnce for TouchScrollable {
 
 pub fn touch_scrollable(id: impl Into<ElementId>, max_height: Pixels) -> TouchScrollable {
     TouchScrollable::new(id, max_height)
+}
+
+pub fn touch_scrollable_fill(id: impl Into<ElementId>) -> TouchScrollable {
+    TouchScrollable::fill(id)
 }

@@ -9,6 +9,13 @@ introducing new ones.
 ## During Editing
 
 - Implement the requested scope, not an imagined roadmap.
+- Follow “less is more”: make the smallest focused change that solves the
+  request, and avoid speculative abstractions, extra components, and
+  unnecessary refactors.
+- Group related pages and components by feature. Do not put an entire page,
+  its reusable components, and its data definitions in one file. For features
+  with multiple components, use a dedicated folder under
+  `app/src/components/<feature>/`; `dashboard` is only an example.
 - Preserve unrelated work in a dirty tree.
 - Use `apply_patch` for focused edits.
 - Keep generated dependencies and lockfiles consistent with the package manager.

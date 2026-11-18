@@ -98,6 +98,19 @@
   "error.unauthorized_invalid_token": "Invalid or expired token",
   "error.unauthorized": "Unauthorized access",
   "error.internal_error": "Internal server error occurred. Please try again later.",
+  "nav.home": "Home",
+  "nav.money": "Money",
+  "nav.projects": "Projects",
+  "nav.members": "Members",
+  "nav.profile": "Profile",
+  "section.money_subtitle": "Track family contributions, expenses, payments, and treasury balances.",
+  "section.projects_subtitle": "Follow communal family goals, funding targets, and member contributions.",
+  "section.members_subtitle": "View household members, roles, and family governance responsibilities.",
+  "section.profile_subtitle": "Manage your member account, appearance, language, and session.",
+  "section.preferences": "Preferences",
+  "section.theme_label": "Appearance",
+  "section.language_label": "Language",
+  "section.account_actions": "Session",
   "dashboard.title": "Family Financial Dashboard",
   "dashboard.workspace_title": "Mugabo Family Treasury",
   "dashboard.workspace_badge": "Active Family",
@@ -130,4 +143,3 @@
   "dashboard.storage_health": "Local Storage & Sync Health",
   "dashboard.storage_health_desc": "Local SQLite database healthy. 0 pending offline mutations."
 }
-

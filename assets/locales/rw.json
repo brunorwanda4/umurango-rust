@@ -98,6 +98,19 @@
   "error.unauthorized_invalid_token": "Icyemezo cyo kwinjira cyarangiye cyangwa si cyo",
   "error.unauthorized": "Ntabwo wemerewe kwinjira",
   "error.internal_error": "Habaye ikibazo cya tekiniki. Nyamuneka ongera ugerageze mukanya.",
+  "nav.home": "Ahabanza",
+  "nav.money": "Imari",
+  "nav.projects": "Imishinga",
+  "nav.members": "Abagize",
+  "nav.profile": "Umwirondoro",
+  "section.money_subtitle": "Kurikirana imisanzu, amafaranga yakoreshejwe, ubwishyu, n'umutungo w'umuryango.",
+  "section.projects_subtitle": "Kurikirana imishinga y'umuryango, intego z'amafaranga, n'abatanze inkunga.",
+  "section.members_subtitle": "Reba abagize urugo, inshingano zabo, n'ubuyobozi bw'umuryango.",
+  "section.profile_subtitle": "Tunganya konti yawe, isura ya porogaramu, ururimi, no gusohoka.",
+  "section.preferences": "Amahitamo",
+  "section.theme_label": "Isura ya porogaramu",
+  "section.language_label": "Ururimi",
+  "section.account_actions": "Konti",
   "dashboard.title": "Imari n'Umutungo w'Umuryango",
   "dashboard.workspace_title": "Isanduku y'Umuryango wa Mugabo",
   "dashboard.workspace_badge": "Umuryango Ukora",
@@ -130,4 +143,3 @@
   "dashboard.storage_health": "Ububiko bwa Porogaramu na Sync",
   "dashboard.storage_health_desc": "Ububiko bwa SQLite bumeze neza. Nta byahinduwe bitegereje guhuzwa."
 }
-

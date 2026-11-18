@@ -2,11 +2,19 @@
 
 ## General
 
+- Less is more: choose the simplest design that satisfies the requirement.
+  Do not add layers, components, helpers, or configuration unless they reduce
+  real duplication or clearly isolate a responsibility.
 - Prefer the smallest clear implementation that fully solves the task.
 - Read callers, schemas, tests, and configuration before changing behavior.
 - Keep one responsibility per function and cohesive modules.
 - Extract shared logic when a second caller appears; do not build speculative
   abstraction layers.
+- Organize code by feature: keep a page's state and routing in its feature
+  module, and place reusable feature components in
+  `app/src/components/<feature>/`. When a feature has multiple components,
+  give it a dedicated folder rather than putting the whole feature in one
+  file; `dashboard` is only an example.
 - Avoid comments that narrate obvious code. Keep comments for invariants,
   security boundaries, compatibility decisions, or non-obvious tradeoffs.
 
