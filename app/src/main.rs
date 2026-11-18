@@ -3,6 +3,7 @@ mod brand;
 mod components;
 mod i18n;
 mod icons;
+mod navigation;
 
 use auth::{
     create_family::{CreateFamilyEvent, CreateFamilyView},
@@ -15,22 +16,15 @@ use auth::{
 use brand::*;
 use gpui_kit::*;
 use i18n::Language;
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-enum AuthScreen {
-    #[default]
-    Login,
-    Register,
-    Terms,
-    FamilySetup,
-    CreateFamily,
-    JoinFamily,
-}
+use navigation::{AuthScreen, SavedNavigation};
+use rusqlite::Connection;
 
 pub struct UmuryangoApp {
     theme: ThemeMode,
     language: Language,
     screen: AuthScreen,
+    member_name: Option<String>,
+    connection: Connection,
     login_view: Entity<LoginView>,
     register_view: Entity<RegisterView>,
     terms_view: Entity<TermsView>,
@@ -46,16 +40,29 @@ pub struct UmuryangoApp {
 }
 
 impl UmuryangoApp {
-    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(connection: Connection, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let theme = ThemeMode::Dark;
         let language = Language::default();
         crate::auth::client::set_current_language(language.locale_code());
+
+        let saved = navigation::load(&connection);
+        if saved.token.is_some() {
+            crate::auth::client::set_current_token(saved.token.clone());
+        }
+
         let login_view = cx.new(|cx| LoginView::new(window, theme, language, cx));
         let register_view = cx.new(|cx| RegisterView::new(window, theme, language, cx));
         let terms_view = cx.new(|cx| TermsView::new(theme, language, cx));
         let family_setup_view = cx.new(|cx| FamilySetupView::new(theme, language, cx));
         let create_family_view = cx.new(|cx| CreateFamilyView::new(window, theme, language, cx));
         let join_family_view = cx.new(|cx| JoinFamilyView::new(window, theme, language, cx));
+
+        if saved.screen.requires_session() {
+            let name = saved.member_name.clone().unwrap_or_default();
+            family_setup_view.update(cx, |view, cx| {
+                view.set_member_name(name, cx);
+            });
+        }
 
         let login_subscription = cx.subscribe(
             &login_view,
@@ -69,10 +76,7 @@ impl UmuryangoApp {
                     crate::auth::client::set_current_language(language.locale_code());
                     cx.notify();
                 }
-                LoginEvent::RegisterRequested => {
-                    this.screen = AuthScreen::Register;
-                    cx.notify();
-                }
+                LoginEvent::RegisterRequested => this.set_screen(AuthScreen::Register, cx),
                 LoginEvent::SignedIn { .. } => {
                     cx.notify();
                 }
@@ -91,21 +95,15 @@ impl UmuryangoApp {
                     crate::auth::client::set_current_language(language.locale_code());
                     cx.notify();
                 }
-                RegisterEvent::LoginRequested => {
-                    this.screen = AuthScreen::Login;
-                    cx.notify();
-                }
-                RegisterEvent::TermsRequested => {
-                    this.screen = AuthScreen::Terms;
-                    cx.notify();
-                }
+                RegisterEvent::LoginRequested => this.set_screen(AuthScreen::Login, cx),
+                RegisterEvent::TermsRequested => this.set_screen(AuthScreen::Terms, cx),
                 RegisterEvent::Registered { display_name, .. } => {
                     let name = display_name.clone();
+                    this.member_name = Some(name.clone());
                     this.family_setup_view.update(cx, |view, cx| {
                         view.set_member_name(name, cx);
                     });
-                    this.screen = AuthScreen::FamilySetup;
-                    cx.notify();
+                    this.set_screen(AuthScreen::FamilySetup, cx);
                 }
             },
         );
@@ -126,13 +124,9 @@ impl UmuryangoApp {
                     this.register_view.update(cx, |view, cx| {
                         view.accept_terms(cx);
                     });
-                    this.screen = AuthScreen::Register;
-                    cx.notify();
+                    this.set_screen(AuthScreen::Register, cx);
                 }
-                TermsEvent::BackRequested => {
-                    this.screen = AuthScreen::Register;
-                    cx.notify();
-                }
+                TermsEvent::BackRequested => this.set_screen(AuthScreen::Register, cx),
             },
         );
 
@@ -149,26 +143,15 @@ impl UmuryangoApp {
                     cx.notify();
                 }
                 FamilySetupEvent::CreateFamilyRequested => {
-                    this.screen = AuthScreen::CreateFamily;
-                    cx.notify();
+                    this.set_screen(AuthScreen::CreateFamily, cx)
                 }
                 FamilySetupEvent::JoinFamilyRequested => {
-                    this.screen = AuthScreen::JoinFamily;
-                    cx.notify();
+                    this.set_screen(AuthScreen::JoinFamily, cx)
                 }
-                FamilySetupEvent::SkipRequested => {
-                    this.screen = AuthScreen::Login;
-                    cx.notify();
-                }
-                FamilySetupEvent::FamilyJoined { .. } => {
-                    this.screen = AuthScreen::Login;
-                    cx.notify();
-                }
+                FamilySetupEvent::SkipRequested
+                | FamilySetupEvent::FamilyJoined { .. }
+                | FamilySetupEvent::LoginRequested => this.set_screen(AuthScreen::Login, cx),
                 FamilySetupEvent::ChoiceSelected(_) => {
-                    cx.notify();
-                }
-                FamilySetupEvent::LoginRequested => {
-                    this.screen = AuthScreen::Login;
                     cx.notify();
                 }
             },
@@ -186,14 +169,8 @@ impl UmuryangoApp {
                     crate::auth::client::set_current_language(language.locale_code());
                     cx.notify();
                 }
-                CreateFamilyEvent::BackRequested => {
-                    this.screen = AuthScreen::FamilySetup;
-                    cx.notify();
-                }
-                CreateFamilyEvent::FamilyCreated { .. } => {
-                    this.screen = AuthScreen::Login;
-                    cx.notify();
-                }
+                CreateFamilyEvent::BackRequested => this.set_screen(AuthScreen::FamilySetup, cx),
+                CreateFamilyEvent::FamilyCreated { .. } => this.set_screen(AuthScreen::Login, cx),
             },
         );
 
@@ -209,21 +186,17 @@ impl UmuryangoApp {
                     crate::auth::client::set_current_language(language.locale_code());
                     cx.notify();
                 }
-                JoinFamilyEvent::BackRequested => {
-                    this.screen = AuthScreen::FamilySetup;
-                    cx.notify();
-                }
-                JoinFamilyEvent::FamilyJoined { .. } => {
-                    this.screen = AuthScreen::Login;
-                    cx.notify();
-                }
+                JoinFamilyEvent::BackRequested => this.set_screen(AuthScreen::FamilySetup, cx),
+                JoinFamilyEvent::FamilyJoined { .. } => this.set_screen(AuthScreen::Login, cx),
             },
         );
 
         Self {
             theme,
             language,
-            screen: AuthScreen::Login,
+            screen: saved.screen,
+            member_name: saved.member_name,
+            connection,
             login_view,
             register_view,
             terms_view,
@@ -237,6 +210,20 @@ impl UmuryangoApp {
             _create_family_subscription: create_family_subscription,
             _join_family_subscription: join_family_subscription,
         }
+    }
+
+    /// Switches screens and remembers the choice so the next launch reopens it.
+    fn set_screen(&mut self, screen: AuthScreen, cx: &mut Context<Self>) {
+        self.screen = screen;
+        let state = SavedNavigation {
+            screen,
+            token: crate::auth::client::get_current_token(),
+            member_name: self.member_name.clone(),
+        };
+        if let Err(err) = navigation::save(&self.connection, &state) {
+            eprintln!("failed to save last screen: {err}");
+        }
+        cx.notify();
     }
 }
 
@@ -330,13 +317,13 @@ fn window_options(cx: &App) -> WindowOptions {
 
 fn main() {
     let database_path = "umuryango.db";
-    let _connection = umuryango_app::db::open_local(database_path)
+    let connection = umuryango_app::db::open_local(database_path)
         .expect("local SQLite database must be available");
 
-    application().run(|cx| {
+    application().run(move |cx| {
         init(cx);
-        open_window(window_options(cx), cx, |window, cx| {
-            cx.new(|cx| UmuryangoApp::new(window, cx))
+        open_window(window_options(cx), cx, move |window, cx| {
+            cx.new(|cx| UmuryangoApp::new(connection, window, cx))
         })
         .expect("window must open");
     });

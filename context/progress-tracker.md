@@ -163,3 +163,10 @@ entries at the end, and include validation.
   - Preserved backward compatibility in `app/src/components/input.rs`, `app/src/components/checkbox.rs`,
     and `app/src/components/mod.rs`, and refactored `app/src/auth/family_setup.rs` to use `option_card`.
   - Validated via `cargo fmt --all -- --check`, `cargo check --workspace`, and `cargo test -p umuryango-app --lib`.
+- Native app now reopens on the last visited auth screen. Navigation is saved
+  to a new local SQLite `app_state` key/value table on every screen change
+  (`app/src/navigation.rs`, `app/src/db/mod.rs`). Family setup, create
+  family, and join family screens also persist the session token and member
+  name so their authenticated calls keep working; these are deleted whenever
+  the user moves to a screen that does not need them, and a missing token falls
+  back to login. Covered by navigation and `app_state` unit tests.

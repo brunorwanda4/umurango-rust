@@ -74,3 +74,12 @@ and committed migrations.
 The web portal is Next.js 16 with the App Router, TypeScript, Tailwind CSS 4,
 daisyUI, Bun, and Oxlint. Bun is the package manager and command runtime for
 web development; the API remains a Rust service.
+
+## Native Local State
+
+- The `app_state` SQLite table stores small native UI state as key/value
+  pairs (for example `navigation.last_screen`).
+- Session tokens are only persisted while the user is on a screen that requires
+  authentication and are removed on navigation to public screens. This store
+  is unencrypted for now and must move under the local database encryption
+  work before production.
