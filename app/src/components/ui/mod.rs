@@ -9,6 +9,8 @@ pub mod checkbox;
 pub mod divider;
 pub mod input;
 pub mod modal;
+pub mod progress;
+pub mod segmented;
 pub mod stat_card;
 pub mod toggle;
 
@@ -21,5 +23,7 @@ pub use checkbox::*;
 pub use divider::*;
 pub use input::*;
 pub use modal::*;
+pub use progress::*;
+pub use segmented::*;
 pub use stat_card::*;
 pub use toggle::*;

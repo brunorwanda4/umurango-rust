@@ -1,37 +1,463 @@
-use super::data::{ProjectSummary, TransactionRow};
+#![allow(dead_code)]
+
+use super::data::{
+    format_rwf, format_signed_rwf, ApprovalItem, ChartMode, ExpenseCategoryRow, IncomeStreamRow,
+    LoanItem, MemberContributionRow, MonthlyCashflowPoint, ProjectSummary, QuickEntryKind,
+    TransactionRow,
+};
 use crate::brand::ThemeColors;
-use crate::components::ui::{badge, BadgeVariant};
+use crate::components::ui::{
+    badge, card_elevated, card_surface, compact_primary_button, filter_pill_group, icon_badge_box,
+    kawaii_progress_bar, member_avatar, pill_button, pill_button_colored, AvatarSize, BadgeVariant,
+};
 use crate::icons;
+use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
+
+pub fn treasury_hero_card<F>(
+    total_treasury_label: impl Into<SharedString>,
+    net_saved_label: impl Into<SharedString>,
+    palette: ThemeColors,
+    on_quick_action: F,
+) -> impl IntoElement
+where
+    F: Fn(QuickEntryKind, &mut Window, &mut App) + Clone + 'static,
+{
+    let act_income = on_quick_action.clone();
+    let act_expense = on_quick_action.clone();
+    let act_loan = on_quick_action.clone();
+    let act_project = on_quick_action;
+
+    card_surface(palette)
+        .justify_between()
+        .gap_4()
+        .child(
+            div()
+                .flex()
+                .items_start()
+                .justify_between()
+                .gap_3()
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap_1p5()
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap_1p5()
+                                .px_2p5()
+                                .py_1()
+                                .rounded_full()
+                                .bg(palette.bg_badge)
+                                .border(px(2.0))
+                                .border_color(palette.border_color)
+                                .child(
+                                    icons::icon(icons::ICON_STAR)
+                                        .size(px(11.0))
+                                        .text_color(palette.accent_gold),
+                                )
+                                .child(
+                                    div()
+                                        .text_size(px(10.0))
+                                        .font_weight(FontWeight::EXTRA_BOLD)
+                                        .text_color(palette.text_secondary)
+                                        .child("SHARED FAMILY POOL"),
+                                ),
+                        )
+                        .child(
+                            div()
+                                .text_2xl()
+                                .font_weight(FontWeight::EXTRA_BOLD)
+                                .text_color(palette.text_primary)
+                                .child(total_treasury_label.into()),
+                        )
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap_1p5()
+                                .text_xs()
+                                .font_weight(FontWeight::BOLD)
+                                .text_color(palette.income_text)
+                                .child(
+                                    icons::icon(icons::ICON_ARROW_UP)
+                                        .size(px(11.0))
+                                        .text_color(palette.income_text),
+                                )
+                                .child(net_saved_label.into()),
+                        ),
+                )
+                .child(
+                    div()
+                        .w(px(58.0))
+                        .h(px(58.0))
+                        .flex_shrink_0()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .rounded(px(20.0))
+                        .bg(palette.bg_elevated)
+                        .border(palette.border_width_input)
+                        .border_color(palette.border_color)
+                        .shadow(palette.checkbox_shadows())
+                        .child(
+                            icons::icon(icons::ICON_PIGGY_BANK)
+                                .size(px(26.0))
+                                .text_color(palette.accent_primary),
+                        ),
+                ),
+        )
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .flex_wrap()
+                .gap_2()
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w(px(105.0))
+                        .child(compact_primary_button(
+                            "hero-qa-income",
+                            "+ Income",
+                            palette,
+                            move |_e, w, cx| act_income(QuickEntryKind::Income, w, cx),
+                        )),
+                )
+                .child(div().flex_1().min_w(px(105.0)).child(pill_button_colored(
+                    "hero-qa-expense",
+                    "- Expense",
+                    palette.expense_text,
+                    palette,
+                    move |_e, w, cx| act_expense(QuickEntryKind::Expense, w, cx),
+                )))
+                .child(div().flex_1().min_w(px(95.0)).child(pill_button_colored(
+                    "hero-qa-loan",
+                    "Loan",
+                    palette.loan_text,
+                    palette,
+                    move |_e, w, cx| act_loan(QuickEntryKind::Loan, w, cx),
+                )))
+                .child(div().flex_1().min_w(px(95.0)).child(pill_button_colored(
+                    "hero-qa-project",
+                    "Project",
+                    palette.accent_primary,
+                    palette,
+                    move |_e, w, cx| act_project(QuickEntryKind::Project, w, cx),
+                ))),
+        )
+}
+
+pub fn pending_approvals_banner<F>(
+    count: usize,
+    first_item: Option<&ApprovalItem>,
+    palette: ThemeColors,
+    on_review: F,
+) -> impl IntoElement
+where
+    F: Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+{
+    let subtitle = if let Some(item) = first_item {
+        format!(
+            "{} · {} ({})",
+            item.requester,
+            item.title,
+            format_rwf(item.amount_rwf)
+        )
+    } else {
+        "All family multi-signature requests are up to date".to_string()
+    };
+
+    card_surface(palette)
+        .p_4()
+        .flex_row()
+        .items_center()
+        .justify_between()
+        .gap_3()
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap_3()
+                .min_w_0()
+                .child(icon_badge_box(
+                    icons::ICON_SHIELD_HALVED,
+                    palette.loan_text,
+                    palette.loan_bg,
+                    palette.loan_border,
+                    42.0,
+                ))
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .min_w_0()
+                        .child(
+                            div()
+                                .text_xs()
+                                .font_weight(FontWeight::EXTRA_BOLD)
+                                .text_color(palette.text_primary)
+                                .child(format!("{count} Pending Family Approvals")),
+                        )
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(palette.text_secondary)
+                                .child(subtitle),
+                        ),
+                ),
+        )
+        .child(pill_button(
+            "home-review-approvals-btn",
+            "Review ->",
+            palette,
+            on_review,
+        ))
+}
+
+pub fn cashflow_insights_card<F>(
+    mode: ChartMode,
+    cashflow: &[MonthlyCashflowPoint],
+    categories: &[ExpenseCategoryRow],
+    palette: ThemeColors,
+    on_mode_change: F,
+) -> impl IntoElement
+where
+    F: Fn(ChartMode, &mut Window, &mut App) + Clone + 'static,
+{
+    let pills = [
+        (
+            "chart-mode-cashflow",
+            ChartMode::Cashflow,
+            "Cashflow".to_string(),
+        ),
+        (
+            "chart-mode-spending",
+            ChartMode::Spending,
+            "Spending".to_string(),
+        ),
+    ];
+
+    let body: AnyElement = match mode {
+        ChartMode::Cashflow => div()
+            .flex()
+            .flex_col()
+            .gap_3()
+            .child(
+                div()
+                    .h(px(148.0))
+                    .px_2()
+                    .pt_4()
+                    .pb_2()
+                    .rounded(px(18.0))
+                    .bg(palette.bg_elevated)
+                    .border(px(2.0))
+                    .border_color(palette.border_color)
+                    .flex()
+                    .items_end()
+                    .justify_around()
+                    .gap_2()
+                    .children(cashflow.iter().map(|pt| {
+                        let inc_h = (pt.income_pct as f32).clamp(15.0, 96.0);
+                        let exp_h = (pt.expense_pct as f32).clamp(12.0, 96.0);
+
+                        div()
+                            .flex_1()
+                            .h_full()
+                            .flex()
+                            .flex_col()
+                            .items_center()
+                            .justify_end()
+                            .gap_1p5()
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_end()
+                                    .gap_1()
+                                    .h(px(102.0))
+                                    .child(
+                                        div()
+                                            .w(px(13.0))
+                                            .h(px(inc_h))
+                                            .rounded(px(6.0))
+                                            .bg(palette.income_text)
+                                            .border(px(1.5))
+                                            .border_color(palette.border_color),
+                                    )
+                                    .child(
+                                        div()
+                                            .w(px(13.0))
+                                            .h(px(exp_h))
+                                            .rounded(px(6.0))
+                                            .bg(palette.expense_text)
+                                            .border(px(1.5))
+                                            .border_color(palette.border_color),
+                                    ),
+                            )
+                            .child(
+                                div()
+                                    .text_size(px(10.0))
+                                    .font_weight(FontWeight::EXTRA_BOLD)
+                                    .text_color(palette.text_secondary)
+                                    .child(pt.month),
+                            )
+                    })),
+            )
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .text_xs()
+                    .font_weight(FontWeight::BOLD)
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_1p5()
+                            .child(
+                                div()
+                                    .w(px(10.0))
+                                    .h(px(10.0))
+                                    .rounded(px(3.0))
+                                    .bg(palette.income_text),
+                            )
+                            .child(
+                                div()
+                                    .text_color(palette.text_secondary)
+                                    .child("Income (Jun - Nov)"),
+                            ),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_1p5()
+                            .child(
+                                div()
+                                    .w(px(10.0))
+                                    .h(px(10.0))
+                                    .rounded(px(3.0))
+                                    .bg(palette.expense_text),
+                            )
+                            .child(div().text_color(palette.text_secondary).child("Expenses")),
+                    ),
+            )
+            .into_any_element(),
+        ChartMode::Spending => div()
+            .flex()
+            .flex_col()
+            .gap_2p5()
+            .children(categories.iter().map(|cat| {
+                card_elevated(palette)
+                    .p_2p5()
+                    .gap_1p5()
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .justify_between()
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .gap_2()
+                                    .child(
+                                        icons::icon(cat.icon_name)
+                                            .size(px(13.0))
+                                            .text_color(cat.color),
+                                    )
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .font_weight(FontWeight::EXTRA_BOLD)
+                                            .text_color(palette.text_primary)
+                                            .child(cat.name.clone()),
+                                    ),
+                            )
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .font_weight(FontWeight::EXTRA_BOLD)
+                                    .text_color(palette.text_secondary)
+                                    .child(format!(
+                                        "{} ({}%)",
+                                        format_rwf(cat.amount_rwf),
+                                        cat.pct
+                                    )),
+                            ),
+                    )
+                    .child(kawaii_progress_bar(cat.pct, cat.color, palette))
+            }))
+            .into_any_element(),
+    };
+
+    card_surface(palette)
+        .gap_3()
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .flex_wrap()
+                .gap_2()
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .child(
+                            div()
+                                .text_sm()
+                                .font_weight(FontWeight::EXTRA_BOLD)
+                                .text_color(palette.text_primary)
+                                .child("Family Money Insights"),
+                        )
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(palette.text_secondary)
+                                .child("6-month cashflow & spending mix"),
+                        ),
+                )
+                .child(filter_pill_group(&pills, mode, palette, on_mode_change)),
+        )
+        .child(body)
+}
 
 pub fn transaction_row(
     index: usize,
     transaction: &TransactionRow,
     palette: ThemeColors,
 ) -> impl IntoElement {
-    let TransactionRow {
-        actor,
-        title,
-        date,
-        amount,
-        is_income,
-        category,
-        category_variant,
-        status,
-        status_variant,
-    } = transaction;
+    let (badge_bg, badge_border, amount_color) = if transaction.is_loan {
+        (palette.loan_bg, palette.loan_border, palette.loan_text)
+    } else if transaction.is_income {
+        (
+            palette.income_bg,
+            palette.income_border,
+            palette.income_text,
+        )
+    } else {
+        (
+            palette.expense_bg,
+            palette.expense_border,
+            palette.expense_text,
+        )
+    };
 
     div()
         .id(("tx-row", index))
         .flex()
         .items_center()
         .justify_between()
+        .gap_3()
         .p_3()
-        .rounded(palette.radius_input)
-        .bg(palette.bg_input)
-        .border(palette.border_width_input)
+        .rounded(px(18.0))
+        .bg(palette.bg_elevated)
+        .border(px(2.0))
         .border_color(palette.border_color)
-        .shadow(palette.checkbox_shadows())
         .hover(|s| {
             s.border_color(palette.accent_primary)
                 .bg(palette.bg_input_focus)
@@ -41,86 +467,122 @@ pub fn transaction_row(
                 .flex()
                 .items_center()
                 .gap_3()
-                .child(
-                    div()
-                        .w(px(36.))
-                        .h(px(36.))
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .rounded(palette.radius_checkbox)
-                        .bg(palette.bg_badge)
-                        .border(px(2.0))
-                        .border_color(palette.border_color)
-                        .child(
-                            icons::icon(if *is_income {
-                                icons::ICON_ARROW_DOWN
-                            } else {
-                                icons::ICON_ARROW_UP
-                            })
-                            .size(px(14.))
-                            .text_color(if *is_income {
-                                palette.success
-                            } else {
-                                palette.accent_primary
-                            }),
-                        ),
-                )
+                .min_w_0()
+                .child(icon_badge_box(
+                    transaction.icon_name,
+                    amount_color,
+                    badge_bg,
+                    badge_border,
+                    38.0,
+                ))
                 .child(
                     div()
                         .flex()
                         .flex_col()
-                        .gap_1()
-                        .child(
-                            div()
-                                .text_sm()
-                                .font_weight(FontWeight::BOLD)
-                                .text_color(palette.text_primary)
-                                .child(title.clone()),
-                        )
+                        .min_w_0()
                         .child(
                             div()
                                 .text_xs()
-                                .text_color(palette.text_muted)
-                                .child(format!("{actor} • {date}")),
+                                .font_weight(FontWeight::EXTRA_BOLD)
+                                .text_color(palette.text_primary)
+                                .child(transaction.title.clone()),
+                        )
+                        .child(
+                            div()
+                                .text_size(px(11.0))
+                                .text_color(palette.text_secondary)
+                                .child(format!("{} · {}", transaction.actor, transaction.date)),
                         ),
                 ),
         )
         .child(
-            div()
-                .flex()
-                .items_center()
-                .gap_3()
-                .child(badge(category.clone(), *category_variant, palette))
-                .child(
-                    div()
-                        .text_sm()
-                        .font_weight(FontWeight::BOLD)
-                        .text_color(if *is_income {
-                            palette.success
-                        } else {
-                            palette.text_primary
-                        })
-                        .child(amount.clone()),
-                )
-                .child(badge(status.clone(), *status_variant, palette)),
+            div().flex().items_center().gap_2().flex_shrink_0().child(
+                div()
+                    .text_xs()
+                    .font_weight(FontWeight::EXTRA_BOLD)
+                    .text_color(amount_color)
+                    .child(transaction.amount.clone()),
+            ),
         )
 }
 
+pub fn project_preview_row<F>(
+    index: usize,
+    project: &ProjectSummary,
+    palette: ThemeColors,
+    on_boost: F,
+) -> impl IntoElement
+where
+    F: Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+{
+    card_elevated(palette)
+        .gap_2()
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .gap_2()
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_2p5()
+                        .min_w_0()
+                        .child(icon_badge_box(
+                            project.icon_name,
+                            project.fill_color,
+                            palette.bg_card,
+                            palette.border_color,
+                            36.0,
+                        ))
+                        .child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .min_w_0()
+                                .child(
+                                    div()
+                                        .text_xs()
+                                        .font_weight(FontWeight::EXTRA_BOLD)
+                                        .text_color(palette.text_primary)
+                                        .child(project.name.clone()),
+                                )
+                                .child(
+                                    div()
+                                        .text_size(px(11.0))
+                                        .text_color(palette.text_secondary)
+                                        .child(format!(
+                                            "{} / {}",
+                                            format_rwf(project.saved_rwf),
+                                            format_rwf(project.target_rwf)
+                                        )),
+                                ),
+                        ),
+                )
+                .child(pill_button_colored(
+                    ("home-proj-boost", index),
+                    "+50k Boost",
+                    palette.income_text,
+                    palette,
+                    on_boost,
+                )),
+        )
+        .child(kawaii_progress_bar(
+            project.pct,
+            project.fill_color,
+            palette,
+        ))
+}
+
 pub fn project_card(project: &ProjectSummary, palette: ThemeColors) -> impl IntoElement {
-    div()
-        .p_3()
-        .rounded(palette.radius_input)
-        .bg(palette.bg_input)
-        .border(palette.border_width_input)
-        .border_color(palette.border_color)
-        .shadow(palette.checkbox_shadows())
+    card_elevated(palette)
+        .gap_2()
         .child(
             div()
                 .flex()
                 .justify_between()
                 .items_center()
-                .mb_2()
                 .child(
                     div()
                         .flex()
@@ -128,44 +590,564 @@ pub fn project_card(project: &ProjectSummary, palette: ThemeColors) -> impl Into
                         .child(
                             div()
                                 .text_sm()
-                                .font_weight(FontWeight::BOLD)
+                                .font_weight(FontWeight::EXTRA_BOLD)
                                 .text_color(palette.text_primary)
                                 .child(project.name.clone()),
                         )
                         .child(
                             div()
                                 .text_xs()
-                                .text_color(palette.text_muted)
-                                .child(project.target.clone()),
+                                .text_color(palette.text_secondary)
+                                .child(format!("Lead: {} · {}", project.lead, project.deadline)),
                         ),
                 )
                 .child(badge(project.progress.clone(), project.variant, palette)),
         )
-        .child(
-            div()
-                .w_full()
-                .h(px(10.))
-                .rounded_full()
-                .bg(palette.bg_canvas)
-                .border(px(1.5))
-                .border_color(palette.border_color)
-                .child(div().h_full().w(px(240.)).rounded_full().bg(
-                    if project.variant == BadgeVariant::Success {
-                        palette.success
-                    } else {
-                        palette.accent_primary
-                    },
-                )),
-        )
+        .child(kawaii_progress_bar(
+            project.pct,
+            project.fill_color,
+            palette,
+        ))
         .child(
             div()
                 .flex()
                 .justify_between()
                 .items_center()
-                .mt_2()
                 .text_xs()
-                .text_color(palette.text_muted)
-                .child(project.contributors.clone())
-                .child(project.deadline.clone()),
+                .text_color(palette.text_secondary)
+                .child(format!("Saved: {}", format_rwf(project.saved_rwf)))
+                .child(format!("Goal: {}", format_rwf(project.target_rwf))),
+        )
+}
+
+pub fn project_goal_card<B, D>(
+    index: usize,
+    project: &ProjectSummary,
+    show_details: bool,
+    palette: ThemeColors,
+    on_boost: B,
+    on_toggle_details: D,
+) -> impl IntoElement
+where
+    B: Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+    D: Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+{
+    card_surface(palette)
+        .gap_3()
+        .child(
+            div()
+                .flex()
+                .items_start()
+                .justify_between()
+                .gap_3()
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_3()
+                        .min_w_0()
+                        .child(icon_badge_box(
+                            project.icon_name,
+                            project.fill_color,
+                            palette.bg_elevated,
+                            palette.border_color,
+                            46.0,
+                        ))
+                        .child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .min_w_0()
+                                .child(
+                                    div()
+                                        .text_sm()
+                                        .font_weight(FontWeight::EXTRA_BOLD)
+                                        .text_color(palette.text_primary)
+                                        .child(project.name.clone()),
+                                )
+                                .child(div().text_xs().text_color(palette.text_secondary).child(
+                                    format!("Lead: {} · Target {}", project.lead, project.deadline),
+                                )),
+                        ),
+                )
+                .child(
+                    div()
+                        .px_2p5()
+                        .py_1()
+                        .rounded_full()
+                        .bg(palette.bg_elevated)
+                        .border(px(2.0))
+                        .border_color(palette.border_color)
+                        .text_xs()
+                        .font_weight(FontWeight::EXTRA_BOLD)
+                        .text_color(project.fill_color)
+                        .child(format!("{}%", project.pct)),
+                ),
+        )
+        .child(kawaii_progress_bar(
+            project.pct,
+            project.fill_color,
+            palette,
+        ))
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .text_xs()
+                .font_weight(FontWeight::BOLD)
+                .child(
+                    div()
+                        .text_color(palette.text_primary)
+                        .child(format!("{} saved", format_rwf(project.saved_rwf))),
+                )
+                .child(
+                    div()
+                        .text_color(palette.text_secondary)
+                        .child(format!("Goal: {}", format_rwf(project.target_rwf))),
+                ),
+        )
+        .when(show_details, |this| {
+            let remaining = (project.target_rwf - project.saved_rwf).max(0);
+            this.child(
+                card_elevated(palette)
+                    .p_2p5()
+                    .gap_1()
+                    .child(
+                        div()
+                            .text_xs()
+                            .font_weight(FontWeight::EXTRA_BOLD)
+                            .text_color(palette.text_primary)
+                            .child(format!(
+                                "{} · Remaining to goal: {}",
+                                project.contributors,
+                                format_rwf(remaining)
+                            )),
+                    )
+                    .child(
+                        div()
+                            .text_size(px(11.0))
+                            .text_color(palette.text_secondary)
+                            .child("Protected by Umuryango 2-Admin Treasury multi-signature rule."),
+                    ),
+            )
+        })
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap_2()
+                .pt_1()
+                .child(div().flex_1().child(compact_primary_button(
+                    ("proj-full-boost", index),
+                    "+50k Quick Boost",
+                    palette,
+                    on_boost,
+                )))
+                .child(pill_button(
+                    ("proj-full-details", index),
+                    if show_details { "Hide" } else { "Details" },
+                    palette,
+                    on_toggle_details,
+                )),
+        )
+}
+
+pub fn approval_request_card<A, D>(
+    index: usize,
+    item: &ApprovalItem,
+    palette: ThemeColors,
+    on_approve: A,
+    on_decline: D,
+) -> impl IntoElement
+where
+    A: Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+    D: Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+{
+    card_elevated(palette)
+        .gap_2p5()
+        .child(
+            div()
+                .flex()
+                .items_start()
+                .justify_between()
+                .gap_2()
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .min_w_0()
+                        .child(
+                            div()
+                                .text_xs()
+                                .font_weight(FontWeight::EXTRA_BOLD)
+                                .text_color(palette.text_primary)
+                                .child(item.title.clone()),
+                        )
+                        .child(
+                            div()
+                                .text_size(px(11.0))
+                                .text_color(palette.text_secondary)
+                                .child(format!(
+                                    "Requested by {} · {}",
+                                    item.requester, item.category
+                                )),
+                        ),
+                )
+                .child(
+                    div()
+                        .text_xs()
+                        .font_weight(FontWeight::EXTRA_BOLD)
+                        .text_color(palette.expense_text)
+                        .child(format_signed_rwf(item.amount_rwf, false)),
+                ),
+        )
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap_2()
+                .child(div().flex_1().child(compact_primary_button(
+                    ("approve-req-btn", index),
+                    "✓ Approve & Release",
+                    palette,
+                    on_approve,
+                )))
+                .child(pill_button(
+                    ("decline-req-btn", index),
+                    "✕ Decline",
+                    palette,
+                    on_decline,
+                )),
+        )
+}
+
+pub fn income_stream_card(
+    index: usize,
+    stream: &IncomeStreamRow,
+    palette: ThemeColors,
+) -> impl IntoElement {
+    div()
+        .id(("income-stream-card", index))
+        .flex()
+        .items_center()
+        .justify_between()
+        .gap_3()
+        .p_4()
+        .rounded(px(24.0))
+        .bg(palette.bg_card)
+        .border(palette.border_width_input)
+        .border_color(palette.border_color)
+        .shadow(palette.button_shadows())
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap_3()
+                .min_w_0()
+                .child(icon_badge_box(
+                    stream.icon_name,
+                    palette.income_text,
+                    palette.income_bg,
+                    palette.income_border,
+                    44.0,
+                ))
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .min_w_0()
+                        .child(
+                            div()
+                                .text_xs()
+                                .font_weight(FontWeight::EXTRA_BOLD)
+                                .text_color(palette.text_primary)
+                                .child(stream.name.clone()),
+                        )
+                        .child(
+                            div()
+                                .text_size(px(11.0))
+                                .text_color(palette.text_secondary)
+                                .child(stream.cadence.clone()),
+                        ),
+                ),
+        )
+        .child(
+            div()
+                .text_sm()
+                .font_weight(FontWeight::EXTRA_BOLD)
+                .text_color(palette.income_text)
+                .child(format_signed_rwf(stream.amount_rwf, true)),
+        )
+}
+
+pub fn expense_category_card(
+    index: usize,
+    cat: &ExpenseCategoryRow,
+    palette: ThemeColors,
+) -> impl IntoElement {
+    let ratio_pct = if cat.budget_rwf <= 0 {
+        100
+    } else {
+        ((cat.amount_rwf * 100) / cat.budget_rwf).clamp(0, 100) as u8
+    };
+
+    card_surface(palette)
+        .id(("expense-cat-card", index))
+        .p_4()
+        .gap_2p5()
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .gap_2()
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_2p5()
+                        .child(icon_badge_box(
+                            cat.icon_name,
+                            cat.color,
+                            palette.bg_elevated,
+                            palette.border_color,
+                            38.0,
+                        ))
+                        .child(
+                            div()
+                                .text_xs()
+                                .font_weight(FontWeight::EXTRA_BOLD)
+                                .text_color(palette.text_primary)
+                                .child(cat.name.clone()),
+                        ),
+                )
+                .child(
+                    div()
+                        .text_xs()
+                        .font_weight(FontWeight::EXTRA_BOLD)
+                        .text_color(palette.expense_text)
+                        .child(format!(
+                            "{} / {}",
+                            format_rwf(cat.amount_rwf),
+                            format_rwf(cat.budget_rwf)
+                        )),
+                ),
+        )
+        .child(kawaii_progress_bar(ratio_pct, cat.color, palette))
+}
+
+pub fn loan_card<F>(
+    index: usize,
+    loan: &LoanItem,
+    palette: ThemeColors,
+    on_repay: F,
+) -> impl IntoElement
+where
+    F: Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+{
+    let remaining = loan.remaining_rwf();
+    let pct = loan.progress_pct();
+    let (badge_bg, badge_border, badge_text_color, badge_label, fill_color) = if loan.is_lent {
+        (
+            palette.income_bg,
+            palette.income_border,
+            palette.income_text,
+            "Lent",
+            palette.income_text,
+        )
+    } else {
+        (
+            palette.loan_bg,
+            palette.loan_border,
+            palette.loan_text,
+            "Borrowed",
+            palette.loan_text,
+        )
+    };
+
+    card_surface(palette)
+        .id(("loan-card", index))
+        .p_4()
+        .gap_3()
+        .child(
+            div()
+                .flex()
+                .items_start()
+                .justify_between()
+                .gap_2()
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap_1()
+                        .min_w_0()
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap_2()
+                                .child(
+                                    div()
+                                        .px_2()
+                                        .py(px(2.0))
+                                        .rounded_full()
+                                        .bg(badge_bg)
+                                        .border(px(1.5))
+                                        .border_color(badge_border)
+                                        .text_size(px(10.0))
+                                        .font_weight(FontWeight::EXTRA_BOLD)
+                                        .text_color(badge_text_color)
+                                        .child(badge_label),
+                                )
+                                .child(
+                                    div()
+                                        .text_sm()
+                                        .font_weight(FontWeight::EXTRA_BOLD)
+                                        .text_color(palette.text_primary)
+                                        .child(loan.person.clone()),
+                                ),
+                        )
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(palette.text_secondary)
+                                .child(format!("{} · Due {}", loan.reason, loan.due)),
+                        ),
+                )
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .items_end()
+                        .child(
+                            div()
+                                .text_sm()
+                                .font_weight(FontWeight::EXTRA_BOLD)
+                                .text_color(badge_text_color)
+                                .child(format_rwf(remaining)),
+                        )
+                        .child(
+                            div()
+                                .text_size(px(10.0))
+                                .text_color(palette.text_secondary)
+                                .child("left"),
+                        ),
+                ),
+        )
+        .child(kawaii_progress_bar(pct, fill_color, palette))
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .gap_2()
+                .child(
+                    div()
+                        .text_xs()
+                        .text_color(palette.text_secondary)
+                        .child(format!(
+                            "Repaid: {} / {} ({}%)",
+                            format_rwf(loan.paid_rwf),
+                            format_rwf(loan.total_rwf),
+                            pct
+                        )),
+                )
+                .child(pill_button(
+                    ("loan-repay-btn", index),
+                    "+30k Repayment",
+                    palette,
+                    on_repay,
+                )),
+        )
+}
+
+pub fn member_pledge_card<C, R>(
+    index: usize,
+    member: &MemberContributionRow,
+    palette: ThemeColors,
+    on_log_contribution: C,
+    on_remind: R,
+) -> impl IntoElement
+where
+    C: Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+    R: Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+{
+    let pct = member.progress_pct();
+
+    card_surface(palette)
+        .id(("member-pledge-card", index))
+        .gap_3()
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .gap_3()
+                .child(member_avatar(
+                    member.name.as_ref(),
+                    Some(member.role.as_ref()),
+                    AvatarSize::Lg,
+                    palette,
+                ))
+                .child(
+                    div()
+                        .px_2p5()
+                        .py_1()
+                        .rounded_full()
+                        .bg(palette.income_bg)
+                        .border(px(1.5))
+                        .border_color(palette.income_border)
+                        .text_size(px(10.0))
+                        .font_weight(FontWeight::EXTRA_BOLD)
+                        .text_color(palette.income_text)
+                        .child(member.status.clone()),
+                ),
+        )
+        .child(
+            card_elevated(palette)
+                .gap_1p5()
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .justify_between()
+                        .text_xs()
+                        .child(
+                            div()
+                                .font_weight(FontWeight::BOLD)
+                                .text_color(palette.text_secondary)
+                                .child("Monthly Contribution"),
+                        )
+                        .child(
+                            div()
+                                .font_weight(FontWeight::EXTRA_BOLD)
+                                .text_color(palette.text_primary)
+                                .child(format!(
+                                    "{} / {}",
+                                    format_rwf(member.contributed_rwf),
+                                    format_rwf(member.monthly_goal_rwf)
+                                )),
+                        ),
+                )
+                .child(kawaii_progress_bar(pct, member.accent_color, palette)),
+        )
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap_2()
+                .child(div().flex_1().child(compact_primary_button(
+                    ("member-contrib-btn", index),
+                    "+ Log 25k Contribution",
+                    palette,
+                    on_log_contribution,
+                )))
+                .child(pill_button(
+                    ("member-remind-btn", index),
+                    "Send Reminder",
+                    palette,
+                    on_remind,
+                )),
         )
 }

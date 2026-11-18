@@ -18,11 +18,10 @@ pub fn app_footer(
         .flex()
         .items_center()
         .justify_around()
-        .gap_1()
-        .px_2()
-        .pt_1()
-        .pb_2()
-        .bg(palette.bg_card)
+        .gap_1p5()
+        .px_2p5()
+        .py_2()
+        .bg(palette.bg_nav)
         .border_t(palette.border_width)
         .border_color(palette.border_color)
         .children(
@@ -54,6 +53,7 @@ fn footer_nav_item(
 
     div()
         .id(("app-footer-nav", idx))
+        .relative()
         .flex_1()
         .min_w_0()
         .flex()
@@ -61,26 +61,28 @@ fn footer_nav_item(
         .items_center()
         .justify_center()
         .gap_1()
-        .px_1()
-        .py_1()
-        .rounded(palette.radius_checkbox)
+        .px_1p5()
+        .py_1p5()
+        .rounded(px(16.0))
+        .border(px(2.0))
         .cursor_pointer()
-        .when(active, |this| this.bg(palette.bg_input_focus))
-        .when(!active, |this| this.hover(|s| s.bg(palette.bg_input)))
-        .child(
-            div()
-                .w(px(22.0))
-                .h(px(3.0))
-                .rounded_full()
-                .when(active, |this| this.bg(palette.accent_primary)),
-        )
+        .when(active, |this| {
+            this.top(px(-2.0))
+                .bg(palette.accent_primary)
+                .border_color(palette.border_color)
+                .shadow(palette.checkbox_shadows())
+        })
+        .when(!active, |this| {
+            this.border_color(palette.bg_nav)
+                .hover(|s| s.bg(palette.bg_elevated).border_color(palette.border_color))
+        })
         .child(
             icons::icon(section.icon())
-                .size(px(16.0))
+                .size(px(15.0))
                 .text_color(if active {
-                    palette.accent_primary
+                    palette.text_on_accent
                 } else {
-                    palette.text_muted
+                    palette.text_secondary
                 }),
         )
         .child(
@@ -89,16 +91,12 @@ fn footer_nav_item(
                 .overflow_hidden()
                 .whitespace_nowrap()
                 .text_center()
-                .text_size(px(11.0))
-                .font_weight(if active {
-                    FontWeight::BOLD
-                } else {
-                    FontWeight::MEDIUM
-                })
+                .text_size(px(10.0))
+                .font_weight(FontWeight::EXTRA_BOLD)
                 .text_color(if active {
-                    palette.accent_primary
+                    palette.text_on_accent
                 } else {
-                    palette.text_muted
+                    palette.text_secondary
                 })
                 .child(label),
         )

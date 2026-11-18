@@ -23,31 +23,69 @@ pub fn card_surface(palette: ThemeColors) -> Div {
         .flex_col()
         .w_full()
         .p_5()
-        .rounded(palette.radius_card)
+        .rounded(px(28.0))
         .bg(palette.bg_card)
-        .border(palette.border_width)
+        .border(palette.border_width_input)
         .border_color(palette.border_color)
-        .shadow(palette.card_shadows())
+        .shadow(palette.button_shadows())
         .text_color(palette.text_primary)
+}
+
+pub fn card_elevated(palette: ThemeColors) -> Div {
+    div()
+        .flex()
+        .flex_col()
+        .w_full()
+        .p_3()
+        .rounded(px(18.0))
+        .bg(palette.bg_elevated)
+        .border(px(2.0))
+        .border_color(palette.border_color)
+        .text_color(palette.text_primary)
+}
+
+pub fn icon_badge_box(
+    icon_name: &'static str,
+    icon_color: Rgba,
+    bg_color: Rgba,
+    border_color: Rgba,
+    size_px: f32,
+) -> Div {
+    div()
+        .w(px(size_px))
+        .h(px(size_px))
+        .flex_shrink_0()
+        .flex()
+        .items_center()
+        .justify_center()
+        .rounded(px(14.0))
+        .bg(bg_color)
+        .border(px(2.0))
+        .border_color(border_color)
+        .child(
+            icons::icon(icon_name)
+                .size(px((size_px * 0.42).max(13.0)))
+                .text_color(icon_color),
+        )
 }
 
 pub fn interactive_card(
     id: impl Into<ElementId>,
     palette: ThemeColors,
     on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
-) -> impl IntoElement {
+) -> Stateful<Div> {
     div()
         .id(id)
         .relative()
         .flex()
         .flex_col()
         .w_full()
-        .p_5()
-        .rounded(palette.radius_card)
+        .p_4()
+        .rounded(px(26.0))
         .bg(palette.bg_card)
-        .border(palette.border_width)
+        .border(palette.border_width_input)
         .border_color(palette.border_color)
-        .shadow(palette.card_shadows())
+        .shadow(palette.button_shadows())
         .cursor_pointer()
         .hover(|style| {
             style
@@ -55,7 +93,7 @@ pub fn interactive_card(
                 .border_color(palette.accent_primary)
                 .bg(palette.bg_input_focus)
         })
-        .active(|style| style.top(px(4.0)).shadow(palette.button_active_shadows()))
+        .active(|style| style.top(px(3.0)).shadow(palette.button_active_shadows()))
         .on_click(on_click)
 }
 

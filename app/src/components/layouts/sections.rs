@@ -1,10 +1,17 @@
+#![allow(dead_code)]
+
 use crate::brand::{colors, ThemeColors, ThemeMode};
-use crate::components::dashboard::{project_card, transaction_row, PROJECTS, TRANSACTIONS};
+use crate::components::dashboard::{
+    expense_category_card, format_rwf, income_stream_card, loan_card, member_pledge_card,
+    project_goal_card, transaction_row, EXPENSE_CATEGORIES, FAMILY_MEMBERS, INCOME_STREAMS, LOANS,
+    PROJECTS, TRANSACTIONS,
+};
 use crate::components::layouts::app_content_width;
 use crate::components::scroll::touch_scrollable_fill;
 use crate::components::ui::{
-    badge, card_header, card_surface, destructive_button, member_avatar, secondary_button,
-    stat_card, AvatarSize, BadgeVariant,
+    badge, card_elevated, card_header, card_surface, compact_primary_button, destructive_button,
+    kawaii_progress_bar, member_avatar, pill_button, secondary_button, stat_card, AvatarSize,
+    BadgeVariant,
 };
 use crate::i18n::{text, Language};
 use crate::icons;
@@ -23,14 +30,14 @@ fn section_header(
         .child(
             div()
                 .text_xl()
-                .font_weight(FontWeight::BOLD)
+                .font_weight(FontWeight::EXTRA_BOLD)
                 .text_color(palette.text_primary)
                 .child(title.into()),
         )
         .child(
             div()
                 .text_sm()
-                .text_color(palette.text_muted)
+                .text_color(palette.text_secondary)
                 .child(subtitle.into()),
         )
 }
@@ -51,7 +58,7 @@ pub fn money_section(
             "money-stat-treasury",
             palette,
             text(language, "dashboard.total_treasury"),
-            "3,450,000 RWF",
+            "4,280,000 RWF",
             Some(text(language, "dashboard.treasury_trend")),
             Some(icons::ICON_WALLET),
             Some(("+14.2%".into(), true)),
@@ -60,20 +67,41 @@ pub fn money_section(
             "money-stat-contributions",
             palette,
             text(language, "dashboard.monthly_contributions"),
-            "780,000 RWF",
+            "+850,000 RWF",
             Some(text(language, "dashboard.contributions_sub")),
             Some(icons::ICON_CREDIT_CARD),
-            Some(("8/10 paid".into(), true)),
+            Some(("+12%".into(), true)),
         )))
         .child(div().flex_1().child(stat_card(
             "money-stat-expenses",
             palette,
             text(language, "dashboard.monthly_expenses"),
-            "240,000 RWF",
+            "-410,000 RWF",
             Some(text(language, "dashboard.expenses_sub")),
             Some(icons::ICON_ARROW_DOWN),
-            Some(("-8%".into(), true)),
+            Some(("-4%".into(), true)),
         )));
+
+    let streams = div().flex().flex_col().gap_2p5().children(
+        INCOME_STREAMS
+            .iter()
+            .enumerate()
+            .map(|(idx, s)| income_stream_card(idx, s, palette)),
+    );
+
+    let categories = div().flex().flex_col().gap_2p5().children(
+        EXPENSE_CATEGORIES
+            .iter()
+            .enumerate()
+            .map(|(idx, c)| expense_category_card(idx, c, palette)),
+    );
+
+    let loans = div().flex().flex_col().gap_2p5().children(
+        LOANS
+            .iter()
+            .enumerate()
+            .map(|(idx, l)| loan_card(idx, l, palette, |_e, _w, _cx| {})),
+    );
 
     let transactions = card_surface(palette)
         .child(card_header(
@@ -103,6 +131,9 @@ pub fn money_section(
                     palette,
                 ))
                 .child(summary_cards)
+                .child(streams)
+                .child(categories)
+                .child(loans)
                 .child(transactions),
         ),
     )
@@ -110,6 +141,7 @@ pub fn money_section(
 
 pub fn projects_section(theme: ThemeMode, language: Language) -> impl IntoElement {
     let palette = colors(theme);
+    let total_saved: i64 = PROJECTS.iter().map(|p| p.saved_rwf).sum();
 
     div().size_full().child(
         touch_scrollable_fill("projects-section-scroll").child(
@@ -125,18 +157,51 @@ pub fn projects_section(theme: ThemeMode, language: Language) -> impl IntoElemen
                 ))
                 .child(
                     card_surface(palette)
-                        .child(card_header(
-                            text(language, "dashboard.active_projects"),
-                            Some("Communal family goals and fundraising progress"),
-                            palette,
-                        ))
+                        .flex_row()
+                        .items_center()
+                        .justify_between()
                         .child(
-                            div().flex().flex_col().gap_3().children(
-                                PROJECTS
-                                    .iter()
-                                    .map(|project| project_card(project, palette)),
-                            ),
-                        ),
+                            div()
+                                .flex()
+                                .flex_col()
+                                .gap_1()
+                                .child(
+                                    div()
+                                        .text_xs()
+                                        .font_weight(FontWeight::BOLD)
+                                        .text_color(palette.text_secondary)
+                                        .child("Total Saved Across Family Plans"),
+                                )
+                                .child(
+                                    div()
+                                        .text_xl()
+                                        .font_weight(FontWeight::EXTRA_BOLD)
+                                        .text_color(palette.accent_primary)
+                                        .child(format_rwf(total_saved)),
+                                ),
+                        )
+                        .child(compact_primary_button(
+                            "projects-sec-new-btn",
+                            "+ New Project",
+                            palette,
+                            |_e, _w, _cx| {},
+                        )),
+                )
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap_3()
+                        .children(PROJECTS.iter().enumerate().map(|(idx, project)| {
+                            project_goal_card(
+                                idx,
+                                project,
+                                false,
+                                palette,
+                                |_e, _w, _cx| {},
+                                |_e, _w, _cx| {},
+                            )
+                        })),
                 ),
         ),
     )
@@ -144,13 +209,13 @@ pub fn projects_section(theme: ThemeMode, language: Language) -> impl IntoElemen
 
 pub fn members_section(theme: ThemeMode, language: Language) -> impl IntoElement {
     let palette = colors(theme);
-    const MEMBERS: [(&str, &str, BadgeVariant); 5] = [
-        ("Bruno Mugabo", "Family Head / Admin", BadgeVariant::Primary),
-        ("Claudine Mugabo", "Treasurer", BadgeVariant::Success),
-        ("Eric Mugabo", "Member", BadgeVariant::Neutral),
-        ("Alice Keza", "Member", BadgeVariant::Neutral),
-        ("Patrick Mugabo", "Youth Member", BadgeVariant::Info),
-    ];
+    let total_pledge: i64 = FAMILY_MEMBERS.iter().map(|m| m.monthly_goal_rwf).sum();
+    let total_contributed: i64 = FAMILY_MEMBERS.iter().map(|m| m.contributed_rwf).sum();
+    let pct = if total_pledge <= 0 {
+        100
+    } else {
+        ((total_contributed * 100) / total_pledge).clamp(0, 100) as u8
+    };
 
     div().size_full().child(
         touch_scrollable_fill("members-section-scroll").child(
@@ -166,38 +231,50 @@ pub fn members_section(theme: ThemeMode, language: Language) -> impl IntoElement
                 ))
                 .child(
                     card_surface(palette)
-                        .child(card_header(
-                            text(language, "dashboard.household_members"),
-                            Some("5 active members in this workspace"),
-                            palette,
-                        ))
+                        .gap_3()
                         .child(
                             div()
                                 .flex()
-                                .flex_col()
-                                .gap_3()
-                                .children(MEMBERS.into_iter().map(|(name, role, variant)| {
+                                .items_center()
+                                .justify_between()
+                                .child(
                                     div()
                                         .flex()
-                                        .items_center()
-                                        .justify_between()
-                                        .flex_wrap()
-                                        .gap_2()
-                                        .p_3()
-                                        .rounded_lg()
-                                        .bg(palette.card)
-                                        .border_1()
-                                        .border_color(palette.border)
-                                        .child(member_avatar(
-                                            name,
-                                            Some(role),
-                                            AvatarSize::Md,
-                                            palette,
-                                        ))
-                                        .child(badge(role, variant, palette))
-                                })),
-                        ),
-                ),
+                                        .flex_col()
+                                        .child(
+                                            div()
+                                                .text_xs()
+                                                .font_weight(FontWeight::BOLD)
+                                                .text_color(palette.text_secondary)
+                                                .child("Family Circle Monthly Pledge"),
+                                        )
+                                        .child(
+                                            div()
+                                                .text_lg()
+                                                .font_weight(FontWeight::EXTRA_BOLD)
+                                                .text_color(palette.text_primary)
+                                                .child(format!(
+                                                    "{} / {} ({}%)",
+                                                    format_rwf(total_contributed),
+                                                    format_rwf(total_pledge),
+                                                    pct
+                                                )),
+                                        ),
+                                )
+                                .child(compact_primary_button(
+                                    "members-sec-invite-btn",
+                                    "+ Invite",
+                                    palette,
+                                    |_e, _w, _cx| {},
+                                )),
+                        )
+                        .child(kawaii_progress_bar(pct, palette.accent_primary, palette)),
+                )
+                .child(div().flex().flex_col().gap_3().children(
+                    FAMILY_MEMBERS.iter().enumerate().map(|(idx, member)| {
+                        member_pledge_card(idx, member, palette, |_e, _w, _cx| {}, |_e, _w, _cx| {})
+                    }),
+                )),
         ),
     )
 }
@@ -241,7 +318,7 @@ where
                             .gap_3()
                             .child(member_avatar(
                                 member_name,
-                                Some("Family Admin"),
+                                Some("Co-Admin · Family Planner"),
                                 AvatarSize::Xl,
                                 palette,
                             ))
@@ -265,18 +342,18 @@ where
                                 .flex_col()
                                 .gap_3()
                                 .child(
-                                    div()
-                                        .flex()
+                                    card_elevated(palette)
+                                        .flex_row()
                                         .items_center()
                                         .justify_between()
-                                        .gap_3()
                                         .child(
                                             div()
                                                 .text_sm()
-                                                .text_color(palette.text_body)
+                                                .font_weight(FontWeight::BOLD)
+                                                .text_color(palette.text_primary)
                                                 .child(text(language, "section.theme_label")),
                                         )
-                                        .child(secondary_button(
+                                        .child(pill_button(
                                             "profile-theme-btn",
                                             theme.label(),
                                             palette,
@@ -286,15 +363,15 @@ where
                                         )),
                                 )
                                 .child(
-                                    div()
-                                        .flex()
+                                    card_elevated(palette)
+                                        .flex_row()
                                         .items_center()
                                         .justify_between()
-                                        .gap_3()
                                         .child(
                                             div()
                                                 .text_sm()
-                                                .text_color(palette.text_body)
+                                                .font_weight(FontWeight::BOLD)
+                                                .text_color(palette.text_primary)
                                                 .child(text(language, "section.language_label")),
                                         )
                                         .child(secondary_button(

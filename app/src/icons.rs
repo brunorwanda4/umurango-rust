@@ -41,6 +41,24 @@ pub const ICON_PEOPLE_ROOF: &str = "people-roof";
 pub const ICON_HOUSE_CHIMNEY_USER: &str = "house-chimney-user";
 pub const ICON_SUN: &str = "sun";
 pub const ICON_MOON: &str = "moon";
+pub const ICON_CHEVRON_LEFT: &str = "chevron-left";
+pub const ICON_ARROW_LEFT: &str = "arrow-left";
+pub const ICON_COINS: &str = "coins";
+pub const ICON_HANDSHAKE: &str = "handshake";
+pub const ICON_CHART_COLUMN: &str = "chart-column";
+pub const ICON_CHART_PIE: &str = "chart-pie";
+pub const ICON_STAR: &str = "star";
+pub const ICON_SEEDLING: &str = "seedling";
+pub const ICON_GRADUATION_CAP: &str = "graduation-cap";
+pub const ICON_TRACTOR: &str = "tractor";
+pub const ICON_BOLT: &str = "bolt";
+pub const ICON_CART_SHOPPING: &str = "cart-shopping";
+pub const ICON_BUILDING_COLUMNS: &str = "building-columns";
+pub const ICON_PAPER_PLANE: &str = "paper-plane";
+pub const ICON_CLOCK: &str = "clock";
+pub const ICON_CALENDAR: &str = "calendar";
+pub const ICON_SLIDERS: &str = "sliders";
+pub const ICON_PALETTE: &str = "palette";
 
 fn icon_data(set: &str, name: &str) -> &'static [u8] {
     let path = format!("{set}/{name}.svg");

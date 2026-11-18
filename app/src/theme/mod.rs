@@ -52,6 +52,14 @@ impl CozyMood {
             Self::Berry => "Berry",
         }
     }
+
+    pub fn swatch_color(self) -> Rgba {
+        match self {
+            Self::Matcha => rgb(0x9BE0B8),
+            Self::Peach => rgb(0xFFAD99),
+            Self::Berry => rgb(0xF7A8C4),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -110,18 +118,33 @@ pub struct StyleTokens {
     // Surfaces
     pub bg_canvas: Rgba,
     pub bg_card: Rgba,
+    pub bg_elevated: Rgba,
+    pub bg_nav: Rgba,
     pub bg_input: Rgba,
     pub bg_input_focus: Rgba,
     pub bg_badge: Rgba,
 
     // Accents & Text
     pub accent_primary: Rgba,
+    pub accent_rim: Rgba,
     pub accent_secondary: Rgba,
     pub accent_link: Rgba,
+    pub accent_gold: Rgba,
     pub text_on_accent: Rgba,
     pub text_primary: Rgba,
     pub text_secondary: Rgba,
     pub text_muted: Rgba,
+
+    // Semantic Financial Tokens
+    pub income_bg: Rgba,
+    pub income_text: Rgba,
+    pub income_border: Rgba,
+    pub expense_bg: Rgba,
+    pub expense_text: Rgba,
+    pub expense_border: Rgba,
+    pub loan_bg: Rgba,
+    pub loan_text: Rgba,
+    pub loan_border: Rgba,
 
     // Geometry & Outlines
     pub border_color: Rgba,
@@ -266,15 +289,17 @@ impl StyleTokens {
     }
 
     pub fn cozy_kawaii(mode: ThemeMode, mood: CozyMood) -> Self {
-        let (accent_primary, accent_secondary, text_on_accent) = match mood {
-            CozyMood::Matcha => (rgb(0x9BE0B8), rgb(0xFFB4A2), rgb(0x1A2B22)),
-            CozyMood::Peach => (rgb(0xFFAD99), rgb(0xFFE099), rgb(0x331914)),
-            CozyMood::Berry => (rgb(0xF7A8C4), rgb(0xA9C9FF), rgb(0x2E1320)),
+        let (accent_primary, accent_rim, accent_secondary, text_on_accent) = match mood {
+            CozyMood::Matcha => (rgb(0x9BE0B8), rgb(0x56A67F), rgb(0xFFB4A2), rgb(0x1A2B22)),
+            CozyMood::Peach => (rgb(0xFFAD99), rgb(0xD4745D), rgb(0xFFE099), rgb(0x331914)),
+            CozyMood::Berry => (rgb(0xF7A8C4), rgb(0xC46A8B), rgb(0xA9C9FF), rgb(0x2E1320)),
         };
 
         let (
             bg_canvas,
             bg_card,
+            bg_elevated,
+            bg_nav,
             bg_input,
             bg_input_focus,
             bg_badge,
@@ -287,13 +312,21 @@ impl StyleTokens {
             success,
             accent_gold,
             accent_blue,
+            income_text,
+            income_border,
+            expense_text,
+            expense_border,
+            loan_text,
+            loan_border,
         ) = match mode {
             ThemeMode::Dark => (
                 rgb(0x1A151B),
                 rgb(0x251E27),
+                rgb(0x302734),
+                rgb(0x211B24),
                 rgb(0x1D1720),
                 rgb(0x221B26),
-                rgb(0x2E2532),
+                rgb(0x322836),
                 rgb(0x524458),
                 rgb(0x110D12),
                 rgb(0xFAF2EA),
@@ -301,15 +334,23 @@ impl StyleTokens {
                 rgb(0x8E7F91),
                 rgb(0xFF7B89),
                 rgb(0x9BE0B8),
-                rgb(0xFFE099),
+                rgb(0xF9D67A),
                 rgb(0xA9C9FF),
+                rgb(0x8CE0B8),
+                rgb(0x489974),
+                rgb(0xFFA69E),
+                rgb(0xB85D56),
+                rgb(0xF9D67A),
+                rgb(0xB38E36),
             ),
             ThemeMode::Light => (
                 rgb(0xFDF7EE),
                 rgb(0xFFFDF9),
+                rgb(0xF6EDE0),
+                rgb(0xFFFAF2),
                 rgb(0xF7EFE4),
                 rgb(0xFFFBF5),
-                rgb(0xEFE4D4),
+                rgb(0xF1E3CF),
                 rgb(0x4A3728),
                 rgb(0xE6D8C5),
                 rgb(0x3B2B20),
@@ -319,8 +360,18 @@ impl StyleTokens {
                 rgb(0x2F8F5B),
                 rgb(0xC97D1B),
                 rgb(0x3B76B8),
+                rgb(0x277351),
+                rgb(0x489974),
+                rgb(0xB3433B),
+                rgb(0xB85D56),
+                rgb(0x8F6814),
+                rgb(0xB38E36),
             ),
         };
+
+        let income_bg = rgb(0x8CE0B8).opacity(0.16);
+        let expense_bg = rgb(0xFFA69E).opacity(0.16);
+        let loan_bg = rgb(0xF9D67A).opacity(0.16);
 
         let accent_link = accent_primary;
         let rim_hsla: Hsla = shadow_rim.into();
@@ -393,16 +444,29 @@ impl StyleTokens {
             mood,
             bg_canvas,
             bg_card,
+            bg_elevated,
+            bg_nav,
             bg_input,
             bg_input_focus,
             bg_badge,
             accent_primary,
+            accent_rim,
             accent_secondary,
             accent_link,
+            accent_gold,
             text_on_accent,
             text_primary,
             text_secondary,
             text_muted,
+            income_bg,
+            income_text,
+            income_border,
+            expense_bg,
+            expense_text,
+            expense_border,
+            loan_bg,
+            loan_text,
+            loan_border,
             border_color,
             border_width: px(3.0),
             border_width_input: px(2.5),
