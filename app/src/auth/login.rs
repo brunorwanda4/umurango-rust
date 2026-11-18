@@ -313,6 +313,7 @@ impl Render for LoginView {
                     .child({
                         let view = view_entity.clone();
                         Button::new("sign-in")
+                            .mt_4()
                             .label(if self.is_authenticating {
                                 text(self.language, "login.signing_in")
                             } else {
