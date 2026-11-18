@@ -2,10 +2,7 @@
 
 use crate::auth::layout::{auth_footer_prompt, auth_layout, auth_submit_section};
 use crate::brand::{apply_theme, colors, ThemeMode};
-use crate::components::{
-    checkbox::checkbox,
-    input::{input_field, password_field},
-};
+use crate::components::ui::{checkbox, input_field, password_field};
 use crate::i18n::{text, Language};
 use gpui_kit::component::input::InputState;
 use gpui_kit::*;

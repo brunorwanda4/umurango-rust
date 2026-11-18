@@ -160,8 +160,8 @@ entries at the end, and include validation.
   - Added new Font Awesome Free icons in `app/src/icons.rs` (`ICON_CIRCLE_CHECK`, `ICON_CIRCLE_XMARK`,
     `ICON_CIRCLE_INFO`, `ICON_TRIANGLE_EXCLAMATION`, `ICON_MAGNIFYING_GLASS`, `ICON_WALLET`,
     `ICON_CREDIT_CARD`, `ICON_ARROW_UP`, `ICON_ARROW_DOWN`).
-  - Preserved backward compatibility in `app/src/components/input.rs`, `app/src/components/checkbox.rs`,
-    and `app/src/components/mod.rs`, and refactored `app/src/auth/family_setup.rs` to use `option_card`.
+  - Preserved backward compatibility in `app/src/components/mod.rs` and refactored `app/src/auth/family_setup.rs` to use `option_card`.
+  - Consolidated `input` and `checkbox` components exclusively under `app/src/components/ui/`, removing redundant wrapper files `app/src/components/input.rs` and `app/src/components/checkbox.rs`, and updated auth views to import directly from `components::ui`.
   - Validated via `cargo fmt --all -- --check`, `cargo check --workspace`, and `cargo test -p umuryango-app --lib`.
 - Native app now reopens on the last visited auth screen. Navigation is saved
   to a new local SQLite `app_state` key/value table on every screen change

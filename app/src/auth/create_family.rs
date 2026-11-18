@@ -3,7 +3,7 @@
 use crate::auth::client::api_create_family;
 use crate::auth::layout::auth_layout;
 use crate::brand::{apply_theme, colors, ThemeMode};
-use crate::components::input::{input_field, text_input};
+use crate::components::ui::{input_field, text_input};
 use crate::i18n::{text, Language};
 use crate::icons;
 use gpui_kit::base::Disableable;
