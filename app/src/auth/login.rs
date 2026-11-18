@@ -6,7 +6,6 @@ use crate::i18n::{text, Language};
 use crate::icons;
 use gpui_kit::component::{
     button::{Button, ButtonVariants},
-    checkbox::Checkbox,
     input::{Input, InputState},
 };
 use gpui_kit::prelude::FluentBuilder;
@@ -265,17 +264,41 @@ impl Render for LoginView {
                     )
                     .child({
                         let view = view_entity.clone();
-                        Checkbox::new("remember-me")
-                            .checked(self.remember_me)
-                            .text_color(palette.text_body)
+                        let checked = self.remember_me;
+                        div()
+                            .id("remember-me")
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .cursor_pointer()
+                            .child(
+                                div()
+                                    .w(px(18.))
+                                    .h(px(18.))
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .rounded(px(3.))
+                                    .border_1()
+                                    .border_color(palette.border)
+                                    .when(checked, |this| {
+                                        this.bg(palette.primary)
+                                            .border_color(palette.primary)
+                                            .child(
+                                                icons::icon("check")
+                                                    .size(px(12.))
+                                                    .text_color(palette.text_primary),
+                                            )
+                                    }),
+                            )
                             .child(
                                 div()
                                     .text_color(palette.text_body)
                                     .child(text(self.language, "login.remember_me")),
                             )
-                            .on_click(move |checked, _window, cx| {
+                            .on_click(move |_event, _window, cx| {
                                 view.update(cx, |this, cx| {
-                                    this.remember_me = *checked;
+                                    this.remember_me = !this.remember_me;
                                     cx.notify();
                                 });
                             })
@@ -284,6 +307,7 @@ impl Render for LoginView {
             .child({
                 let view = view_entity.clone();
                 Button::new("sign-in")
+                    .mt_4()
                     .label(if self.is_authenticating {
                         text(self.language, "login.signing_in")
                     } else {
@@ -300,6 +324,7 @@ impl Render for LoginView {
                     .flex()
                     .items_center()
                     .justify_center()
+                    .mt_4()
                     .gap_1()
                     .text_xs()
                     .text_color(palette.text_muted)

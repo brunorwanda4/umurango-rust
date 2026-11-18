@@ -27,3 +27,7 @@ entries at the end, and include validation.
   screen switching between Sign In and Dashboard in `app/src/main.rs`.
 - Validated via `cargo check -p umuryango-app`, `cargo fmt --all -- --check`,
   `cargo test -p umuryango-shared -p umuryango-backend`, and `bun run check`.
+- Added vertical spacing between the login remember-me checkbox and sign-in
+  button.
+- Added an explicit Font Awesome check icon and controlled checked state to
+  the login remember-me checkbox.
