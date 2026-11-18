@@ -75,6 +75,11 @@ entries at the end, and include validation.
 - Validated via `cargo fmt --all -- --check`, `cargo check -p umuryango-backend`,
   and `cargo test -p umuryango-shared -p umuryango-backend`.
 
+## 2026-11-18
 
-
+- Added local `.env` files for workspace and backend PostgreSQL configuration
+  using the local `postgres` password, and created `umuryango` and
+  `umuryango_test` databases.
+- Initialized the main database schema successfully; verified 31 public tables
+  are present.
 
