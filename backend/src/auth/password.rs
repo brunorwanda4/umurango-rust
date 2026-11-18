@@ -4,12 +4,19 @@ use argon2::{
     password_hash::{
         phc::PasswordHash, Error as PasswordHashError, PasswordHasher, PasswordVerifier,
     },
-    Argon2,
+    Algorithm, Argon2, Params, Version,
 };
+
+fn argon2_instance() -> Argon2<'static> {
+    // Tuned Argon2id parameters (4 MiB memory, 1 iteration, 1 lane) for fast, responsive
+    // hashing and verification in both dev and release builds while keeping Argon2id protection.
+    let params = Params::new(4096, 1, 1, None).unwrap_or_default();
+    Argon2::new(Algorithm::Argon2id, Version::V0x13, params)
+}
 
 /// Hashes a plaintext password using Argon2id with a cryptographically secure random salt.
 pub fn hash_password(password: &str) -> Result<String, PasswordHashError> {
-    let argon2 = Argon2::default();
+    let argon2 = argon2_instance();
     let password_hash = argon2.hash_password(password.as_bytes())?;
     Ok(password_hash.to_string())
 }
@@ -20,7 +27,7 @@ pub fn verify_password(hash: &str, password: &str) -> bool {
         Ok(h) => h,
         Err(_) => return false,
     };
-    Argon2::default()
+    argon2_instance()
         .verify_password(password.as_bytes(), &parsed_hash)
         .is_ok()
 }

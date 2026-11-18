@@ -65,51 +65,37 @@ pub async fn register_user(
     let clean_name = req.name.trim();
     let clean_email = req.email.as_ref().map(|e| e.trim().to_lowercase());
 
-    // 1. Check for duplicate phone or email
-    let duplicate_check = sqlx::query(
+    // 1. Check for duplicate phone or email concurrently with offloaded Argon2id password hashing
+    let password_owned = req.password.clone();
+    let hash_task = tokio::task::spawn_blocking(move || hash_password(&password_owned));
+
+    let duplicate_fut = sqlx::query(
         r#"
         SELECT "id" FROM "User"
-        WHERE ("phoneNumber" = $1 AND $1 IS NOT NULL)
-           OR ("email" = $2 AND $2 IS NOT NULL)
+        WHERE "phoneNumber" = $1
+           OR ($2 IS NOT NULL AND "email" = $2)
         LIMIT 1;
         "#,
     )
     .bind(clean_phone)
     .bind(clean_email.as_deref())
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| ServiceError::Internal(e.to_string()))?;
+    .fetch_optional(pool);
 
+    let (duplicate_res, hash_res) = tokio::join!(duplicate_fut, hash_task);
+
+    let duplicate_check = duplicate_res.map_err(|e| ServiceError::Internal(e.to_string()))?;
     if duplicate_check.is_some() {
         return Err(ServiceError::Conflict(
             "An account with this phone number or email already exists".into(),
         ));
     }
 
-    // 2. Hash password using Argon2id
-    let password_hash = hash_password(&req.password)
+    let password_hash = hash_res
+        .map_err(|e| ServiceError::Internal(format!("Password task error: {e}")))?
         .map_err(|e| ServiceError::Internal(format!("Password hashing error: {e}")))?;
 
-    // 3. Insert User
+    // 2. Provision user, primary family workspace, memberships, and audit log in a single round-trip
     let user_id = Uuid::new_v4().to_string();
-    sqlx::query(
-        r#"
-        INSERT INTO "User" (
-            "id", "fullName", "phoneNumber", "email", "passwordHash", "status", "createdAt", "updatedAt"
-        )
-        VALUES ($1, $2, $3, $4, $5, 'ACTIVE', NOW(), NOW());
-        "#,
-    )
-    .bind(&user_id)
-    .bind(clean_name)
-    .bind(clean_phone)
-    .bind(clean_email.as_deref())
-    .bind(&password_hash)
-    .execute(pool)
-    .await
-    .map_err(|e| ServiceError::Internal(format!("Failed to create user: {e}")))?;
-
-    // 4. Provision primary family workspace for the new member
     let family_id = Uuid::new_v4().to_string();
     let family_slug = format!(
         "{}-{}",
@@ -118,85 +104,77 @@ pub async fn register_user(
     );
     let family_name = format!("Umuryango wa {}", clean_name);
     let join_code = generate_join_code();
+    let member_id = Uuid::new_v4().to_string();
+    let audit_id = Uuid::new_v4().to_string();
 
-    let _ = sqlx::query(
+    sqlx::query(
         r#"
-        INSERT INTO "Family" (
-            "id", "name", "slug", "joinCode", "country", "defaultCurrency", "contributionCadence",
-            "type", "createdById", "personalOwnerId", "createdAt", "updatedAt"
+        WITH new_user AS (
+            INSERT INTO "User" (
+                "id", "fullName", "phoneNumber", "email", "passwordHash", "status", "createdAt", "updatedAt"
+            )
+            VALUES ($1, $2, $3, $4, $5, 'ACTIVE', NOW(), NOW())
+            RETURNING "id"
+        ),
+        new_family AS (
+            INSERT INTO "Family" (
+                "id", "name", "slug", "joinCode", "country", "defaultCurrency", "contributionCadence",
+                "type", "createdById", "personalOwnerId", "createdAt", "updatedAt"
+            )
+            SELECT $6, $7, $8, $9, 'RW', 'RWF', 'MONTHLY', 'NUCLEAR', "id", "id", NOW(), NOW()
+            FROM new_user
+            ON CONFLICT DO NOTHING
+        ),
+        head_member AS (
+            INSERT INTO "FamilyMember" (
+                "id", "familyId", "userId", "authority", "capabilities", "createdAt", "updatedAt"
+            )
+            SELECT $10, $6, "id", 'HEAD', '{}', NOW(), NOW()
+            FROM new_user
+            ON CONFLICT DO NOTHING
+        ),
+        invited_members AS (
+            INSERT INTO "FamilyMember" (
+                "id", "familyId", "userId", "authority", "capabilities", "createdAt", "updatedAt"
+            )
+            SELECT md5(random()::text || clock_timestamp()::text || fi."id"), fi."familyId", u."id", 'MEMBER', '{}', NOW(), NOW()
+            FROM "FamilyInvite" fi
+            CROSS JOIN new_user u
+            WHERE fi."phone" = $3 AND fi."status" = 'PENDING'
+            ON CONFLICT ("familyId", "userId") DO NOTHING
         )
-        VALUES ($1, $2, $3, $4, 'RW', 'RWF', 'MONTHLY', 'NUCLEAR', $5, $5, NOW(), NOW())
-        ON CONFLICT DO NOTHING;
+        INSERT INTO "AuthAuditEvent" ("id", "userId", "emailOrMobile", "action", "result", "createdAt")
+        SELECT $11, "id", $3, 'REGISTER', 'SUCCESS', NOW()
+        FROM new_user;
         "#,
     )
+    .bind(&user_id)
+    .bind(clean_name)
+    .bind(clean_phone)
+    .bind(clean_email.as_deref())
+    .bind(&password_hash)
     .bind(&family_id)
     .bind(&family_name)
     .bind(&family_slug)
     .bind(&join_code)
-    .bind(&user_id)
-    .execute(pool)
-    .await;
-
-    let member_id = Uuid::new_v4().to_string();
-    let _ = sqlx::query(
-        r#"
-        INSERT INTO "FamilyMember" (
-            "id", "familyId", "userId", "authority", "capabilities", "createdAt", "updatedAt"
-        )
-        VALUES ($1, $2, $3, 'HEAD', '{}', NOW(), NOW())
-        ON CONFLICT DO NOTHING;
-        "#,
-    )
     .bind(&member_id)
-    .bind(&family_id)
-    .bind(&user_id)
+    .bind(&audit_id)
     .execute(pool)
-    .await;
-
-    // Check if user was added by phone number to other families, and associate them
-    let invited_families = sqlx::query_scalar::<_, String>(
-        r#"SELECT "familyId" FROM "FamilyInvite" WHERE "phone" = $1 AND "status" = 'PENDING';"#,
-    )
-    .bind(clean_phone)
-    .fetch_all(pool)
     .await
-    .unwrap_or_default();
+    .map_err(|e| {
+        if let sqlx::Error::Database(db_err) = &e {
+            if db_err.is_unique_violation() {
+                return ServiceError::Conflict(
+                    "An account with this phone number or email already exists".into(),
+                );
+            }
+        }
+        ServiceError::Internal(format!("Failed to create user: {e}"))
+    })?;
 
-    for inv_fam_id in invited_families {
-        let inv_member_id = Uuid::new_v4().to_string();
-        let _ = sqlx::query(
-            r#"
-            INSERT INTO "FamilyMember" (
-                "id", "familyId", "userId", "authority", "capabilities", "createdAt", "updatedAt"
-            )
-            VALUES ($1, $2, $3, 'MEMBER', '{}', NOW(), NOW())
-            ON CONFLICT ("familyId", "userId") DO NOTHING;
-            "#,
-        )
-        .bind(&inv_member_id)
-        .bind(&inv_fam_id)
-        .bind(&user_id)
-        .execute(pool)
-        .await;
-    }
-
-    // 5. Generate token
+    // 3. Generate token
     let token = create_token(&user_id, clean_name, jwt_secret, 30 * 86400)
         .map_err(|e| ServiceError::Internal(format!("Token creation error: {e}")))?;
-
-    // 6. Record audit event
-    let audit_id = Uuid::new_v4().to_string();
-    let _ = sqlx::query(
-        r#"
-        INSERT INTO "AuthAuditEvent" ("id", "userId", "emailOrMobile", "action", "result", "createdAt")
-        VALUES ($1, $2, $3, 'REGISTER', 'SUCCESS', NOW());
-        "#,
-    )
-    .bind(&audit_id)
-    .bind(&user_id)
-    .bind(clean_phone)
-    .execute(pool)
-    .await;
 
     Ok(AuthResponse {
         user: UserDto {
@@ -281,8 +259,13 @@ pub async fn login_user(
         }
     };
 
-    // 2. Constant-time Argon2id password verification
-    if !verify_password(&hash, &req.password) {
+    // 2. Constant-time Argon2id password verification offloaded to blocking pool
+    let password_owned = req.password.clone();
+    let is_valid = tokio::task::spawn_blocking(move || verify_password(&hash, &password_owned))
+        .await
+        .unwrap_or(false);
+
+    if !is_valid {
         record_auth_audit(
             pool,
             Some(&user_id),
@@ -298,8 +281,16 @@ pub async fn login_user(
         ));
     }
 
-    // 3. Load user's primary family membership
-    let family_row = sqlx::query(
+    // 3. Generate JWT token
+    let token = create_token(&user_id, &full_name, jwt_secret, 30 * 86400)
+        .map_err(|e| ServiceError::Internal(format!("Token error: {e}")))?;
+
+    // 4. Load user's primary family membership and record session & audit concurrently
+    let session_id = Uuid::new_v4().to_string();
+    let audit_id = Uuid::new_v4().to_string();
+    let token_prefix = &token[..32.min(token.len())];
+
+    let family_fut = sqlx::query(
         r#"
         SELECT f."name" AS "familyName", m."authority"::text AS "role"
         FROM "FamilyMember" m
@@ -310,50 +301,40 @@ pub async fn login_user(
         "#,
     )
     .bind(&user_id)
-    .fetch_optional(pool)
-    .await
-    .unwrap_or(None);
+    .fetch_optional(pool);
 
-    let (family_name, role) = match family_row {
+    let session_audit_fut = sqlx::query(
+        r#"
+        WITH ins_session AS (
+            INSERT INTO "AuthSession" (
+                "id", "userId", "refreshTokenHash", "userAgent", "ipAddress", "expiresAt", "createdAt", "updatedAt"
+            )
+            VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '30 days', NOW(), NOW())
+        )
+        INSERT INTO "AuthAuditEvent" (
+            "id", "userId", "emailOrMobile", "action", "result", "ipAddress", "userAgent", "createdAt"
+        )
+        VALUES ($6, $2, $7, 'LOGIN', 'SUCCESS', $5, $4, NOW());
+        "#,
+    )
+    .bind(&session_id)
+    .bind(&user_id)
+    .bind(token_prefix)
+    .bind(user_agent)
+    .bind(ip_address)
+    .bind(&audit_id)
+    .bind(identifier)
+    .execute(pool);
+
+    let (family_res, _) = tokio::join!(family_fut, session_audit_fut);
+
+    let (family_name, role) = match family_res.unwrap_or(None) {
         Some(fr) => (
             Some(fr.get::<String, _>("familyName")),
             Some(fr.get::<String, _>("role")),
         ),
         None => (None, None),
     };
-
-    // 4. Generate JWT token
-    let token = create_token(&user_id, &full_name, jwt_secret, 30 * 86400)
-        .map_err(|e| ServiceError::Internal(format!("Token error: {e}")))?;
-
-    // 5. Record session & audit event
-    let session_id = Uuid::new_v4().to_string();
-    let _ = sqlx::query(
-        r#"
-        INSERT INTO "AuthSession" (
-            "id", "userId", "refreshTokenHash", "userAgent", "ipAddress", "expiresAt", "createdAt", "updatedAt"
-        )
-        VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '30 days', NOW(), NOW());
-        "#,
-    )
-    .bind(&session_id)
-    .bind(&user_id)
-    .bind(&token[..32.min(token.len())])
-    .bind(user_agent)
-    .bind(ip_address)
-    .execute(pool)
-    .await;
-
-    record_auth_audit(
-        pool,
-        Some(&user_id),
-        identifier,
-        "LOGIN",
-        "SUCCESS",
-        ip_address,
-        user_agent,
-    )
-    .await;
 
     Ok(AuthResponse {
         user: UserDto {
