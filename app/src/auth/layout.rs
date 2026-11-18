@@ -1,7 +1,10 @@
 use crate::brand::{colors, ThemeMode};
 use crate::i18n::Language;
 use crate::icons;
-use gpui_kit::component::button::{Button, ButtonVariants};
+use gpui_kit::component::{
+    button::{Button, ButtonVariants},
+    scroll::ScrollableElement,
+};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use std::rc::Rc;
@@ -59,10 +62,12 @@ where
                 .flex_col()
                 .w(px(440.0))
                 .max_w_full()
+                .max_h_full()
                 .gap_5()
                 .p_8()
                 .rounded_xl()
                 .bg(palette.card)
+                .overflow_y_scrollbar()
                 .child(
                     img(Arc::new(Image::from_bytes(
                         ImageFormat::Png,

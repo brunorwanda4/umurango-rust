@@ -4,7 +4,10 @@ use crate::auth::layout::{auth_footer_prompt, auth_layout};
 use crate::brand::{apply_theme, colors, ThemeColors, ThemeMode};
 use crate::i18n::{text, Language};
 use crate::icons;
-use gpui_kit::component::button::{Button, ButtonVariants};
+use gpui_kit::component::{
+    button::{Button, ButtonVariants},
+    scroll::ScrollableElement,
+};
 use gpui_kit::*;
 
 #[derive(Clone, Debug)]
@@ -104,6 +107,9 @@ impl Render for TermsView {
                     .flex()
                     .flex_col()
                     .gap_2()
+                    .max_h(px(260.))
+                    .pr_2()
+                    .overflow_y_scrollbar()
                     .child(charter_section(
                         palette,
                         text(self.language, "terms.section1_title"),
