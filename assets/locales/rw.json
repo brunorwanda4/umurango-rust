@@ -1,4 +1,5 @@
 {
+  "login.title": "Kwinjira",
   "login.phone_label": "Nimero ya telefone",
   "login.phone_placeholder": "Nimero ya telefone cyangwa indangamuntu y'umunyamuryango",
   "login.password_label": "Ijambo ry'ibanga cyangwa PIN y'umutekano",
@@ -14,6 +15,7 @@
   "login.create_account": "Fungura konti",
   "login.email_required": "Andika nimero ya telefone cyangwa indangamuntu y'umunyamuryango.",
   "login.password_required": "Ijambo ry'ibanga cyangwa PIN bigomba kugira nibura inyuguti 4.",
+  "register.title": "Fungura konti",
   "register.name_label": "Amazina yombi",
   "register.name_placeholder": "Andika amazina yawe yombi",
   "register.phone_label": "Nimero ya telefone",

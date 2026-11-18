@@ -282,6 +282,7 @@ impl Render for LoginView {
         auth_layout(
             self.theme,
             self.language,
+            text(self.language, "login.title"),
             language_change,
             theme_change,
             content,

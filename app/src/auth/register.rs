@@ -295,6 +295,7 @@ impl Render for RegisterView {
         auth_layout(
             self.theme,
             self.language,
+            text(self.language, "register.title"),
             language_change,
             theme_change,
             content,
@@ -330,6 +331,8 @@ mod tests {
     #[test]
     fn registration_locale_keys_exist_in_both_languages() {
         for key in [
+            "login.title",
+            "register.title",
             "register.name_label",
             "register.name_placeholder",
             "register.phone_label",

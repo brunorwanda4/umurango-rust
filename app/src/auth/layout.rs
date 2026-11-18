@@ -12,6 +12,7 @@ type LanguageChangeHandler = Rc<dyn Fn(Language, &mut Window, &mut App)>;
 pub fn auth_layout<L, T, C>(
     theme: ThemeMode,
     language: Language,
+    title: impl Into<SharedString>,
     on_language_change: L,
     on_theme_change: T,
     content: C,
@@ -69,6 +70,13 @@ where
                     )))
                     .w(px(190.0))
                     .h(px(32.0)),
+                )
+                .child(
+                    div()
+                        .text_xl()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .text_color(palette.text_primary)
+                        .child(title.into()),
                 )
                 .child(content),
         )

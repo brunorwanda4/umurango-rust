@@ -43,7 +43,10 @@ entries at the end, and include validation.
 - Implemented the native registration view in `app/src/auth/register.rs` with
   name, phone number, and password inputs, localized strings (`en.json` and
   `rw.json`), and Login/Register screen navigation in `app/src/main.rs`.
+- Added localized page titles (`Login` / `Create account`) to the shared
+  `auth_layout` for both `LoginView` and `RegisterView`.
 - Validated via `cargo fmt --all -- --check`,
   `cargo check -p umuryango-app --all-targets`, and
   `cargo test -p umuryango-app --lib` (linking GUI test binaries requires host
   `libxkbcommon-x11`).
+
