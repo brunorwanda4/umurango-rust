@@ -12,66 +12,6 @@ type LanguageChangeHandler = Rc<dyn Fn(Language, &mut Window, &mut App)>;
 type ThemeChangeHandler = Rc<dyn Fn(ThemeMode, &mut App)>;
 type MoodChangeHandler = Rc<dyn Fn(CozyMood, &mut App)>;
 
-pub fn kawaii_family_hearth_icon(palette: StyleTokens) -> impl IntoElement {
-    let figure = |size_head: Pixels, size_body_w: Pixels, size_body_h: Pixels, tint: Rgba| {
-        div()
-            .flex()
-            .flex_col()
-            .items_center()
-            .gap(px(1.5))
-            .child(
-                div()
-                    .w(size_head)
-                    .h(size_head)
-                    .rounded_full()
-                    .bg(tint)
-                    .border(px(1.5))
-                    .border_color(palette.border_color),
-            )
-            .child(
-                div()
-                    .w(size_body_w)
-                    .h(size_body_h)
-                    .rounded_full()
-                    .bg(tint)
-                    .border(px(1.5))
-                    .border_color(palette.border_color),
-            )
-    };
-
-    div()
-        .id("kawaii-family-hearth")
-        .w(px(54.0))
-        .h(px(54.0))
-        .flex_shrink_0()
-        .flex()
-        .flex_col()
-        .items_center()
-        .justify_center()
-        .gap(px(2.0))
-        .rounded(px(18.0))
-        .bg(palette.bg_input)
-        .border(palette.border_width)
-        .border_color(palette.border_color)
-        .shadow(palette.checkbox_shadows())
-        .child(
-            div().flex().items_center().justify_center().child(
-                icons::icon(icons::ICON_HEART)
-                    .size(px(13.0))
-                    .text_color(palette.accent_secondary),
-            ),
-        )
-        .child(
-            div()
-                .flex()
-                .items_end()
-                .justify_center()
-                .gap(px(4.0))
-                .child(figure(px(9.0), px(13.0), px(10.0), palette.accent_primary))
-                .child(figure(px(8.0), px(12.0), px(9.0), palette.accent_secondary)),
-        )
-}
-
 pub fn cozy_header_switcher<T, M>(
     theme: ThemeMode,
     mood: CozyMood,
@@ -84,106 +24,42 @@ where
     M: Fn(CozyMood, &mut App) + 'static,
 {
     let on_theme: ThemeChangeHandler = Rc::new(on_theme_change);
-    let on_mood: MoodChangeHandler = Rc::new(on_mood_change);
 
-    let mood_dot_color = |m: CozyMood| match m {
-        CozyMood::Matcha => rgb(0x9BE0B8),
-        CozyMood::Peach => rgb(0xFFAD99),
-        CozyMood::Berry => rgb(0xF7A8C4),
-    };
-
-    div()
-        .flex()
-        .items_center()
-        .gap_2()
-        .child(
-            div()
-                .flex()
-                .items_center()
-                .gap_1()
-                .p_1()
-                .rounded_full()
-                .bg(palette.bg_input)
-                .border(palette.border_width_input)
-                .border_color(palette.border_color)
-                .shadow(palette.checkbox_shadows())
-                .children(
-                    CozyMood::ALL
-                        .into_iter()
-                        .enumerate()
-                        .map(|(idx, candidate)| {
-                            let selected = candidate == mood;
-                            let on_mood = on_mood.clone();
-                            let dot = mood_dot_color(candidate);
-
-                            div()
-                                .id(("cozy-mood-pill", idx))
-                                .cursor_pointer()
-                                .flex()
-                                .items_center()
-                                .gap_1p5()
-                                .px_2p5()
-                                .py_1()
-                                .rounded_full()
-                                .text_xs()
-                                .font_weight(FontWeight::BOLD)
-                                .when(selected, |this| {
-                                    this.bg(palette.accent_primary)
-                                        .text_color(palette.text_on_accent)
-                                })
-                                .when(!selected, |this| {
-                                    this.text_color(palette.text_secondary)
-                                        .hover(|s| s.bg(palette.bg_card))
-                                })
-                                .child(
-                                    div()
-                                        .w(px(8.0))
-                                        .h(px(8.0))
-                                        .rounded_full()
-                                        .bg(dot)
-                                        .border(px(1.5))
-                                        .border_color(palette.border_color),
-                                )
-                                .child(candidate.label())
-                                .on_click(move |_event, _window, cx| on_mood(candidate, cx))
-                        }),
-                ),
-        )
-        .child({
-            let on_theme = on_theme.clone();
-            let icon_name = if theme == ThemeMode::Dark {
-                icons::ICON_SUN
-            } else {
-                icons::ICON_MOON
-            };
-            div()
-                .id("auth-theme-toggle")
-                .cursor_pointer()
-                .flex()
-                .items_center()
-                .gap_1p5()
-                .px_3()
-                .py_1p5()
-                .rounded_full()
-                .bg(palette.bg_input)
-                .border(palette.border_width_input)
-                .border_color(palette.border_color)
-                .shadow(palette.checkbox_shadows())
-                .text_xs()
-                .font_weight(FontWeight::BOLD)
-                .text_color(palette.text_primary)
-                .hover(|s| {
-                    s.bg(palette.bg_input_focus)
-                        .border_color(palette.accent_primary)
-                })
-                .child(
-                    icons::icon(icon_name)
-                        .size(px(13.0))
-                        .text_color(palette.accent_primary),
-                )
-                .child(theme.short_label())
-                .on_click(move |_event, _window, cx| on_theme(theme.toggle(), cx))
-        })
+    div().flex().items_center().gap_2().child({
+        let on_theme = on_theme.clone();
+        let icon_name = if theme == ThemeMode::Dark {
+            icons::ICON_SUN
+        } else {
+            icons::ICON_MOON
+        };
+        div()
+            .id("auth-theme-toggle")
+            .cursor_pointer()
+            .flex()
+            .items_center()
+            .gap_1p5()
+            .px_3()
+            .py_1p5()
+            .rounded_full()
+            .bg(palette.bg_input)
+            .border(palette.border_width_input)
+            .border_color(palette.border_color)
+            .shadow(palette.checkbox_shadows())
+            .text_xs()
+            .font_weight(FontWeight::BOLD)
+            .text_color(palette.text_primary)
+            .hover(|s| {
+                s.bg(palette.bg_input_focus)
+                    .border_color(palette.accent_primary)
+            })
+            .child(
+                icons::icon(icon_name)
+                    .size(px(13.0))
+                    .text_color(palette.accent_primary),
+            )
+            .child(theme.short_label())
+            .on_click(move |_event, _window, cx| on_theme(theme.toggle(), cx))
+    })
 }
 
 pub fn auth_layout<L, T, C>(
@@ -269,33 +145,27 @@ where
                 .gap_5()
                 .p_8()
                 .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .justify_between()
-                        .gap_3()
-                        .child(
-                            div()
-                                .flex()
-                                .flex_col()
-                                .gap_2()
-                                .child(
-                                    img(Arc::new(Image::from_bytes(
-                                        ImageFormat::Png,
-                                        theme.wordmark().to_vec(),
-                                    )))
-                                    .w(px(190.0))
-                                    .h(px(32.0)),
-                                )
-                                .child(
-                                    div()
-                                        .text_2xl()
-                                        .font_weight(FontWeight::BOLD)
-                                        .text_color(palette.text_primary)
-                                        .child(title.into()),
-                                ),
-                        )
-                        .child(kawaii_family_hearth_icon(palette)),
+                    div().flex().items_center().justify_between().gap_3().child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap_2()
+                            .child(
+                                img(Arc::new(Image::from_bytes(
+                                    ImageFormat::Png,
+                                    theme.wordmark().to_vec(),
+                                )))
+                                .w(px(190.0))
+                                .h(px(32.0)),
+                            )
+                            .child(
+                                div()
+                                    .text_2xl()
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(palette.text_primary)
+                                    .child(title.into()),
+                            ),
+                    ),
                 )
                 .child(content),
         )
