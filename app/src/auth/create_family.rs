@@ -220,12 +220,6 @@ impl Render for CreateFamilyView {
             .flex()
             .flex_col()
             .gap_4()
-            .child(
-                div()
-                    .text_xs()
-                    .text_color(palette.text_muted)
-                    .child(text(self.language, "create_family.subtitle")),
-            )
             .child(input_field(
                 palette,
                 text(self.language, "create_family.name_label"),
