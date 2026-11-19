@@ -63,6 +63,7 @@ pub struct DashboardView {
     pub(super) entry_category_return_modal: Option<EntryModalKind>,
     pub(super) entry_category_icon: String,
     pub(super) entry_category_color: String,
+    pub(super) entry_category_color_input: Entity<InputState>,
     pub(super) entry_category_desc_input: Entity<TextareaState>,
     pub(super) entry_category_icon_input: Entity<InputState>,
     pub(super) saved_tx_title: String,
@@ -110,11 +111,35 @@ impl DashboardView {
         let search_state = cx.new(|cx| {
             InputState::new(window, cx).placeholder(text(language, "dashboard.search_placeholder"))
         });
+        cx.observe(&search_state, |_this, _input, cx| {
+            cx.notify();
+        })
+        .detach();
+
         let entry_title_input = cx.new(|cx| InputState::new(window, cx));
         let entry_secondary_input = cx.new(|cx| InputState::new(window, cx));
         let entry_amount_input = cx.new(|cx| InputState::new(window, cx));
         let entry_category_desc_input = cx.new(|cx| TextareaState::new(window, cx));
         let entry_category_icon_input = cx.new(|cx| InputState::new(window, cx));
+        cx.observe(&entry_category_icon_input, |_this, _input, cx| {
+            cx.notify();
+        })
+        .detach();
+
+        let entry_category_color_input = cx.new(|cx| InputState::new(window, cx));
+        cx.observe(&entry_category_color_input, |this, input, cx| {
+            let val = input.read(cx).value().trim().to_string();
+            if !val.is_empty() {
+                let hex = if val.starts_with('#') {
+                    val
+                } else {
+                    format!("#{val}")
+                };
+                this.entry_category_color = hex;
+            }
+            cx.notify();
+        })
+        .detach();
 
         Self {
             theme,
@@ -141,6 +166,7 @@ impl DashboardView {
             entry_category_return_modal: None,
             entry_category_icon: "tag".to_string(),
             entry_category_color: "#8CE0B8".to_string(),
+            entry_category_color_input,
             entry_category_desc_input,
             entry_category_icon_input,
             saved_tx_title: String::new(),
@@ -375,7 +401,7 @@ impl Render for DashboardView {
             )
         });
 
-        let entry_modal = self.render_entry_modal(palette, view_entity.clone());
+        let entry_modal = self.render_entry_modal(palette, view_entity.clone(), cx);
 
         let screen_body: AnyElement = match self.active_section {
             AppSection::Home => self.render_home_screen(stacked, palette, view_entity.clone()),

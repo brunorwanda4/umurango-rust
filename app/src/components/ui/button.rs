@@ -23,6 +23,43 @@ pub fn primary_button_with_state(
 ) -> impl IntoElement {
     let is_inactive = loading || disabled;
 
+    let rim_color = if palette.income_border == rgb(0x489974) {
+        rgb(0x489974)
+    } else {
+        palette.accent_rim
+    };
+
+    let hover_bg =
+        if palette.accent_primary == rgb(0x9BE0B8) || palette.accent_primary == rgb(0x8CE0B8) {
+            rgb(0xA0EBC7)
+        } else {
+            palette.accent_secondary
+        };
+
+    let idle_shadow = vec![BoxShadow {
+        color: rim_color.into(),
+        offset: point(px(0.0), px(6.0)),
+        blur_radius: px(0.0),
+        spread_radius: px(0.0),
+        inset: false,
+    }];
+
+    let hover_shadow = vec![BoxShadow {
+        color: rim_color.into(),
+        offset: point(px(0.0), px(9.0)),
+        blur_radius: px(0.0),
+        spread_radius: px(0.0),
+        inset: false,
+    }];
+
+    let active_shadow = vec![BoxShadow {
+        color: rim_color.into(),
+        offset: point(px(0.0), px(2.0)),
+        blur_radius: px(0.0),
+        spread_radius: px(0.0),
+        inset: false,
+    }];
+
     div()
         .id(id)
         .relative()
@@ -32,25 +69,26 @@ pub fn primary_button_with_state(
         .justify_center()
         .gap_2()
         .px_5()
-        .py_3()
-        .rounded(palette.radius_button)
+        .py(px(13.0))
+        .rounded_full()
         .bg(palette.accent_primary)
-        .border(palette.border_width)
-        .border_color(palette.border_color)
-        .shadow(palette.button_shadows())
+        .border(px(2.0))
+        .border_color(rgb(0xFDF6EC))
+        .shadow(idle_shadow)
         .text_sm()
         .font_weight(FontWeight::BOLD)
         .text_color(palette.text_on_accent)
         .when(is_inactive, |this| this.opacity(0.65).cursor_default())
         .when(!is_inactive, |this| {
             this.cursor_pointer()
-                .hover(|style| {
+                .hover(move |style| {
                     style
-                        .top(px(-1.5))
-                        .bg(palette.accent_primary.opacity(0.95))
-                        .border_color(palette.border_color)
+                        .top(px(-3.0))
+                        .bg(hover_bg)
+                        .border_color(rgb(0xFDF6EC))
+                        .shadow(hover_shadow)
                 })
-                .active(|style| style.top(px(4.0)).shadow(palette.button_active_shadows()))
+                .active(move |style| style.top(px(4.0)).shadow(active_shadow))
                 .on_click(on_click)
         })
         .child(label.into())
@@ -142,6 +180,39 @@ pub fn compact_primary_button(
     palette: ThemeColors,
     on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
 ) -> impl IntoElement {
+    let rim_color = if palette.income_border == rgb(0x489974) {
+        rgb(0x489974)
+    } else {
+        palette.accent_rim
+    };
+    let hover_bg =
+        if palette.accent_primary == rgb(0x9BE0B8) || palette.accent_primary == rgb(0x8CE0B8) {
+            rgb(0xA0EBC7)
+        } else {
+            palette.accent_secondary
+        };
+    let idle_shadow = vec![BoxShadow {
+        color: rim_color.into(),
+        offset: point(px(0.0), px(4.0)),
+        blur_radius: px(0.0),
+        spread_radius: px(0.0),
+        inset: false,
+    }];
+    let hover_shadow = vec![BoxShadow {
+        color: rim_color.into(),
+        offset: point(px(0.0), px(6.0)),
+        blur_radius: px(0.0),
+        spread_radius: px(0.0),
+        inset: false,
+    }];
+    let active_shadow = vec![BoxShadow {
+        color: rim_color.into(),
+        offset: point(px(0.0), px(1.5)),
+        blur_radius: px(0.0),
+        spread_radius: px(0.0),
+        inset: false,
+    }];
+
     div()
         .id(id)
         .relative()
@@ -151,17 +222,23 @@ pub fn compact_primary_button(
         .gap_1p5()
         .px_4()
         .py_2()
-        .rounded(px(18.0))
+        .rounded_full()
         .bg(palette.accent_primary)
-        .border(palette.border_width_input)
-        .border_color(palette.border_color)
-        .shadow(palette.button_shadows())
+        .border(px(2.0))
+        .border_color(rgb(0xFDF6EC))
+        .shadow(idle_shadow)
         .text_xs()
         .font_weight(FontWeight::EXTRA_BOLD)
         .text_color(palette.text_on_accent)
         .cursor_pointer()
-        .hover(|style| style.top(px(-1.5)).bg(palette.accent_primary.opacity(0.95)))
-        .active(|style| style.top(px(3.0)).shadow(palette.button_active_shadows()))
+        .hover(move |style| {
+            style
+                .top(px(-2.0))
+                .bg(hover_bg)
+                .border_color(rgb(0xFDF6EC))
+                .shadow(hover_shadow)
+        })
+        .active(move |style| style.top(px(2.5)).shadow(active_shadow))
         .child(label.into())
         .on_click(on_click)
 }

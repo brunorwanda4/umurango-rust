@@ -376,6 +376,7 @@ pub fn auth_submit_section(
         .flex_col()
         .gap_3()
         .mt_4()
+        .pb(px(8.0))
         .when_some(error_message, |this, error| {
             this.child(
                 div()

@@ -15,6 +15,7 @@ pub fn render_category_dialog(
     palette: ThemeColors,
     view_entity: Entity<DashboardView>,
     lang: Language,
+    cx: &App,
 ) -> AnyElement {
     let view_toggle_cat_inc = view_entity.clone();
     let view_toggle_cat_exp = view_entity.clone();
@@ -25,6 +26,35 @@ pub fn render_category_dialog(
     let cat_active_color = parse_color_hex(&dashboard.entry_category_color);
     let selected_color = dashboard.entry_category_color.clone();
     let selected_icon = dashboard.entry_category_icon.clone();
+
+    let icon_query = dashboard
+        .entry_category_icon_input
+        .read(cx)
+        .value()
+        .trim()
+        .to_lowercase();
+
+    let mut displayed_icons: Vec<String> = if icon_query.is_empty() {
+        CATEGORY_FONTAWESOME_ICONS
+            .iter()
+            .map(|s| s.to_string())
+            .collect()
+    } else {
+        CATEGORY_FONTAWESOME_ICONS
+            .iter()
+            .filter(|ic| ic.to_lowercase().contains(&icon_query))
+            .map(|s| s.to_string())
+            .collect()
+    };
+
+    if !icon_query.is_empty()
+        && icons::has_icon(&icon_query)
+        && !displayed_icons
+            .iter()
+            .any(|s| s.eq_ignore_ascii_case(&icon_query))
+    {
+        displayed_icons.insert(0, icon_query.clone());
+    }
 
     let cat_income_label = if cat_is_income {
         format!("✓ {}", text(lang, "modal.category_income"))
@@ -103,18 +133,44 @@ pub fn render_category_dialog(
                     text_input(&dashboard.entry_title_input, palette),
                 )),
         )
-        // 3. Color Picker Swatches
+        // 3. Color Picker Swatches & Custom Color
         .child(
             div()
                 .flex()
                 .flex_col()
-                .gap_1()
+                .gap_1p5()
                 .child(
                     div()
-                        .text_xs()
-                        .font_weight(FontWeight::BOLD)
-                        .text_color(palette.text_secondary)
-                        .child(text(lang, "modal.category_color")),
+                        .flex()
+                        .items_center()
+                        .justify_between()
+                        .child(
+                            div()
+                                .text_xs()
+                                .font_weight(FontWeight::BOLD)
+                                .text_color(palette.text_secondary)
+                                .child(text(lang, "modal.category_color")),
+                        )
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap_1p5()
+                                .child(
+                                    div()
+                                        .size(px(18.0))
+                                        .rounded_full()
+                                        .bg(cat_active_color)
+                                        .border(px(1.5))
+                                        .border_color(palette.border_color)
+                                        .shadow(palette.button_shadows()),
+                                )
+                                .child(div().w(px(95.0)).child(stateful_input_container(
+                                    palette,
+                                    &dashboard.entry_category_color_input,
+                                    text_input(&dashboard.entry_category_color_input, palette),
+                                ))),
+                        ),
                 )
                 .child(div().flex().items_center().gap_2().flex_wrap().children(
                     category_palette_colors().into_iter().map(|(hex, rgba)| {
@@ -144,10 +200,13 @@ pub fn render_category_dialog(
                                         .text_color(rgb(0xFFFFFF)),
                                 )
                             })
-                            .on_click(move |_e, _w, cx| {
+                            .on_click(move |_e, window, cx| {
                                 let h = hex_str.clone();
                                 vc.update(cx, |this, cx| {
-                                    this.entry_category_color = h;
+                                    this.entry_category_color = h.clone();
+                                    this.entry_category_color_input.update(cx, |s, cx| {
+                                        s.set_value(h, window, cx);
+                                    });
                                     cx.notify();
                                 });
                             })
@@ -188,10 +247,21 @@ pub fn render_category_dialog(
                         .bg(palette.bg_elevated)
                         .border(palette.border_width_input)
                         .border_color(palette.border_color)
-                        .children(CATEGORY_FONTAWESOME_ICONS.into_iter().map(|icon_name| {
-                            let is_selected = selected_icon.eq_ignore_ascii_case(icon_name);
+                        .when(displayed_icons.is_empty(), |this| {
+                            this.child(
+                                div()
+                                    .w_full()
+                                    .py_2()
+                                    .px_3()
+                                    .text_xs()
+                                    .text_color(palette.text_secondary)
+                                    .child(format!("No icon found matching \"{icon_query}\"")),
+                            )
+                        })
+                        .children(displayed_icons.into_iter().map(|icon_name| {
+                            let is_selected = selected_icon.eq_ignore_ascii_case(&icon_name);
                             let vi = view_icon.clone();
-                            let ic_name = icon_name.to_string();
+                            let ic_name = icon_name.clone();
                             div()
                                 .id(format!("fa-icon-choice-{icon_name}"))
                                 .cursor_pointer()
@@ -212,20 +282,17 @@ pub fn render_category_dialog(
                                 .flex()
                                 .items_center()
                                 .justify_center()
-                                .child(icons::safe_icon(icon_name).size(px(11.0)).text_color(
+                                .child(icons::safe_icon(&icon_name).size(px(11.0)).text_color(
                                     if is_selected {
                                         cat_active_color
                                     } else {
                                         palette.text_secondary
                                     },
                                 ))
-                                .on_click(move |_e, window, cx| {
+                                .on_click(move |_e, _window, cx| {
                                     let name = ic_name.clone();
                                     vi.update(cx, |this, cx| {
-                                        this.entry_category_icon = name.clone();
-                                        this.entry_category_icon_input.update(cx, |state, cx| {
-                                            state.set_value(name, window, cx);
-                                        });
+                                        this.entry_category_icon = name;
                                         cx.notify();
                                     });
                                 })

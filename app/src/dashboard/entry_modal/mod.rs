@@ -82,6 +82,9 @@ impl DashboardView {
             self.entry_category_icon_input.update(cx, |state, cx| {
                 state.set_placeholder(text(lang, "modal.icon_search_ph"), window, cx);
             });
+            self.entry_category_color_input.update(cx, |state, cx| {
+                state.set_placeholder("#RRGGBB".to_string(), window, cx);
+            });
         }
     }
 
@@ -156,7 +159,11 @@ impl DashboardView {
         });
         self.entry_category_icon_input.update(cx, |state, cx| {
             state.set_placeholder(text(lang, "modal.icon_search_ph"), window, cx);
-            state.set_value(self.entry_category_icon.clone(), window, cx);
+            state.set_value("".to_string(), window, cx);
+        });
+        self.entry_category_color_input.update(cx, |state, cx| {
+            state.set_placeholder("#RRGGBB".to_string(), window, cx);
+            state.set_value(self.entry_category_color.clone(), window, cx);
         });
         cx.notify();
     }
@@ -330,7 +337,22 @@ impl DashboardView {
                 .trim()
                 .to_string();
             let is_inc = self.entry_category_is_income;
-            let color = self.entry_category_color.clone();
+
+            let typed_color = self
+                .entry_category_color_input
+                .read(cx)
+                .value()
+                .trim()
+                .to_string();
+            let color = if !typed_color.is_empty() {
+                if typed_color.starts_with('#') {
+                    typed_color
+                } else {
+                    format!("#{typed_color}")
+                }
+            } else {
+                self.entry_category_color.clone()
+            };
 
             let item = CustomCategoryItem {
                 name: name.clone(),
@@ -581,6 +603,7 @@ impl DashboardView {
         &self,
         palette: ThemeColors,
         view_entity: Entity<Self>,
+        cx: &App,
     ) -> Option<AnyElement> {
         let kind = self.active_entry_modal?;
         let lang = self.language;
@@ -610,7 +633,7 @@ impl DashboardView {
 
         let form_body: AnyElement = match kind {
             EntryModalKind::Category => {
-                render_category_dialog(self, palette, view_entity.clone(), lang)
+                render_category_dialog(self, palette, view_entity.clone(), lang, cx)
             }
             EntryModalKind::Income => {
                 render_transaction_form(self, palette, view_entity.clone(), lang, true)
