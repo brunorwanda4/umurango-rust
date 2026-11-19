@@ -65,6 +65,7 @@ where
             .size_full()
             .flex()
             .flex_row()
+            .font_family(palette.font_family)
             .bg(palette.bg_canvas)
             .text_color(palette.text_primary)
             .child(app_sidebar(
@@ -108,6 +109,7 @@ where
             .size_full()
             .flex()
             .flex_col()
+            .font_family(palette.font_family)
             .bg(palette.bg_canvas)
             .text_color(palette.text_primary)
             .child(app_mobile_header(

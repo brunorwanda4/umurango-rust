@@ -448,9 +448,12 @@ impl Render for UmuryangoApp {
             }
         };
 
+        let palette = colors(self.theme);
+
         div()
             .size_full()
-            .bg(colors(self.theme).bg)
+            .font_family(palette.font_family)
+            .bg(palette.bg)
             .child(active_view)
     }
 }

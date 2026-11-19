@@ -3,8 +3,26 @@
 use crate::brand::ThemeMode;
 use gpui_kit::component::theme::{Theme, ThemeMode as ComponentThemeMode};
 use gpui_kit::*;
+use std::borrow::Cow;
 use std::ops::Deref;
-use std::sync::{OnceLock, RwLock};
+use std::sync::{Once, OnceLock, RwLock};
+
+pub const COZY_KAWAII_FONT_FAMILY: &str = "Fredoka";
+pub const DEFAULT_UI_FONT_FAMILY: &str = ".SystemUIFont";
+
+static FREDOKA_FONT_TTF: &[u8] = include_bytes!("../../../assets/fonts/Fredoka.ttf");
+
+pub fn ensure_fonts_registered(cx: &App) {
+    static REGISTER_FONTS: Once = Once::new();
+    REGISTER_FONTS.call_once(|| {
+        if let Err(err) = cx
+            .text_system()
+            .add_fonts(vec![Cow::Borrowed(FREDOKA_FONT_TTF)])
+        {
+            eprintln!("failed to register Fredoka font: {err}");
+        }
+    });
+}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum UiStyle {
@@ -114,6 +132,7 @@ pub struct StyleTokens {
     pub style: UiStyle,
     pub mode: ThemeMode,
     pub mood: CozyMood,
+    pub font_family: &'static str,
 
     // Surfaces
     pub bg_canvas: Rgba,
@@ -442,6 +461,7 @@ impl StyleTokens {
             style: UiStyle::CozyKawaii,
             mode,
             mood,
+            font_family: COZY_KAWAII_FONT_FAMILY,
             bg_canvas,
             bg_card,
             bg_elevated,
@@ -488,6 +508,7 @@ impl StyleTokens {
     pub fn neo_brutalism(mode: ThemeMode, mood: CozyMood) -> Self {
         let mut tokens = Self::cozy_kawaii(mode, mood);
         tokens.style = UiStyle::NeoBrutalism;
+        tokens.font_family = DEFAULT_UI_FONT_FAMILY;
         tokens.radius_card = px(6.0);
         tokens.radius_input = px(4.0);
         tokens.radius_button = px(4.0);
@@ -498,6 +519,7 @@ impl StyleTokens {
     pub fn claymorphism_3d(mode: ThemeMode, mood: CozyMood) -> Self {
         let mut tokens = Self::cozy_kawaii(mode, mood);
         tokens.style = UiStyle::Claymorphism3D;
+        tokens.font_family = DEFAULT_UI_FONT_FAMILY;
         tokens.shadow_card.blur_radius = px(14.0);
         tokens.shadow_button.blur_radius = px(8.0);
         tokens
@@ -540,12 +562,14 @@ impl StyleTokens {
 }
 
 pub fn sync_kit_themes(tokens: &StyleTokens, cx: &mut App) {
+    ensure_fonts_registered(cx);
     let component_mode = match tokens.mode {
         ThemeMode::Dark => ComponentThemeMode::Dark,
         ThemeMode::Light => ComponentThemeMode::Light,
     };
     Theme::change(component_mode, None, cx);
     Theme::update(cx, |theme| {
+        theme.font_family = tokens.font_family.into();
         theme.colors.caret = tokens.accent_primary.into();
         theme.colors.foreground = tokens.text_primary.into();
         theme.colors.muted_foreground = tokens.text_muted.into();
@@ -653,10 +677,16 @@ mod tests {
 
     #[test]
     fn placeholder_styles_preserve_distinct_variants() {
+        let cozy = StyleTokens::new(UiStyle::CozyKawaii, ThemeMode::Dark, CozyMood::Matcha);
+        assert_eq!(cozy.font_family, "Fredoka");
+        assert!(!FREDOKA_FONT_TTF.is_empty());
+
         let brutal = StyleTokens::new(UiStyle::NeoBrutalism, ThemeMode::Dark, CozyMood::Matcha);
         assert_eq!(brutal.style, UiStyle::NeoBrutalism);
+        assert_eq!(brutal.font_family, DEFAULT_UI_FONT_FAMILY);
 
         let clay = StyleTokens::new(UiStyle::Claymorphism3D, ThemeMode::Dark, CozyMood::Matcha);
         assert_eq!(clay.style, UiStyle::Claymorphism3D);
+        assert_eq!(clay.font_family, DEFAULT_UI_FONT_FAMILY);
     }
 }

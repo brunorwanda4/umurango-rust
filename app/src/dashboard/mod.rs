@@ -1711,29 +1711,29 @@ impl DashboardView {
                 .flex_col()
                 .gap_3()
                 .children(self.family_members.iter().enumerate().map(|(idx, member)| {
-                let view_contrib = view_entity.clone();
-                let view_remind = view_entity.clone();
-                let member_name = member.name.to_string();
-                member_pledge_card(
-                    idx,
-                    member,
-                    palette,
-                    move |_e, _w, cx| {
-                        view_contrib.update(cx, |this, cx| {
-                            this.log_member_contribution(idx, 25_000, cx);
-                        });
-                    },
-                    move |_e, _w, cx| {
-                        let target_name = member_name.clone();
-                        view_remind.update(cx, |this, cx| {
-                            this.toast_notice = Some(format!(
+                    let view_contrib = view_entity.clone();
+                    let view_remind = view_entity.clone();
+                    let member_name = member.name.to_string();
+                    member_pledge_card(
+                        idx,
+                        member,
+                        palette,
+                        move |_e, _w, cx| {
+                            view_contrib.update(cx, |this, cx| {
+                                this.log_member_contribution(idx, 25_000, cx);
+                            });
+                        },
+                        move |_e, _w, cx| {
+                            let target_name = member_name.clone();
+                            view_remind.update(cx, |this, cx| {
+                                this.toast_notice = Some(format!(
                                 "📲 Sent gentle Kinyarwanda MoMo pledge reminder to {target_name}!"
                             ));
-                            cx.notify();
-                        });
-                    },
-                )
-            }));
+                                cx.notify();
+                            });
+                        },
+                    )
+                }));
 
         div()
             .flex()

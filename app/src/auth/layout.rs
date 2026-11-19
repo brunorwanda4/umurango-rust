@@ -240,6 +240,7 @@ where
     div()
         .flex()
         .size_full()
+        .font_family(palette.font_family)
         .items_center()
         .justify_center()
         .p_6()
