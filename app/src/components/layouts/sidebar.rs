@@ -1,35 +1,22 @@
-use super::controls::{language_toggle_button, theme_toggle_button};
 use super::nav::{AppSection, SectionSelectHandler};
 use super::responsive::SIDEBAR_WIDTH_PX;
 use super::AppLayoutProps;
-use crate::brand::{ThemeColors, ThemeMode};
+use crate::brand::ThemeColors;
 use crate::components::dashboard::MoneySubTab;
 use crate::components::scroll::touch_scrollable_fill;
-use crate::components::ui::{compact_primary_button, icon_action_button};
 use crate::i18n::{text, Language};
 use crate::icons;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
-pub fn app_sidebar<T, L, S>(
+pub fn app_sidebar(
     props: &AppLayoutProps<'_>,
     palette: ThemeColors,
     on_select: SectionSelectHandler,
-    on_theme_change: T,
-    on_language_change: L,
-    on_sign_out: S,
-) -> impl IntoElement
-where
-    T: Fn(ThemeMode, &mut App) + 'static,
-    L: Fn(Language, &mut Window, &mut App) + 'static,
-    S: Fn(&mut Window, &mut App) + 'static,
-{
-    let theme = props.theme;
+) -> impl IntoElement {
     let language = props.language;
     let active_section = props.active_section;
     let money_sub_tab = props.money_sub_tab;
-    let quick_entry = props.on_quick_entry.clone();
-    let select_for_quick = on_select.clone();
     let money_tab_handler = props.on_select_money_tab.clone();
     let select_money_parent = on_select.clone();
 
@@ -62,74 +49,6 @@ where
                         .flex_col()
                         .gap_4()
                         .p_4()
-                        .child(
-                            // Brand Emblem & Wordmark
-                            div()
-                                .flex()
-                                .items_center()
-                                .gap_3()
-                                .pb_2()
-                                .child(
-                                    div()
-                                        .w(px(44.0))
-                                        .h(px(44.0))
-                                        .flex_shrink_0()
-                                        .flex()
-                                        .items_center()
-                                        .justify_center()
-                                        .rounded(px(16.0))
-                                        .bg(palette.bg_elevated)
-                                        .border(palette.border_width_input)
-                                        .border_color(palette.border_color)
-                                        .shadow(palette.checkbox_shadows())
-                                        .child(
-                                            icons::icon(icons::ICON_HOUSE_CHIMNEY_USER)
-                                                .size(px(20.0))
-                                                .text_color(palette.accent_primary),
-                                        ),
-                                )
-                                .child(
-                                    div()
-                                        .flex()
-                                        .flex_col()
-                                        .gap_0p5()
-                                        .child(
-                                            div()
-                                                .text_base()
-                                                .font_weight(FontWeight::EXTRA_BOLD)
-                                                .text_color(palette.text_primary)
-                                                .child("Umuryango"),
-                                        )
-                                        .child(
-                                            div()
-                                                .px_2()
-                                                .py(px(1.0))
-                                                .rounded_full()
-                                                .bg(palette.bg_badge)
-                                                .border(px(1.5))
-                                                .border_color(palette.border_color)
-                                                .text_size(px(10.0))
-                                                .font_weight(FontWeight::EXTRA_BOLD)
-                                                .text_color(palette.text_secondary)
-                                                .child(text(
-                                                    language,
-                                                    "cozy.family_treasury_badge",
-                                                )),
-                                        ),
-                                ),
-                        )
-                        .child(compact_primary_button(
-                            "sidebar-quick-entry-btn",
-                            text(language, "cozy.quick_entry_btn"),
-                            palette,
-                            move |_event, window, cx| {
-                                if let Some(ref handler) = quick_entry {
-                                    handler(window, cx);
-                                } else {
-                                    select_for_quick(AppSection::Money, window, cx);
-                                }
-                            },
-                        ))
                         .child(
                             div()
                                 .text_size(px(10.0))
@@ -180,122 +99,6 @@ where
                         ),
                 ),
             ),
-        )
-        .child(
-            // Live Family Treasury Card + Controls Footer
-            div()
-                .flex()
-                .flex_col()
-                .gap_2p5()
-                .p_3()
-                .border_t(palette.border_width_input)
-                .border_color(palette.border_color)
-                .child(
-                    div()
-                        .p_3()
-                        .rounded(px(20.0))
-                        .bg(palette.bg_elevated)
-                        .border(px(2.0))
-                        .border_color(palette.border_color)
-                        .shadow(palette.checkbox_shadows())
-                        .flex()
-                        .flex_col()
-                        .gap_1()
-                        .child(
-                            div()
-                                .flex()
-                                .items_center()
-                                .justify_between()
-                                .child(
-                                    div()
-                                        .text_size(px(10.0))
-                                        .font_weight(FontWeight::EXTRA_BOLD)
-                                        .text_color(palette.text_secondary)
-                                        .child(text(language, "cozy.family_treasury_sparkle")),
-                                )
-                                .child(
-                                    div()
-                                        .px_1p5()
-                                        .py(px(1.0))
-                                        .rounded_full()
-                                        .bg(palette.income_bg)
-                                        .border(px(1.5))
-                                        .border_color(palette.income_border)
-                                        .text_size(px(9.0))
-                                        .font_weight(FontWeight::EXTRA_BOLD)
-                                        .text_color(palette.income_text)
-                                        .child(text(language, "cozy.admins_badge")),
-                                ),
-                        )
-                        .child(
-                            div()
-                                .text_sm()
-                                .font_weight(FontWeight::EXTRA_BOLD)
-                                .text_color(palette.accent_primary)
-                                .child(props.total_treasury.to_string()),
-                        )
-                        .child(
-                            div()
-                                .flex()
-                                .items_center()
-                                .justify_between()
-                                .mt_1()
-                                .child(div().flex().items_center().gap_1().children(
-                                    ["BN", "AI", "PJ", "GR"].into_iter().map(|initials| {
-                                        div()
-                                            .w(px(20.0))
-                                            .h(px(20.0))
-                                            .rounded_full()
-                                            .bg(palette.bg_card)
-                                            .border(px(1.5))
-                                            .border_color(palette.border_color)
-                                            .flex()
-                                            .items_center()
-                                            .justify_center()
-                                            .text_size(px(9.0))
-                                            .font_weight(FontWeight::EXTRA_BOLD)
-                                            .text_color(palette.text_primary)
-                                            .child(initials)
-                                    }),
-                                ))
-                                .child(
-                                    div()
-                                        .text_size(px(10.0))
-                                        .font_weight(FontWeight::BOLD)
-                                        .text_color(palette.text_secondary)
-                                        .child(props.family_name.to_string()),
-                                ),
-                        ),
-                )
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .justify_between()
-                        .child(
-                            div()
-                                .flex()
-                                .items_center()
-                                .gap_1()
-                                .child(theme_toggle_button(
-                                    "sidebar-theme-toggle",
-                                    theme,
-                                    on_theme_change,
-                                ))
-                                .child(language_toggle_button(
-                                    "sidebar-lang-toggle",
-                                    language,
-                                    on_language_change,
-                                )),
-                        )
-                        .child(icon_action_button(
-                            "sidebar-sign-out-btn",
-                            icons::ICON_RIGHT_FROM_BRACKET,
-                            text(language, "dashboard.sign_out"),
-                            palette,
-                            move |_event, window, cx| on_sign_out(window, cx),
-                        )),
-                ),
         )
 }
 

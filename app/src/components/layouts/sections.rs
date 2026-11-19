@@ -6,7 +6,6 @@ use crate::components::dashboard::{
     project_goal_card, transaction_row, EXPENSE_CATEGORIES, FAMILY_MEMBERS, INCOME_STREAMS, LOANS,
     PROJECTS, TRANSACTIONS,
 };
-use crate::components::layouts::app_content_width;
 use crate::components::scroll::touch_scrollable_fill;
 use crate::components::ui::{
     badge, card_elevated, card_header, card_surface, compact_primary_button, destructive_button,
@@ -43,44 +42,11 @@ fn section_header(
 }
 
 pub fn money_section(
-    viewport_width: Pixels,
+    _viewport_width: Pixels,
     theme: ThemeMode,
     language: Language,
 ) -> impl IntoElement {
     let palette = colors(theme);
-    let stacked = app_content_width(viewport_width) < px(640.0);
-
-    let summary_cards = div()
-        .flex()
-        .gap_4()
-        .when(stacked, |this| this.flex_col())
-        .child(div().flex_1().child(stat_card(
-            "money-stat-treasury",
-            palette,
-            text(language, "dashboard.total_treasury"),
-            "4,280,000 RWF",
-            Some(text(language, "dashboard.treasury_trend")),
-            Some(icons::ICON_WALLET),
-            Some(("+14.2%".into(), true)),
-        )))
-        .child(div().flex_1().child(stat_card(
-            "money-stat-contributions",
-            palette,
-            text(language, "dashboard.monthly_contributions"),
-            "+850,000 RWF",
-            Some(text(language, "dashboard.contributions_sub")),
-            Some(icons::ICON_CREDIT_CARD),
-            Some(("+12%".into(), true)),
-        )))
-        .child(div().flex_1().child(stat_card(
-            "money-stat-expenses",
-            palette,
-            text(language, "dashboard.monthly_expenses"),
-            "-410,000 RWF",
-            Some(text(language, "dashboard.expenses_sub")),
-            Some(icons::ICON_ARROW_DOWN),
-            Some(("-4%".into(), true)),
-        )));
 
     let streams = div().flex().flex_col().gap_2p5().children(
         INCOME_STREAMS
@@ -130,7 +96,6 @@ pub fn money_section(
                     text(language, "section.money_subtitle"),
                     palette,
                 ))
-                .child(summary_cards)
                 .child(streams)
                 .child(categories)
                 .child(loans)

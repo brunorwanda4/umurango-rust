@@ -45,15 +45,6 @@ impl MoneySubTab {
             Self::Loans => text(lang, "cozy.nav_money_loans_title"),
         }
     }
-
-    pub fn nav_subtitle_for(self, lang: Language) -> String {
-        match self {
-            Self::Overview => text(lang, "cozy.nav_money_overview_sub"),
-            Self::Income => text(lang, "cozy.nav_money_income_sub"),
-            Self::Expenses => text(lang, "cozy.nav_money_expenses_sub"),
-            Self::Loans => text(lang, "cozy.nav_money_loans_sub"),
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
