@@ -169,19 +169,6 @@ pub fn app_window_titlebar(
                 )
                 .child(
                     div()
-                        .px_2p5()
-                        .py(px(2.0))
-                        .rounded(badge_radius)
-                        .bg(palette.bg_elevated)
-                        .border(px(1.5))
-                        .border_color(palette.border_color)
-                        .text_size(px(9.0))
-                        .font_weight(FontWeight::EXTRA_BOLD)
-                        .text_color(palette.accent_primary)
-                        .child(text(language, "cozy.family_treasury_sparkle")),
-                )
-                .child(
-                    div()
                         .px_2()
                         .py(px(2.0))
                         .rounded(badge_radius)
