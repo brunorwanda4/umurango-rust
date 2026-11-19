@@ -32,6 +32,13 @@ pub fn window_options(cx: &App) -> WindowOptions {
     WindowOptions {
         window_bounds: Some(WindowBounds::centered(size(px(width), px(height)), cx)),
         window_min_size: Some(size(px(min_width), px(min_height))),
+        titlebar: Some(TitlebarOptions {
+            title: Some("Umuryango".into()),
+            appears_transparent: true,
+            traffic_light_position: Some(point(px(14.0), px(14.0))),
+        }),
+        app_owns_titlebar_drag: true,
+        window_decorations: Some(WindowDecorations::Client),
         ..Default::default()
     }
 }

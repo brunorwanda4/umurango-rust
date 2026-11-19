@@ -59,6 +59,12 @@ pub const ICON_CLOCK: &str = "clock";
 pub const ICON_CALENDAR: &str = "calendar";
 pub const ICON_SLIDERS: &str = "sliders";
 pub const ICON_PALETTE: &str = "palette";
+pub const ICON_MINUS: &str = "minus";
+pub const ICON_WINDOW_MINIMIZE: &str = "window-minimize";
+pub const ICON_WINDOW_MAXIMIZE: &str = "window-maximize";
+pub const ICON_WINDOW_RESTORE: &str = "window-restore";
+pub const ICON_EXPAND: &str = "expand";
+pub const ICON_COMPRESS: &str = "compress";
 
 fn icon_data(set: &str, name: &str) -> &'static [u8] {
     let path = format!("{set}/{name}.svg");

@@ -10,6 +10,7 @@ use crate::brand::*;
 use crate::dashboard::{DashboardEvent, DashboardView};
 use crate::i18n::Language;
 use crate::navigation::{self, AuthScreen, SavedNavigation};
+use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use rusqlite::Connection;
 
@@ -449,11 +450,32 @@ impl Render for UmuryangoApp {
         };
 
         let palette = colors(self.theme);
+        let is_maximized = window.is_maximized() || window.is_fullscreen();
 
         div()
             .size_full()
+            .flex()
+            .flex_col()
+            .overflow_hidden()
             .font_family(palette.font_family)
-            .bg(palette.bg)
-            .child(active_view)
+            .bg(palette.bg_canvas)
+            .text_color(palette.text_primary)
+            .when(!is_maximized, |this| {
+                this.border(px(2.5)).border_color(palette.border_color)
+            })
+            .child(crate::components::layouts::app_window_titlebar(
+                self.theme,
+                self.language,
+                is_maximized,
+            ))
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .min_h_0()
+                    .w_full()
+                    .overflow_hidden()
+                    .child(active_view),
+            )
     }
 }
