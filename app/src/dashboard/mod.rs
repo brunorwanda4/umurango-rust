@@ -8,7 +8,16 @@ pub(super) use crate::components::ui::*;
 pub(super) use crate::i18n::{text, Language};
 pub(super) use crate::icons;
 use crate::theme::{active_mood, set_cozy_mood};
-pub(super) use gpui_kit::component::input::InputState;
+pub(super) use gpui_kit::component::input::{InputState, TextareaState};
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CustomCategoryItem {
+    pub name: String,
+    pub is_income: bool,
+    pub icon: String,
+    pub color: String,
+    pub description: String,
+}
 pub(super) use gpui_kit::prelude::FluentBuilder;
 pub(super) use gpui_kit::*;
 use std::rc::Rc;
@@ -52,9 +61,13 @@ pub struct DashboardView {
     entry_loan_is_lent: bool,
     pub(super) entry_category_is_income: bool,
     pub(super) entry_category_return_modal: Option<EntryModalKind>,
+    pub(super) entry_category_icon: String,
+    pub(super) entry_category_color: String,
+    pub(super) entry_category_desc_input: Entity<TextareaState>,
+    pub(super) entry_category_icon_input: Entity<InputState>,
     pub(super) saved_tx_title: String,
     pub(super) saved_tx_amount: String,
-    pub custom_categories: Vec<(String, bool)>,
+    pub custom_categories: Vec<CustomCategoryItem>,
     show_approval_alert: bool,
     pending_approval_count: usize,
     pending_approval_tx_id: Option<String>,
@@ -100,6 +113,8 @@ impl DashboardView {
         let entry_title_input = cx.new(|cx| InputState::new(window, cx));
         let entry_secondary_input = cx.new(|cx| InputState::new(window, cx));
         let entry_amount_input = cx.new(|cx| InputState::new(window, cx));
+        let entry_category_desc_input = cx.new(|cx| TextareaState::new(window, cx));
+        let entry_category_icon_input = cx.new(|cx| InputState::new(window, cx));
 
         Self {
             theme,
@@ -124,6 +139,10 @@ impl DashboardView {
             entry_loan_is_lent: true,
             entry_category_is_income: false,
             entry_category_return_modal: None,
+            entry_category_icon: "tag".to_string(),
+            entry_category_color: "#8CE0B8".to_string(),
+            entry_category_desc_input,
+            entry_category_icon_input,
             saved_tx_title: String::new(),
             saved_tx_amount: String::new(),
             custom_categories: Vec::new(),

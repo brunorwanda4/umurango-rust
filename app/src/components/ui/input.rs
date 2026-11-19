@@ -2,7 +2,7 @@ use crate::brand::ThemeColors;
 use crate::icons;
 use gpui_kit::component::{
     button::{Button, ButtonVariants},
-    input::{Input, InputState},
+    input::{Input, InputState, Textarea, TextareaState},
 };
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
@@ -15,6 +15,13 @@ pub fn text_input(state: &Entity<InputState>, palette: ThemeColors) -> Input {
         .cleanable(true)
         .cursor_text()
         .text_color(palette.text_primary)
+}
+
+pub fn textarea_input(state: &Entity<TextareaState>, _palette: ThemeColors) -> Textarea {
+    Textarea::new(state)
+        .appearance(false)
+        .bordered(false)
+        .h(px(46.0))
 }
 
 pub fn password_input(
@@ -106,6 +113,57 @@ impl RenderOnce for KawaiiInputContainer {
     }
 }
 
+#[derive(IntoElement)]
+struct KawaiiTextareaContainer {
+    palette: ThemeColors,
+    state: Entity<TextareaState>,
+    child: AnyElement,
+}
+
+impl RenderOnce for KawaiiTextareaContainer {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let palette = self.palette;
+        let is_focused = {
+            let s = self.state.read(cx);
+            s.focus_handle(cx).is_focused(window) || s.has_selection_focus(window, cx)
+        };
+
+        let bg_color = if is_focused {
+            palette.bg_input_focus
+        } else {
+            palette.bg_input
+        };
+        let border_color = if is_focused {
+            palette.accent_primary
+        } else {
+            palette.border_color
+        };
+        let shadows = if is_focused {
+            palette.input_focus_shadows()
+        } else {
+            palette.input_shadows()
+        };
+
+        div()
+            .w_full()
+            .min_h(px(48.0))
+            .rounded(palette.radius_input)
+            .bg(bg_color)
+            .border(palette.border_width_input)
+            .border_color(border_color)
+            .shadow(shadows)
+            .px_2()
+            .py_1p5()
+            .cursor_text()
+            .hover(|style| {
+                style
+                    .bg(palette.bg_input_focus)
+                    .border_color(palette.accent_primary)
+            })
+            .child(self.child)
+    }
+}
+
 pub fn input_container(palette: ThemeColors, input: impl IntoElement) -> impl IntoElement {
     KawaiiInputContainer {
         palette,
@@ -123,6 +181,18 @@ pub fn stateful_input_container(
         palette,
         state: Some(state.clone()),
         child: input.into_any_element(),
+    }
+}
+
+pub fn stateful_textarea_container(
+    palette: ThemeColors,
+    state: &Entity<TextareaState>,
+    textarea: impl IntoElement,
+) -> impl IntoElement {
+    KawaiiTextareaContainer {
+        palette,
+        state: state.clone(),
+        child: textarea.into_any_element(),
     }
 }
 

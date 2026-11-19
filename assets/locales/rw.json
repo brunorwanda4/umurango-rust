@@ -327,5 +327,8 @@
   "modal.add_category_btn": "+ Icyiciro",
   "modal.category_name_ph": "Izina",
   "modal.category_desc_ph": "Ibisobanuro",
-  "modal.category_saved_toast": "Icyiciro cyabitswe"
+  "modal.category_saved_toast": "Icyiciro cyabitswe",
+  "modal.category_icon": "Ikimenyetso",
+  "modal.category_color": "Ibara",
+  "modal.icon_search_ph": "Izina"
 }

@@ -65,6 +65,25 @@ pub const ICON_WINDOW_MAXIMIZE: &str = "window-maximize";
 pub const ICON_WINDOW_RESTORE: &str = "window-restore";
 pub const ICON_EXPAND: &str = "expand";
 pub const ICON_COMPRESS: &str = "compress";
+pub const ICON_TAG: &str = "tag";
+
+pub fn has_icon(name: &str) -> bool {
+    let clean = name.trim();
+    if clean.is_empty() {
+        return false;
+    }
+    let path = format!("free-solid-svg-icons/{clean}.svg");
+    FONT_AWESOME.get_file(Path::new(&path)).is_some()
+}
+
+pub fn safe_icon(name: &str) -> Svg {
+    let clean = name.trim();
+    if has_icon(clean) {
+        icon(clean)
+    } else {
+        icon("tag")
+    }
+}
 
 fn icon_data(set: &str, name: &str) -> &'static [u8] {
     let path = format!("{set}/{name}.svg");
@@ -83,7 +102,7 @@ pub fn icon_set(set: &str, name: &str) -> Svg {
 }
 
 pub fn icon_with(name: &str, color: Rgba, size: Pixels) -> Svg {
-    icon(name).size(size).text_color(color)
+    safe_icon(name).size(size).text_color(color)
 }
 
 pub fn button_icon(name: &str) -> Icon {

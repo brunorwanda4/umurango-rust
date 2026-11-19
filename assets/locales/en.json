@@ -327,5 +327,8 @@
   "modal.add_category_btn": "+ Category",
   "modal.category_name_ph": "Name",
   "modal.category_desc_ph": "Description",
-  "modal.category_saved_toast": "Category saved"
+  "modal.category_saved_toast": "Category saved",
+  "modal.category_icon": "Icon",
+  "modal.category_color": "Color",
+  "modal.icon_search_ph": "FontAwesome name"
 }

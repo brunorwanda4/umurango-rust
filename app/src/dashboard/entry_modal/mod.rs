@@ -1,4 +1,27 @@
-use super::*;
+pub mod category_dialog;
+pub mod loan_form;
+pub mod member_form;
+pub mod project_form;
+pub mod transaction_form;
+pub mod types;
+
+use self::category_dialog::render_category_dialog;
+use self::loan_form::render_loan_form;
+use self::member_form::render_member_form;
+use self::project_form::render_project_form;
+use self::transaction_form::render_transaction_form;
+use self::types::parse_color_hex;
+
+use crate::brand::ThemeColors;
+use crate::components::ui::{compact_primary_button, pill_button};
+use crate::dashboard::{
+    format_rwf, format_signed_rwf, CustomCategoryItem, DashboardEvent, DashboardView,
+    EntryModalKind,
+};
+use crate::i18n::{text, Language};
+use crate::icons;
+use gpui_kit::prelude::FluentBuilder;
+use gpui_kit::*;
 
 impl DashboardView {
     pub(super) fn update_entry_modal_placeholders(
@@ -52,6 +75,13 @@ impl DashboardView {
             self.entry_amount_input.update(cx, |state, cx| {
                 state.set_placeholder(amt_ph, window, cx);
             });
+        } else {
+            self.entry_category_desc_input.update(cx, |state, cx| {
+                state.set_placeholder(text(lang, "modal.category_desc_ph"), window, cx);
+            });
+            self.entry_category_icon_input.update(cx, |state, cx| {
+                state.set_placeholder(text(lang, "modal.icon_search_ph"), window, cx);
+            });
         }
     }
 
@@ -82,9 +112,9 @@ impl DashboardView {
             }
         }
 
-        for (name, inc) in &self.custom_categories {
-            if *inc == is_income && !list.contains(name) {
-                list.push(name.clone());
+        for item in &self.custom_categories {
+            if item.is_income == is_income && !list.contains(&item.name) {
+                list.push(item.name.clone());
             }
         }
 
@@ -103,6 +133,16 @@ impl DashboardView {
         self.saved_tx_amount = current_amount;
         self.entry_category_return_modal = self.active_entry_modal;
         self.entry_category_is_income = is_income;
+        self.entry_category_icon = if is_income {
+            "wallet".to_string()
+        } else {
+            "cart-shopping".to_string()
+        };
+        self.entry_category_color = if is_income {
+            "#8CE0B8".to_string()
+        } else {
+            "#FFA69E".to_string()
+        };
         self.active_entry_modal = Some(EntryModalKind::Category);
 
         let lang = self.language;
@@ -110,9 +150,13 @@ impl DashboardView {
             state.set_placeholder(text(lang, "modal.category_name_ph"), window, cx);
             state.set_value("".to_string(), window, cx);
         });
-        self.entry_secondary_input.update(cx, |state, cx| {
+        self.entry_category_desc_input.update(cx, |state, cx| {
             state.set_placeholder(text(lang, "modal.category_desc_ph"), window, cx);
             state.set_value("".to_string(), window, cx);
+        });
+        self.entry_category_icon_input.update(cx, |state, cx| {
+            state.set_placeholder(text(lang, "modal.icon_search_ph"), window, cx);
+            state.set_value(self.entry_category_icon.clone(), window, cx);
         });
         cx.notify();
     }
@@ -163,7 +207,8 @@ impl DashboardView {
             self.saved_tx_title.clear();
             self.saved_tx_amount.clear();
             self.entry_category_return_modal = None;
-            self.entry_category_is_income = false;
+            self.open_category_modal(false, window, cx);
+            return;
         }
 
         let lang = self.language;
@@ -266,13 +311,43 @@ impl DashboardView {
                 title_str
             };
 
+            let typed_icon = self
+                .entry_category_icon_input
+                .read(cx)
+                .value()
+                .trim()
+                .to_string();
+            let final_icon = if !typed_icon.is_empty() && icons::has_icon(&typed_icon) {
+                typed_icon
+            } else {
+                self.entry_category_icon.clone()
+            };
+
+            let desc = self
+                .entry_category_desc_input
+                .read(cx)
+                .value()
+                .trim()
+                .to_string();
             let is_inc = self.entry_category_is_income;
-            if !self
+            let color = self.entry_category_color.clone();
+
+            let item = CustomCategoryItem {
+                name: name.clone(),
+                is_income: is_inc,
+                icon: final_icon,
+                color,
+                description: desc,
+            };
+
+            if let Some(pos) = self
                 .custom_categories
                 .iter()
-                .any(|(n, i)| n == &name && *i == is_inc)
+                .position(|c| c.name == name && c.is_income == is_inc)
             {
-                self.custom_categories.push((name.clone(), is_inc));
+                self.custom_categories[pos] = item;
+            } else {
+                self.custom_categories.push(item);
             }
 
             if let Some(return_kind) = self.entry_category_return_modal.take() {
@@ -509,105 +584,67 @@ impl DashboardView {
     ) -> Option<AnyElement> {
         let kind = self.active_entry_modal?;
         let lang = self.language;
-        let (modal_icon, modal_title, field1_label, field2_label, field3_label) = match kind {
+
+        let (modal_icon, modal_title) = match kind {
             EntryModalKind::Income => (
                 icons::ICON_HAND_HOLDING_DOLLAR,
                 text(lang, "modal.income_title"),
-                text(lang, "modal.field_desc_title"),
-                text(lang, "modal.field_category_income"),
-                text(lang, "modal.field_amount_rwf"),
             ),
-            EntryModalKind::Expense => (
-                icons::ICON_CREDIT_CARD,
-                text(lang, "modal.expense_title"),
-                text(lang, "modal.field_desc_purpose"),
-                text(lang, "modal.field_category_expense"),
-                text(lang, "modal.field_amount_rwf"),
-            ),
-            EntryModalKind::Loan => (
-                icons::ICON_HANDSHAKE,
-                text(lang, "modal.loan_title"),
-                text(lang, "modal.field_loan_reason"),
-                text(lang, "modal.field_counterparty"),
-                text(lang, "modal.field_loan_principal"),
-            ),
-            EntryModalKind::Project => (
-                icons::ICON_BULLSEYE,
-                text(lang, "modal.project_title"),
-                text(lang, "modal.field_project_name"),
-                text(lang, "modal.field_category_project"),
-                text(lang, "modal.field_target_amount"),
-            ),
-            EntryModalKind::MemberInvite => (
-                icons::ICON_USER_PLUS,
-                text(lang, "modal.invite_title"),
-                text(lang, "modal.field_full_name"),
-                text(lang, "modal.field_phone_number"),
-                text(lang, "modal.field_role"),
-            ),
-            EntryModalKind::Category => (
-                icons::ICON_SLIDERS,
-                text(lang, "modal.category_title"),
-                text(lang, "modal.category_name"),
-                text(lang, "modal.category_desc"),
-                "".to_string(),
-            ),
+            EntryModalKind::Expense => (icons::ICON_CREDIT_CARD, text(lang, "modal.expense_title")),
+            EntryModalKind::Loan => (icons::ICON_HANDSHAKE, text(lang, "modal.loan_title")),
+            EntryModalKind::Project => (icons::ICON_BULLSEYE, text(lang, "modal.project_title")),
+            EntryModalKind::MemberInvite => {
+                (icons::ICON_USER_PLUS, text(lang, "modal.invite_title"))
+            }
+            EntryModalKind::Category => (icons::ICON_SLIDERS, text(lang, "modal.category_title")),
         };
 
         let view_close_bg = view_entity.clone();
         let view_close = view_entity.clone();
         let view_close_footer = view_entity.clone();
         let view_submit = view_entity.clone();
-        let view_toggle_lent = view_entity.clone();
-        let view_toggle_cat_inc = view_entity.clone();
-        let view_toggle_cat_exp = view_entity.clone();
-        let is_lent = self.entry_loan_is_lent;
-        let cat_is_income = self.entry_category_is_income;
-
-        let lent_label = if is_lent {
-            format!("✓ {}", text(lang, "modal.loan_lent_out"))
-        } else {
-            text(lang, "modal.loan_lent_out")
-        };
-
-        let borrowed_label = if !is_lent {
-            format!("✓ {}", text(lang, "modal.loan_borrowed"))
-        } else {
-            text(lang, "modal.loan_borrowed")
-        };
-
-        let cat_income_label = if cat_is_income {
-            format!("✓ {}", text(lang, "modal.category_income"))
-        } else {
-            text(lang, "modal.category_income")
-        };
-
-        let cat_expense_label = if !cat_is_income {
-            format!("✓ {}", text(lang, "modal.category_expense"))
-        } else {
-            text(lang, "modal.category_expense")
-        };
+        let cat_active_color = parse_color_hex(&self.entry_category_color);
 
         let cancel_text = text(lang, "modal.cancel");
         let submit_text = text(lang, "modal.save");
 
+        let form_body: AnyElement = match kind {
+            EntryModalKind::Category => {
+                render_category_dialog(self, palette, view_entity.clone(), lang)
+            }
+            EntryModalKind::Income => {
+                render_transaction_form(self, palette, view_entity.clone(), lang, true)
+            }
+            EntryModalKind::Expense => {
+                render_transaction_form(self, palette, view_entity.clone(), lang, false)
+            }
+            EntryModalKind::Loan => render_loan_form(self, palette, view_entity.clone(), lang),
+            EntryModalKind::Project => {
+                render_project_form(self, palette, view_entity.clone(), lang)
+            }
+            EntryModalKind::MemberInvite => {
+                render_member_form(self, palette, view_entity.clone(), lang)
+            }
+        };
+
         let card = div()
             .id("entry-modal-card")
-            .w(px(540.0))
+            .w(px(520.0))
             .max_w_full()
-            .p_6()
+            .p_4()
             .rounded(palette.radius_card)
             .bg(palette.bg_card)
-            .border(px(2.0))
+            .border(px(1.5))
             .border_color(palette.border_color)
             .shadow(palette.card_shadows())
             .text_color(palette.text_primary)
             .flex()
             .flex_col()
-            .gap_4()
+            .gap_2p5()
             .on_mouse_down(MouseButton::Left, |_, _, cx| {
                 cx.stop_propagation();
             })
+            // Header
             .child(
                 div()
                     .flex()
@@ -622,14 +659,34 @@ impl DashboardView {
                             .flex()
                             .items_center()
                             .gap_2()
-                            .child(
-                                icons::icon(modal_icon)
-                                    .size(px(16.0))
-                                    .text_color(palette.accent_primary),
-                            )
+                            .when(kind == EntryModalKind::Category, |hdr| {
+                                hdr.child(
+                                    div()
+                                        .size(px(28.0))
+                                        .rounded_full()
+                                        .bg(cat_active_color.opacity(0.20))
+                                        .border(px(1.5))
+                                        .border_color(cat_active_color)
+                                        .flex()
+                                        .items_center()
+                                        .justify_center()
+                                        .child(
+                                            icons::safe_icon(&self.entry_category_icon)
+                                                .size(px(14.0))
+                                                .text_color(cat_active_color),
+                                        ),
+                                )
+                            })
+                            .when(kind != EntryModalKind::Category, |hdr| {
+                                hdr.child(
+                                    icons::icon(modal_icon)
+                                        .size(px(16.0))
+                                        .text_color(palette.accent_primary),
+                                )
+                            })
                             .child(
                                 div()
-                                    .text_base()
+                                    .text_sm()
                                     .font_weight(FontWeight::EXTRA_BOLD)
                                     .text_color(palette.text_primary)
                                     .child(modal_title),
@@ -652,289 +709,15 @@ impl DashboardView {
                             }),
                     ),
             )
-            .when(kind == EntryModalKind::Loan, |this| {
-                this.child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap_2()
-                        .child(pill_button_colored(
-                            "entry-loan-type-lent",
-                            lent_label,
-                            if is_lent {
-                                palette.income_text
-                            } else {
-                                palette.text_secondary
-                            },
-                            palette,
-                            {
-                                let vt = view_toggle_lent.clone();
-                                move |_e, _w, cx| {
-                                    vt.update(cx, |this, cx| {
-                                        this.entry_loan_is_lent = true;
-                                        cx.notify();
-                                    });
-                                }
-                            },
-                        ))
-                        .child(pill_button_colored(
-                            "entry-loan-type-borrowed",
-                            borrowed_label,
-                            if !is_lent {
-                                palette.loan_text
-                            } else {
-                                palette.text_secondary
-                            },
-                            palette,
-                            move |_e, _w, cx| {
-                                view_toggle_lent.update(cx, |this, cx| {
-                                    this.entry_loan_is_lent = false;
-                                    cx.notify();
-                                });
-                            },
-                        )),
-                )
-            })
-            .when(kind == EntryModalKind::Category, |this| {
-                this.child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap_2()
-                        .child(pill_button_colored(
-                            "entry-cat-type-income",
-                            cat_income_label,
-                            if cat_is_income {
-                                palette.income_text
-                            } else {
-                                palette.text_secondary
-                            },
-                            palette,
-                            {
-                                let vt = view_toggle_cat_inc.clone();
-                                move |_e, _w, cx| {
-                                    vt.update(cx, |this, cx| {
-                                        this.entry_category_is_income = true;
-                                        cx.notify();
-                                    });
-                                }
-                            },
-                        ))
-                        .child(pill_button_colored(
-                            "entry-cat-type-expense",
-                            cat_expense_label,
-                            if !cat_is_income {
-                                palette.expense_text
-                            } else {
-                                palette.text_secondary
-                            },
-                            palette,
-                            move |_e, _w, cx| {
-                                view_toggle_cat_exp.update(cx, |this, cx| {
-                                    this.entry_category_is_income = false;
-                                    cx.notify();
-                                });
-                            },
-                        )),
-                )
-            })
-            .when(kind == EntryModalKind::Category, |this| {
-                this.child(
-                    div()
-                        .flex()
-                        .gap_3()
-                        .flex_wrap()
-                        .child(
-                            div()
-                                .flex_1()
-                                .min_w(px(220.0))
-                                .flex()
-                                .flex_col()
-                                .gap_1()
-                                .child(
-                                    div()
-                                        .text_xs()
-                                        .font_weight(FontWeight::BOLD)
-                                        .text_color(palette.text_secondary)
-                                        .child(field1_label.clone()),
-                                )
-                                .child(stateful_input_container(
-                                    palette,
-                                    &self.entry_title_input,
-                                    text_input(&self.entry_title_input, palette),
-                                )),
-                        )
-                        .child(
-                            div()
-                                .flex_1()
-                                .min_w(px(220.0))
-                                .flex()
-                                .flex_col()
-                                .gap_1()
-                                .child(
-                                    div()
-                                        .text_xs()
-                                        .font_weight(FontWeight::BOLD)
-                                        .text_color(palette.text_secondary)
-                                        .child(field2_label.clone()),
-                                )
-                                .child(stateful_input_container(
-                                    palette,
-                                    &self.entry_secondary_input,
-                                    text_input(&self.entry_secondary_input, palette),
-                                )),
-                        ),
-                )
-            })
-            .when(kind != EntryModalKind::Category, |this| {
-                let is_tx_modal = kind == EntryModalKind::Income || kind == EntryModalKind::Expense;
-                let is_inc = kind == EntryModalKind::Income;
-                let view_add_cat = view_entity.clone();
-                let avail_cats = if is_tx_modal {
-                    self.get_available_categories(is_inc)
-                } else {
-                    Vec::new()
-                };
-
-                this.child(
-                    div()
-                        .flex()
-                        .gap_3()
-                        .flex_wrap()
-                        .child(
-                            div()
-                                .flex_1()
-                                .min_w(px(200.0))
-                                .flex()
-                                .flex_col()
-                                .gap_1()
-                                .child(
-                                    div()
-                                        .text_xs()
-                                        .font_weight(FontWeight::BOLD)
-                                        .text_color(palette.text_secondary)
-                                        .child(field1_label),
-                                )
-                                .child(stateful_input_container(
-                                    palette,
-                                    &self.entry_title_input,
-                                    text_input(&self.entry_title_input, palette),
-                                )),
-                        )
-                        .child(
-                            div()
-                                .flex_1()
-                                .min_w(px(180.0))
-                                .flex()
-                                .flex_col()
-                                .gap_1()
-                                .child(
-                                    div()
-                                        .flex()
-                                        .items_center()
-                                        .justify_between()
-                                        .child(
-                                            div()
-                                                .text_xs()
-                                                .font_weight(FontWeight::BOLD)
-                                                .text_color(palette.text_secondary)
-                                                .child(field2_label),
-                                        )
-                                        .when(is_tx_modal, |header| {
-                                            header.child(
-                                                div()
-                                                    .id("btn-open-category-dialog")
-                                                    .cursor_pointer()
-                                                    .px_1p5()
-                                                    .py_0p5()
-                                                    .rounded(px(4.0))
-                                                    .bg(palette.accent_primary.opacity(0.12))
-                                                    .text_xs()
-                                                    .font_weight(FontWeight::BOLD)
-                                                    .text_color(palette.accent_primary)
-                                                    .hover(|s| {
-                                                        s.bg(palette.accent_primary)
-                                                            .text_color(palette.bg_card)
-                                                    })
-                                                    .child(text(lang, "modal.add_category_btn"))
-                                                    .on_click(move |_e, window, cx| {
-                                                        view_add_cat.update(cx, |this, cx| {
-                                                            this.open_category_modal(
-                                                                is_inc, window, cx,
-                                                            );
-                                                        });
-                                                    }),
-                                            )
-                                        }),
-                                )
-                                .child(stateful_input_container(
-                                    palette,
-                                    &self.entry_secondary_input,
-                                    text_input(&self.entry_secondary_input, palette),
-                                ))
-                                .when(is_tx_modal && !avail_cats.is_empty(), |col| {
-                                    let chips_view = view_entity.clone();
-                                    col.child(div().flex().flex_wrap().gap_1().pt_1().children(
-                                        avail_cats.into_iter().take(5).map(|cat| {
-                                            let cv = chips_view.clone();
-                                            let cat_val = cat.clone();
-                                            div()
-                                                .id(format!("cat-pill-{}", cat.replace(' ', "-")))
-                                                .cursor_pointer()
-                                                .px_2()
-                                                .py_0p5()
-                                                .rounded(px(4.0))
-                                                .bg(palette.bg_elevated)
-                                                .text_xs()
-                                                .text_color(palette.text_secondary)
-                                                .hover(|s| {
-                                                    s.bg(palette.accent_primary.opacity(0.12))
-                                                        .text_color(palette.accent_primary)
-                                                })
-                                                .child(cat)
-                                                .on_click(move |_e, window, cx| {
-                                                    let c = cat_val.clone();
-                                                    cv.update(cx, |this, cx| {
-                                                        this.entry_secondary_input.update(
-                                                            cx,
-                                                            |state, cx| {
-                                                                state.set_value(c, window, cx);
-                                                            },
-                                                        );
-                                                    });
-                                                })
-                                        }),
-                                    ))
-                                }),
-                        )
-                        .child(
-                            div()
-                                .flex_1()
-                                .min_w(px(150.0))
-                                .flex()
-                                .flex_col()
-                                .gap_1()
-                                .child(
-                                    div()
-                                        .text_xs()
-                                        .font_weight(FontWeight::BOLD)
-                                        .text_color(palette.text_secondary)
-                                        .child(field3_label),
-                                )
-                                .child(stateful_input_container(
-                                    palette,
-                                    &self.entry_amount_input,
-                                    text_input(&self.entry_amount_input, palette),
-                                )),
-                        ),
-                )
-            })
+            // Body
+            .child(form_body)
+            // Footer
             .child(
                 div()
                     .flex()
                     .items_center()
                     .justify_end()
-                    .gap_3()
+                    .gap_2p5()
                     .pt_2()
                     .border_t(palette.border_width_input)
                     .border_color(palette.border_color)
