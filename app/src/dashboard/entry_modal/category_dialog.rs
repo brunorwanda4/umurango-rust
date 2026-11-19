@@ -1,4 +1,6 @@
-use super::types::{category_palette_colors, parse_color_hex, CATEGORY_FONTAWESOME_ICONS};
+use super::color_picker::render_color_picker;
+use super::icon_picker::render_icon_picker;
+use super::types::{parse_color_hex, CATEGORY_FONTAWESOME_ICONS};
 use crate::brand::ThemeColors;
 use crate::components::ui::{
     pill_button_colored, stateful_input_container, stateful_textarea_container, text_input,
@@ -7,8 +9,66 @@ use crate::components::ui::{
 use crate::dashboard::DashboardView;
 use crate::i18n::{text, Language};
 use crate::icons;
-use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
+
+pub fn render_category_type_switcher(
+    palette: ThemeColors,
+    cat_is_income: bool,
+    view_entity: Entity<DashboardView>,
+    lang: Language,
+) -> Div {
+    let view_toggle_cat_inc = view_entity.clone();
+    let view_toggle_cat_exp = view_entity;
+
+    let cat_income_label = if cat_is_income {
+        format!("✓ {}", text(lang, "modal.category_income"))
+    } else {
+        text(lang, "modal.category_income")
+    };
+
+    let cat_expense_label = if !cat_is_income {
+        format!("✓ {}", text(lang, "modal.category_expense"))
+    } else {
+        text(lang, "modal.category_expense")
+    };
+
+    div()
+        .flex()
+        .items_center()
+        .gap_2()
+        .child(pill_button_colored(
+            "entry-cat-type-income",
+            cat_income_label,
+            if cat_is_income {
+                palette.income_text
+            } else {
+                palette.text_secondary
+            },
+            palette,
+            move |_e, _w, cx| {
+                view_toggle_cat_inc.update(cx, |this, cx| {
+                    this.entry_category_is_income = true;
+                    cx.notify();
+                });
+            },
+        ))
+        .child(pill_button_colored(
+            "entry-cat-type-expense",
+            cat_expense_label,
+            if !cat_is_income {
+                palette.expense_text
+            } else {
+                palette.text_secondary
+            },
+            palette,
+            move |_e, _w, cx| {
+                view_toggle_cat_exp.update(cx, |this, cx| {
+                    this.entry_category_is_income = false;
+                    cx.notify();
+                });
+            },
+        ))
+}
 
 pub fn render_category_dialog(
     dashboard: &DashboardView,
@@ -17,11 +77,6 @@ pub fn render_category_dialog(
     lang: Language,
     cx: &App,
 ) -> AnyElement {
-    let view_toggle_cat_inc = view_entity.clone();
-    let view_toggle_cat_exp = view_entity.clone();
-    let view_color = view_entity.clone();
-    let view_icon = view_entity.clone();
-
     let cat_is_income = dashboard.entry_category_is_income;
     let cat_active_color = parse_color_hex(&dashboard.entry_category_color);
     let selected_color = dashboard.entry_category_color.clone();
@@ -56,64 +111,17 @@ pub fn render_category_dialog(
         displayed_icons.insert(0, icon_query.clone());
     }
 
-    let cat_income_label = if cat_is_income {
-        format!("✓ {}", text(lang, "modal.category_income"))
-    } else {
-        text(lang, "modal.category_income")
-    };
-
-    let cat_expense_label = if !cat_is_income {
-        format!("✓ {}", text(lang, "modal.category_expense"))
-    } else {
-        text(lang, "modal.category_expense")
-    };
-
     div()
         .flex()
         .flex_col()
         .gap_2()
         // 1. Type Switcher
-        .child(
-            div()
-                .flex()
-                .items_center()
-                .gap_2()
-                .child(pill_button_colored(
-                    "entry-cat-type-income",
-                    cat_income_label,
-                    if cat_is_income {
-                        palette.income_text
-                    } else {
-                        palette.text_secondary
-                    },
-                    palette,
-                    {
-                        let vt = view_toggle_cat_inc.clone();
-                        move |_e, _w, cx| {
-                            vt.update(cx, |this, cx| {
-                                this.entry_category_is_income = true;
-                                cx.notify();
-                            });
-                        }
-                    },
-                ))
-                .child(pill_button_colored(
-                    "entry-cat-type-expense",
-                    cat_expense_label,
-                    if !cat_is_income {
-                        palette.expense_text
-                    } else {
-                        palette.text_secondary
-                    },
-                    palette,
-                    move |_e, _w, cx| {
-                        view_toggle_cat_exp.update(cx, |this, cx| {
-                            this.entry_category_is_income = false;
-                            cx.notify();
-                        });
-                    },
-                )),
-        )
+        .child(render_category_type_switcher(
+            palette,
+            cat_is_income,
+            view_entity.clone(),
+            lang,
+        ))
         // 2. Category Name
         .child(
             div()
@@ -134,171 +142,25 @@ pub fn render_category_dialog(
                 )),
         )
         // 3. Color Picker Swatches & Custom Color
-        .child(
-            div()
-                .flex()
-                .flex_col()
-                .gap_1p5()
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .justify_between()
-                        .child(
-                            div()
-                                .text_xs()
-                                .font_weight(FontWeight::BOLD)
-                                .text_color(palette.text_secondary)
-                                .child(text(lang, "modal.category_color")),
-                        )
-                        .child(
-                            div()
-                                .flex()
-                                .items_center()
-                                .gap_1p5()
-                                .child(
-                                    div()
-                                        .size(px(18.0))
-                                        .rounded_full()
-                                        .bg(cat_active_color)
-                                        .border(px(1.5))
-                                        .border_color(palette.border_color)
-                                        .shadow(palette.button_shadows()),
-                                )
-                                .child(div().w(px(95.0)).child(stateful_input_container(
-                                    palette,
-                                    &dashboard.entry_category_color_input,
-                                    text_input(&dashboard.entry_category_color_input, palette),
-                                ))),
-                        ),
-                )
-                .child(div().flex().items_center().gap_2().flex_wrap().children(
-                    category_palette_colors().into_iter().map(|(hex, rgba)| {
-                        let is_selected = selected_color.eq_ignore_ascii_case(hex);
-                        let vc = view_color.clone();
-                        let hex_str = hex.to_string();
-                        div()
-                            .id(format!("color-swatch-{}", hex.replace('#', "")))
-                            .cursor_pointer()
-                            .size(px(20.0))
-                            .rounded_full()
-                            .bg(rgba)
-                            .border(if is_selected { px(2.0) } else { px(1.0) })
-                            .border_color(if is_selected {
-                                palette.text_primary
-                            } else {
-                                palette.border_color
-                            })
-                            .shadow(palette.button_shadows())
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .when(is_selected, |swatch| {
-                                swatch.child(
-                                    icons::icon(icons::ICON_CHECK)
-                                        .size(px(10.0))
-                                        .text_color(rgb(0xFFFFFF)),
-                                )
-                            })
-                            .on_click(move |_e, window, cx| {
-                                let h = hex_str.clone();
-                                vc.update(cx, |this, cx| {
-                                    this.entry_category_color = h.clone();
-                                    this.entry_category_color_input.update(cx, |s, cx| {
-                                        s.set_value(h, window, cx);
-                                    });
-                                    cx.notify();
-                                });
-                            })
-                    }),
-                )),
-        )
+        .child(render_color_picker(
+            palette,
+            &selected_color,
+            cat_active_color,
+            &dashboard.entry_category_color_input,
+            view_entity.clone(),
+            lang,
+        ))
         // 4. FontAwesome Icon Picker
-        .child(
-            div()
-                .flex()
-                .flex_col()
-                .gap_1()
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .justify_between()
-                        .child(
-                            div()
-                                .text_xs()
-                                .font_weight(FontWeight::BOLD)
-                                .text_color(palette.text_secondary)
-                                .child(text(lang, "modal.category_icon")),
-                        )
-                        .child(div().w(px(130.0)).child(stateful_input_container(
-                            palette,
-                            &dashboard.entry_category_icon_input,
-                            text_input(&dashboard.entry_category_icon_input, palette),
-                        ))),
-                )
-                .child(
-                    div()
-                        .flex()
-                        .flex_wrap()
-                        .gap_1()
-                        .p_1()
-                        .rounded(palette.radius_input)
-                        .bg(palette.bg_elevated)
-                        .border(palette.border_width_input)
-                        .border_color(palette.border_color)
-                        .when(displayed_icons.is_empty(), |this| {
-                            this.child(
-                                div()
-                                    .w_full()
-                                    .py_2()
-                                    .px_3()
-                                    .text_xs()
-                                    .text_color(palette.text_secondary)
-                                    .child(format!("No icon found matching \"{icon_query}\"")),
-                            )
-                        })
-                        .children(displayed_icons.into_iter().map(|icon_name| {
-                            let is_selected = selected_icon.eq_ignore_ascii_case(&icon_name);
-                            let vi = view_icon.clone();
-                            let ic_name = icon_name.clone();
-                            div()
-                                .id(format!("fa-icon-choice-{icon_name}"))
-                                .cursor_pointer()
-                                .size(px(25.0))
-                                .rounded(px(5.0))
-                                .bg(if is_selected {
-                                    cat_active_color.opacity(0.20)
-                                } else {
-                                    palette.bg_card
-                                })
-                                .border(if is_selected { px(1.5) } else { px(1.0) })
-                                .border_color(if is_selected {
-                                    cat_active_color
-                                } else {
-                                    palette.border_color
-                                })
-                                .hover(|s| s.border_color(cat_active_color))
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .child(icons::safe_icon(&icon_name).size(px(11.0)).text_color(
-                                    if is_selected {
-                                        cat_active_color
-                                    } else {
-                                        palette.text_secondary
-                                    },
-                                ))
-                                .on_click(move |_e, _window, cx| {
-                                    let name = ic_name.clone();
-                                    vi.update(cx, |this, cx| {
-                                        this.entry_category_icon = name;
-                                        cx.notify();
-                                    });
-                                })
-                        })),
-                ),
-        )
+        .child(render_icon_picker(
+            palette,
+            &selected_icon,
+            cat_active_color,
+            &dashboard.entry_category_icon_input,
+            displayed_icons,
+            &icon_query,
+            view_entity,
+            lang,
+        ))
         // 5. Description Textarea
         .child(
             div()
