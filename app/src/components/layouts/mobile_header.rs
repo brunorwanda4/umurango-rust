@@ -35,36 +35,44 @@ where
 
     let (title, badge_label, subtitle) = match active_section {
         AppSection::Home => (
-            text(language, active_section.label_key()).to_string(),
-            "Umuryango".to_string(),
-            "Cozy Family Treasury & Shared Harmony".to_string(),
+            text(language, active_section.label_key()),
+            text(language, "cozy.nav_home_badge"),
+            text(language, "cozy.nav_home_sub"),
         ),
         AppSection::Money => (
-            money_sub_tab.nav_title().to_string(),
-            "Ledger".to_string(),
-            money_sub_tab.nav_subtitle().to_string(),
+            money_sub_tab.nav_title_for(language),
+            text(language, "cozy.nav_money_badge"),
+            money_sub_tab.nav_subtitle_for(language),
         ),
         AppSection::Projects => (
-            text(language, active_section.label_key()).to_string(),
-            format!("{} Goals", props.projects_badge_count),
-            "Planned family milestones & savings progress".to_string(),
+            text(language, active_section.label_key()),
+            format!(
+                "{} {}",
+                props.projects_badge_count,
+                text(language, "cozy.nav_projects_badge_suffix")
+            ),
+            text(language, "cozy.nav_projects_sub"),
         ),
         AppSection::Members => (
-            text(language, active_section.label_key()).to_string(),
-            format!("{} Members", props.members_badge_count),
-            "Family circle pledges, roles & monthly harmony".to_string(),
+            text(language, active_section.label_key()),
+            format!(
+                "{} {}",
+                props.members_badge_count,
+                text(language, "cozy.nav_members_badge_suffix")
+            ),
+            text(language, "cozy.nav_members_sub"),
         ),
         AppSection::Profile => (
-            text(language, active_section.label_key()).to_string(),
-            "Co-Admin".to_string(),
-            "Preferences, multi-sig governance & connected channels".to_string(),
+            text(language, active_section.label_key()),
+            text(language, "cozy.nav_profile_badge"),
+            text(language, "cozy.nav_profile_sub"),
         ),
     };
 
     let next_theme = theme.toggle();
     let theme_pill_label = match theme {
-        ThemeMode::Dark => "🌙 Dark Cozy",
-        ThemeMode::Light => "☀️ Light Cozy",
+        ThemeMode::Dark => text(language, "cozy.theme_dark_pill"),
+        ThemeMode::Light => text(language, "cozy.theme_light_pill"),
     };
 
     let pending_count = props.pending_approvals_count;

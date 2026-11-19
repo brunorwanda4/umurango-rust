@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use crate::components::ui::BadgeVariant;
+use crate::i18n::{text, Language};
 use crate::icons;
 use gpui_kit::{rgb, Rgba, SharedString};
 use std::sync::LazyLock;
@@ -27,21 +28,30 @@ impl MoneySubTab {
         }
     }
 
-    pub fn nav_title(self) -> &'static str {
+    pub fn label_for(self, lang: Language) -> String {
         match self {
-            Self::Overview => "Money · Overview",
-            Self::Income => "Money · Income",
-            Self::Expenses => "Money · Expenses",
-            Self::Loans => "Money · Loan & Borrowed",
+            Self::Overview => text(lang, "cozy.tab_overview"),
+            Self::Income => text(lang, "cozy.tab_income"),
+            Self::Expenses => text(lang, "cozy.tab_expenses"),
+            Self::Loans => text(lang, "cozy.tab_loans"),
         }
     }
 
-    pub fn nav_subtitle(self) -> &'static str {
+    pub fn nav_title_for(self, lang: Language) -> String {
         match self {
-            Self::Overview => "Unified ledger, ratios & multi-signature approvals",
-            Self::Income => "Family income streams & recorded deposits",
-            Self::Expenses => "Household budgets, category bars & receipts",
-            Self::Loans => "Money lent out & borrowed inside our circle",
+            Self::Overview => text(lang, "cozy.nav_money_overview_title"),
+            Self::Income => text(lang, "cozy.nav_money_income_title"),
+            Self::Expenses => text(lang, "cozy.nav_money_expenses_title"),
+            Self::Loans => text(lang, "cozy.nav_money_loans_title"),
+        }
+    }
+
+    pub fn nav_subtitle_for(self, lang: Language) -> String {
+        match self {
+            Self::Overview => text(lang, "cozy.nav_money_overview_sub"),
+            Self::Income => text(lang, "cozy.nav_money_income_sub"),
+            Self::Expenses => text(lang, "cozy.nav_money_expenses_sub"),
+            Self::Loans => text(lang, "cozy.nav_money_loans_sub"),
         }
     }
 }

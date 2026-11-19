@@ -111,13 +111,16 @@ where
                                                 .text_size(px(10.0))
                                                 .font_weight(FontWeight::EXTRA_BOLD)
                                                 .text_color(palette.text_secondary)
-                                                .child("FAMILY TREASURY"),
+                                                .child(text(
+                                                    language,
+                                                    "cozy.family_treasury_badge",
+                                                )),
                                         ),
                                 ),
                         )
                         .child(compact_primary_button(
                             "sidebar-quick-entry-btn",
-                            "+ Quick Entry",
+                            text(language, "cozy.quick_entry_btn"),
                             palette,
                             move |_event, window, cx| {
                                 if let Some(ref handler) = quick_entry {
@@ -133,7 +136,7 @@ where
                                 .font_weight(FontWeight::EXTRA_BOLD)
                                 .text_color(palette.text_muted)
                                 .px_2()
-                                .child("FAMILY WORKSPACE"),
+                                .child(text(language, "cozy.family_workspace_heading")),
                         )
                         .child(
                             div().flex().flex_col().gap_2().children(
@@ -157,6 +160,7 @@ where
                                             let sub_nav = sidebar_money_sub_nav(
                                                 active_section == AppSection::Money,
                                                 money_sub_tab,
+                                                language,
                                                 palette,
                                                 money_tab_handler.clone(),
                                                 select_money_parent.clone(),
@@ -207,7 +211,7 @@ where
                                         .text_size(px(10.0))
                                         .font_weight(FontWeight::EXTRA_BOLD)
                                         .text_color(palette.text_secondary)
-                                        .child("✨ FAMILY TREASURY"),
+                                        .child(text(language, "cozy.family_treasury_sparkle")),
                                 )
                                 .child(
                                     div()
@@ -220,7 +224,7 @@ where
                                         .text_size(px(9.0))
                                         .font_weight(FontWeight::EXTRA_BOLD)
                                         .text_color(palette.income_text)
-                                        .child("2/2 Admins"),
+                                        .child(text(language, "cozy.admins_badge")),
                                 ),
                         )
                         .child(
@@ -387,6 +391,7 @@ fn sidebar_nav_item(
 fn sidebar_money_sub_nav(
     in_money_section: bool,
     active_sub_tab: MoneySubTab,
+    language: Language,
     palette: ThemeColors,
     on_select_sub: Option<super::app_layout::MoneyTabSelectHandler>,
     on_select_section: SectionSelectHandler,
@@ -394,31 +399,31 @@ fn sidebar_money_sub_nav(
     let sub_items: [(
         &'static str,
         MoneySubTab,
-        &'static str,
+        String,
         Option<(&'static str, Rgba)>,
     ); 4] = [
         (
             "side-sub-overview",
             MoneySubTab::Overview,
-            "• Overview",
+            text(language, "cozy.sub_overview"),
             None,
         ),
         (
             "side-sub-income",
             MoneySubTab::Income,
-            "• Income",
+            text(language, "cozy.sub_income"),
             Some(("+850k", palette.income_text)),
         ),
         (
             "side-sub-expenses",
             MoneySubTab::Expenses,
-            "• Expenses",
+            text(language, "cozy.sub_expenses"),
             Some(("-410k", palette.expense_text)),
         ),
         (
             "side-sub-loans",
             MoneySubTab::Loans,
-            "• Loan & Borrowed",
+            text(language, "cozy.sub_loans"),
             None,
         ),
     ];

@@ -212,7 +212,11 @@ impl DashboardView {
     pub fn set_mood(&mut self, mood: CozyMood, cx: &mut Context<Self>) {
         self.mood = mood;
         set_cozy_mood(mood, cx);
-        self.toast_notice = Some(format!("✨ Switched to {} Cozy Mood", mood.label()));
+        self.toast_notice = Some(format!(
+            "{} {}",
+            text(self.language, "cozy.toast_mood_switched"),
+            mood.label()
+        ));
         cx.notify();
     }
 
@@ -272,9 +276,8 @@ impl DashboardView {
                 },
             );
             self.toast_notice = Some(format!(
-                "✨ Added +{} boost to {}!",
-                format_rwf(amount_rwf),
-                proj_name
+                "{} {proj_name}!",
+                text(self.language, "cozy.toast_boosted")
             ));
             cx.notify();
         }
@@ -284,7 +287,11 @@ impl DashboardView {
         if let Some(loan) = self.loans.get_mut(index) {
             let step = amount_rwf.min(loan.remaining_rwf());
             if step <= 0 {
-                self.toast_notice = Some(format!("✨ {} is already fully settled!", loan.person));
+                self.toast_notice = Some(format!(
+                    "{} {}",
+                    text(self.language, "cozy.toast_loan_settled"),
+                    loan.person
+                ));
                 cx.notify();
                 return;
             }
@@ -315,9 +322,9 @@ impl DashboardView {
                 },
             );
             self.toast_notice = Some(format!(
-                "🤝 Recorded {} repayment for {}!",
-                format_rwf(step),
-                person
+                "{} {person} ({})!",
+                text(self.language, "cozy.toast_loan_repaid"),
+                format_rwf(step)
             ));
             cx.notify();
         }
@@ -352,12 +359,17 @@ impl DashboardView {
                     },
                 );
                 self.toast_notice = Some(format!(
-                    "✓ Approved & released {} ({})",
+                    "{} {} ({})",
+                    text(self.language, "cozy.toast_approved"),
                     item.title,
                     format_rwf(item.amount_rwf)
                 ));
             } else {
-                self.toast_notice = Some(format!("✕ Declined request: {}", item.title));
+                self.toast_notice = Some(format!(
+                    "{} {}",
+                    text(self.language, "cozy.toast_declined"),
+                    item.title
+                ));
             }
             self.sync_formatted_totals();
             cx.notify();
@@ -394,9 +406,8 @@ impl DashboardView {
                 },
             );
             self.toast_notice = Some(format!(
-                "💚 Logged +{} contribution from {}!",
-                format_rwf(amount_rwf),
-                name
+                "{} {name}!",
+                text(self.language, "cozy.toast_member_contrib")
             ));
             cx.notify();
         }
@@ -531,13 +542,19 @@ impl DashboardView {
         palette: ThemeColors,
         view_entity: Entity<Self>,
     ) -> AnyElement {
+        let lang = self.language;
         let net_saved_rwf = (self.monthly_income_rwf - self.monthly_expenses_rwf).max(0);
-        let net_saved_label = format!("+{} net saved this month", format_rwf(net_saved_rwf));
+        let net_saved_label = format!(
+            "+{} {}",
+            format_rwf(net_saved_rwf),
+            text(lang, "cozy.hero_net_saved_suffix")
+        );
 
         let view_for_qa = view_entity.clone();
         let hero_card = treasury_hero_card(
             self.total_treasury.clone(),
             net_saved_label,
+            lang,
             palette,
             move |kind, _window, cx| {
                 view_for_qa.update(cx, |this, cx| match kind {
@@ -596,7 +613,7 @@ impl DashboardView {
                     .text_xs()
                     .font_weight(FontWeight::BOLD)
                     .text_color(palette.text_secondary)
-                    .child("Monthly Income"),
+                    .child(text(lang, "cozy.monthly_income")),
             )
             .child(
                 div()
@@ -645,7 +662,7 @@ impl DashboardView {
                     .text_xs()
                     .font_weight(FontWeight::BOLD)
                     .text_color(palette.text_secondary)
-                    .child("Monthly Expenses"),
+                    .child(text(lang, "cozy.monthly_expenses")),
             )
             .child(
                 div()
@@ -659,6 +676,7 @@ impl DashboardView {
         let approvals_banner = pending_approvals_banner(
             self.approvals.len(),
             self.approvals.first(),
+            lang,
             palette,
             move |_e, _w, cx| {
                 view_rev.update(cx, |this, cx| {
@@ -695,6 +713,7 @@ impl DashboardView {
             self.chart_mode,
             &MONTHLY_CASHFLOW,
             &self.expense_categories,
+            lang,
             palette,
             move |next_mode, _w, cx| {
                 view_chart.update(cx, |this, cx| {
@@ -721,18 +740,18 @@ impl DashboardView {
                                     .text_sm()
                                     .font_weight(FontWeight::EXTRA_BOLD)
                                     .text_color(palette.text_primary)
-                                    .child("Planned Family Projects"),
+                                    .child(text(lang, "cozy.planned_projects_title")),
                             )
                             .child(
                                 div()
                                     .text_xs()
                                     .text_color(palette.text_secondary)
-                                    .child("Shared goals & milestone progress"),
+                                    .child(text(lang, "cozy.planned_projects_sub")),
                             ),
                     )
                     .child(pill_button(
                         "home-see-all-projects-btn",
-                        "See all ->",
+                        text(lang, "cozy.see_all_arrow"),
                         palette,
                         move |_e, _w, cx| {
                             view_see_projects.update(cx, |this, cx| {
@@ -750,7 +769,7 @@ impl DashboardView {
                         .take(2)
                         .map(|(idx, proj)| {
                             let view_boost = view_entity.clone();
-                            project_preview_row(idx, proj, palette, move |_e, _w, cx| {
+                            project_preview_row(idx, proj, lang, palette, move |_e, _w, cx| {
                                 view_boost.update(cx, |this, cx| {
                                     this.boost_project(idx, 50_000, cx);
                                 });
@@ -783,18 +802,18 @@ impl DashboardView {
                                     .text_sm()
                                     .font_weight(FontWeight::EXTRA_BOLD)
                                     .text_color(palette.text_primary)
-                                    .child("Recent Family Activity"),
+                                    .child(text(lang, "cozy.recent_activity_title")),
                             )
                             .child(
                                 div()
                                     .text_xs()
                                     .text_color(palette.text_secondary)
-                                    .child("Latest income, expenses & loan updates"),
+                                    .child(text(lang, "cozy.recent_activity_sub")),
                             ),
                     )
                     .child(pill_button(
                         "home-full-ledger-btn",
-                        "Full Ledger ->",
+                        text(lang, "cozy.full_ledger_arrow"),
                         palette,
                         move |_e, _w, cx| {
                             view_full_ledger.update(cx, |this, cx| {
@@ -830,6 +849,7 @@ impl DashboardView {
         view_entity: Entity<Self>,
         cx: &App,
     ) -> AnyElement {
+        let lang = self.language;
         let lent_remaining: i64 = self
             .loans
             .iter()
@@ -844,11 +864,16 @@ impl DashboardView {
             .sum();
         let loans_count_str = self.loans.len().to_string();
 
+        let tab_ov_label = MoneySubTab::Overview.label_for(lang);
+        let tab_inc_label = MoneySubTab::Income.label_for(lang);
+        let tab_exp_label = MoneySubTab::Expenses.label_for(lang);
+        let tab_loan_label = MoneySubTab::Loans.label_for(lang);
+
         let sub_tab_items = [
             SegmentedTabItem {
                 id: "money-subtab-overview",
                 value: MoneySubTab::Overview,
-                label: "Overview",
+                label: &tab_ov_label,
                 icon: Some(icons::ICON_WALLET),
                 dot_color: None,
                 badge_text: None,
@@ -856,7 +881,7 @@ impl DashboardView {
             SegmentedTabItem {
                 id: "money-subtab-income",
                 value: MoneySubTab::Income,
-                label: "Income",
+                label: &tab_inc_label,
                 icon: None,
                 dot_color: Some(palette.income_text),
                 badge_text: Some("+850k"),
@@ -864,7 +889,7 @@ impl DashboardView {
             SegmentedTabItem {
                 id: "money-subtab-expenses",
                 value: MoneySubTab::Expenses,
-                label: "Expenses",
+                label: &tab_exp_label,
                 icon: None,
                 dot_color: Some(palette.expense_text),
                 badge_text: Some("-410k"),
@@ -872,7 +897,7 @@ impl DashboardView {
             SegmentedTabItem {
                 id: "money-subtab-loans",
                 value: MoneySubTab::Loans,
-                label: "Loan & Borrowed",
+                label: &tab_loan_label,
                 icon: None,
                 dot_color: Some(palette.loan_text),
                 badge_text: Some(loans_count_str.as_str()),
@@ -921,7 +946,7 @@ impl DashboardView {
                                             .text_xs()
                                             .font_weight(FontWeight::BOLD)
                                             .text_color(palette.text_secondary)
-                                            .child("Combined Family Treasury"),
+                                            .child(text(lang, "cozy.combined_treasury")),
                                     )
                                     .child(
                                         div()
@@ -933,7 +958,7 @@ impl DashboardView {
                             )
                             .child(compact_primary_button(
                                 "money-ov-add-entry-btn",
-                                "+ Add Entry",
+                                text(lang, "cozy.add_entry_btn"),
                                 palette,
                                 move |_e, _w, cx| {
                                     view_add.update(cx, |_this, cx| {
@@ -968,7 +993,7 @@ impl DashboardView {
                                             .text_size(px(10.0))
                                             .font_weight(FontWeight::BOLD)
                                             .text_color(palette.text_secondary)
-                                            .child("Income"),
+                                            .child(text(lang, "cozy.tab_income")),
                                     )
                                     .child(
                                         div()
@@ -994,7 +1019,7 @@ impl DashboardView {
                                             .text_size(px(10.0))
                                             .font_weight(FontWeight::BOLD)
                                             .text_color(palette.text_secondary)
-                                            .child("Expenses"),
+                                            .child(text(lang, "cozy.tab_expenses")),
                                     )
                                     .child(
                                         div()
@@ -1020,7 +1045,7 @@ impl DashboardView {
                                             .text_size(px(10.0))
                                             .font_weight(FontWeight::BOLD)
                                             .text_color(palette.text_secondary)
-                                            .child("Loans Net"),
+                                            .child(text(lang, "cozy.loans_net")),
                                     )
                                     .child(
                                         div()
@@ -1048,12 +1073,13 @@ impl DashboardView {
                                             .text_sm()
                                             .font_weight(FontWeight::EXTRA_BOLD)
                                             .text_color(palette.text_primary)
-                                            .child("Pending Multi-Sig Approvals"),
+                                            .child(text(lang, "cozy.multisig_title")),
                                     )
                                     .child(
-                                        div().text_xs().text_color(palette.text_secondary).child(
-                                            "Expenses over 30,000 RWF require 2 family admins",
-                                        ),
+                                        div()
+                                            .text_xs()
+                                            .text_color(palette.text_secondary)
+                                            .child(text(lang, "cozy.multisig_sub")),
                                     ),
                             )
                             .child(
@@ -1067,7 +1093,11 @@ impl DashboardView {
                                     .text_size(px(10.0))
                                     .font_weight(FontWeight::EXTRA_BOLD)
                                     .text_color(palette.loan_text)
-                                    .child(format!("{} Waiting", self.approvals.len())),
+                                    .child(format!(
+                                        "{} {}",
+                                        self.approvals.len(),
+                                        text(lang, "cozy.waiting_suffix")
+                                    )),
                             ),
                     )
                     .child(if self.approvals.is_empty() {
@@ -1077,7 +1107,7 @@ impl DashboardView {
                                     .text_xs()
                                     .font_weight(FontWeight::BOLD)
                                     .text_color(palette.income_text)
-                                    .child("All family requests approved! ✨"),
+                                    .child(text(lang, "cozy.all_approved")),
                             )
                             .into_any_element()
                     } else {
@@ -1091,6 +1121,7 @@ impl DashboardView {
                                 approval_request_card(
                                     idx,
                                     item,
+                                    lang,
                                     palette,
                                     move |_e, _w, cx| {
                                         view_app.update(cx, |this, cx| {
@@ -1146,13 +1177,13 @@ impl DashboardView {
                                             .text_sm()
                                             .font_weight(FontWeight::EXTRA_BOLD)
                                             .text_color(palette.text_primary)
-                                            .child("Combined Family Ledger"),
+                                            .child(text(lang, "cozy.combined_ledger_title")),
                                     )
                                     .child(
                                         div()
                                             .text_xs()
                                             .text_color(palette.text_secondary)
-                                            .child("All income, expenses & loan movements"),
+                                            .child(text(lang, "cozy.combined_ledger_sub")),
                                     ),
                             )
                             .child(div().w(px(260.0)).child(stateful_input_container(
@@ -1202,7 +1233,7 @@ impl DashboardView {
                                     .text_xs()
                                     .font_weight(FontWeight::BOLD)
                                     .text_color(palette.text_secondary)
-                                    .child("Monthly Family Inflow"),
+                                    .child(text(lang, "cozy.monthly_inflow_title")),
                             )
                             .child(
                                 div()
@@ -1215,12 +1246,12 @@ impl DashboardView {
                                 div()
                                     .text_xs()
                                     .text_color(palette.text_secondary)
-                                    .child("Salaries, consulting, rental plot & Ibimina dividend"),
+                                    .child(text(lang, "cozy.monthly_inflow_sub")),
                             ),
                     )
                     .child(compact_primary_button(
                         "money-inc-log-btn",
-                        "+ Log Income",
+                        text(lang, "cozy.log_income_btn"),
                         palette,
                         move |_e, _w, cx| {
                             view_log_inc.update(cx, |_this, cx| {
@@ -1243,7 +1274,7 @@ impl DashboardView {
                             .text_sm()
                             .font_weight(FontWeight::EXTRA_BOLD)
                             .text_color(palette.text_primary)
-                            .child("Recorded Income Deposits"),
+                            .child(text(lang, "cozy.recorded_deposits_title")),
                     )
                     .child(
                         div().flex().flex_col().gap_2().children(
@@ -1282,7 +1313,7 @@ impl DashboardView {
                                     .text_xs()
                                     .font_weight(FontWeight::BOLD)
                                     .text_color(palette.text_secondary)
-                                    .child("Monthly Family Spending"),
+                                    .child(text(lang, "cozy.monthly_spending_title")),
                             )
                             .child(
                                 div()
@@ -1295,12 +1326,12 @@ impl DashboardView {
                                 div()
                                     .text_xs()
                                     .text_color(palette.text_secondary)
-                                    .child("78% of 525,000 RWF monthly household budget"),
+                                    .child(text(lang, "cozy.monthly_spending_sub")),
                             ),
                     )
                     .child(pill_button_colored(
                         "money-exp-log-btn",
-                        "- Log Expense",
+                        text(lang, "cozy.log_expense_btn"),
                         palette.expense_text,
                         palette,
                         move |_e, _w, cx| {
@@ -1324,7 +1355,7 @@ impl DashboardView {
                             .text_sm()
                             .font_weight(FontWeight::EXTRA_BOLD)
                             .text_color(palette.text_primary)
-                            .child("Expense Receipts"),
+                            .child(text(lang, "cozy.expense_receipts_title")),
                     )
                     .child(
                         div().flex().flex_col().gap_2().children(
@@ -1359,7 +1390,7 @@ impl DashboardView {
                                     .text_xs()
                                     .font_weight(FontWeight::BOLD)
                                     .text_color(palette.text_secondary)
-                                    .child("Lent Out (Owed to Us)"),
+                                    .child(text(lang, "cozy.lent_out_title")),
                             )
                             .child(
                                 div()
@@ -1372,7 +1403,7 @@ impl DashboardView {
                                 div()
                                     .text_xs()
                                     .text_color(palette.text_secondary)
-                                    .child("Active family support bridges"),
+                                    .child(text(lang, "cozy.lent_out_sub")),
                             ),
                     )
                     .child(
@@ -1384,7 +1415,7 @@ impl DashboardView {
                                     .text_xs()
                                     .font_weight(FontWeight::BOLD)
                                     .text_color(palette.text_secondary)
-                                    .child("Borrowed (We Owe)"),
+                                    .child(text(lang, "cozy.borrowed_title")),
                             )
                             .child(
                                 div()
@@ -1397,17 +1428,25 @@ impl DashboardView {
                                 div()
                                     .text_xs()
                                     .text_color(palette.text_secondary)
-                                    .child("Kigali Family Ibimina solar advance"),
+                                    .child(text(lang, "cozy.borrowed_sub")),
                             ),
                     );
 
                 let filter_pills = [
-                    ("loan-filter-all", LoanFilter::All, "All".to_string()),
-                    ("loan-filter-lent", LoanFilter::Lent, "Lent Out".to_string()),
+                    (
+                        "loan-filter-all",
+                        LoanFilter::All,
+                        text(lang, "cozy.filter_all").to_string(),
+                    ),
+                    (
+                        "loan-filter-lent",
+                        LoanFilter::Lent,
+                        text(lang, "cozy.filter_lent").to_string(),
+                    ),
                     (
                         "loan-filter-borrowed",
                         LoanFilter::Borrowed,
-                        "Borrowed".to_string(),
+                        text(lang, "cozy.filter_borrowed").to_string(),
                     ),
                 ];
 
@@ -1432,7 +1471,7 @@ impl DashboardView {
                     ))
                     .child(compact_primary_button(
                         "money-new-loan-btn",
-                        "+ New Loan / Borrow",
+                        text(lang, "cozy.new_loan_btn"),
                         palette,
                         move |_e, _w, cx| {
                             view_new_loan.update(cx, |this, cx| {
@@ -1448,10 +1487,8 @@ impl DashboardView {
                                         due: "Feb 20, 2027".into(),
                                     },
                                 );
-                                this.toast_notice = Some(
-                                    "🤝 Created new family loan bridge for Uncle Olivier!"
-                                        .to_string(),
-                                );
+                                this.toast_notice =
+                                    Some(text(this.language, "cozy.toast_new_loan").to_string());
                                 cx.notify();
                             });
                         },
@@ -1469,7 +1506,7 @@ impl DashboardView {
                         })
                         .map(|(idx, loan)| {
                             let view_repay = view_entity.clone();
-                            loan_card(idx, loan, palette, move |_e, _w, cx| {
+                            loan_card(idx, loan, lang, palette, move |_e, _w, cx| {
                                 view_repay.update(cx, |this, cx| {
                                     this.record_loan_repayment(idx, 30_000, cx);
                                 });
@@ -1502,6 +1539,7 @@ impl DashboardView {
         palette: ThemeColors,
         view_entity: Entity<Self>,
     ) -> AnyElement {
+        let lang = self.language;
         let total_saved: i64 = self.projects.iter().map(|p| p.saved_rwf).sum();
         let active_count = self.projects.iter().filter(|p| !p.is_completed).count();
         let completed_count = self.projects.iter().filter(|p| p.is_completed).count();
@@ -1523,7 +1561,7 @@ impl DashboardView {
                             .text_xs()
                             .font_weight(FontWeight::BOLD)
                             .text_color(palette.text_secondary)
-                            .child("Total Saved Across Family Plans"),
+                            .child(text(lang, "cozy.total_saved_plans")),
                     )
                     .child(
                         div()
@@ -1537,8 +1575,11 @@ impl DashboardView {
                             .text_xs()
                             .text_color(palette.text_secondary)
                             .child(format!(
-                                "{} active goals · {} completed milestone",
-                                active_count, completed_count
+                                "{} {} · {} {}",
+                                active_count,
+                                text(lang, "cozy.active_goals_word"),
+                                completed_count,
+                                text(lang, "cozy.completed_milestone_word")
                             )),
                     ),
             )
@@ -1552,12 +1593,18 @@ impl DashboardView {
                             (
                                 "proj-filter-active",
                                 ProjectFilter::Active,
-                                format!("Active Plans ({active_count})"),
+                                format!(
+                                    "{} ({active_count})",
+                                    text(lang, "cozy.filter_active_plans")
+                                ),
                             ),
                             (
                                 "proj-filter-done",
                                 ProjectFilter::Completed,
-                                format!("Completed ({completed_count})"),
+                                format!(
+                                    "{} ({completed_count})",
+                                    text(lang, "cozy.filter_completed")
+                                ),
                             ),
                         ],
                         self.project_filter,
@@ -1574,7 +1621,7 @@ impl DashboardView {
                     ))
                     .child(compact_primary_button(
                         "projects-new-btn",
-                        "+ New Project",
+                        text(lang, "cozy.new_project_btn"),
                         palette,
                         move |_e, _w, cx| {
                             view_new_proj.update(cx, |_this, cx| {
@@ -1602,6 +1649,7 @@ impl DashboardView {
                         idx,
                         proj,
                         is_expanded,
+                        lang,
                         palette,
                         move |_e, _w, cx| {
                             view_boost.update(cx, |this, cx| {
@@ -1632,6 +1680,7 @@ impl DashboardView {
     }
 
     fn render_people_screen(&self, palette: ThemeColors, view_entity: Entity<Self>) -> AnyElement {
+        let lang = self.language;
         let total_pledge: i64 = self.family_members.iter().map(|m| m.monthly_goal_rwf).sum();
         let total_contributed: i64 = self.family_members.iter().map(|m| m.contributed_rwf).sum();
         let pledge_pct = if total_pledge <= 0 {
@@ -1660,7 +1709,7 @@ impl DashboardView {
                                     .text_xs()
                                     .font_weight(FontWeight::BOLD)
                                     .text_color(palette.text_secondary)
-                                    .child("Family Circle Monthly Pledge"),
+                                    .child(text(lang, "cozy.circle_monthly_pledge")),
                             )
                             .child(
                                 div()
@@ -1677,7 +1726,7 @@ impl DashboardView {
                     )
                     .child(compact_primary_button(
                         "people-invite-member-btn",
-                        "+ Invite",
+                        text(lang, "cozy.invite_btn"),
                         palette,
                         move |_e, _w, cx| {
                             view_invite.update(cx, |this, cx| {
@@ -1690,10 +1739,8 @@ impl DashboardView {
                                     status: "Joined ✨".into(),
                                     accent_color: palette.accent_primary,
                                 });
-                                this.toast_notice = Some(
-                                    "💌 Invited Cousin Clarisse to the Umuryango Circle!"
-                                        .to_string(),
-                                );
+                                this.toast_notice =
+                                    Some(text(this.language, "cozy.toast_invited").to_string());
                                 cx.notify();
                             });
                         },
@@ -1717,6 +1764,7 @@ impl DashboardView {
                     member_pledge_card(
                         idx,
                         member,
+                        lang,
                         palette,
                         move |_e, _w, cx| {
                             view_contrib.update(cx, |this, cx| {
@@ -1727,8 +1775,9 @@ impl DashboardView {
                             let target_name = member_name.clone();
                             view_remind.update(cx, |this, cx| {
                                 this.toast_notice = Some(format!(
-                                "📲 Sent gentle Kinyarwanda MoMo pledge reminder to {target_name}!"
-                            ));
+                                    "{} {target_name}!",
+                                    text(this.language, "cozy.toast_reminded")
+                                ));
                                 cx.notify();
                             });
                         },
@@ -1750,6 +1799,7 @@ impl DashboardView {
         palette: ThemeColors,
         view_entity: Entity<Self>,
     ) -> AnyElement {
+        let lang = self.language;
         let next_theme = self.theme.toggle();
         let next_lang = self.language.toggle();
         let view_theme = view_entity.clone();
@@ -1766,7 +1816,7 @@ impl DashboardView {
                     .gap_2()
                     .child(member_avatar(
                         &self.member_name,
-                        Some("Co-Admin · Family Planner"),
+                        Some(&text(lang, "cozy.coadmin_planner")),
                         AvatarSize::Xl,
                         palette,
                     ))
@@ -1781,7 +1831,7 @@ impl DashboardView {
                             .text_xs()
                             .font_weight(FontWeight::EXTRA_BOLD)
                             .text_color(palette.income_text)
-                            .child("Co-Admin · Family Planner"),
+                            .child(text(lang, "cozy.coadmin_planner")),
                     )
                     .child(
                         div()
@@ -1798,11 +1848,15 @@ impl DashboardView {
                             .text_xs()
                             .font_weight(FontWeight::EXTRA_BOLD)
                             .text_color(palette.text_primary)
-                            .child("Cozy Theme & Pastel Mood Studio"),
+                            .child(text(lang, "cozy.theme_studio_title")),
                     )
                     .child(primary_button(
                         "profile-toggle-cozy-theme-btn",
-                        format!("Switch to {}", next_theme.label()),
+                        format!(
+                            "{} {}",
+                            text(lang, "cozy.switch_to_prefix"),
+                            next_theme.label()
+                        ),
                         palette,
                         move |_e, _w, cx| {
                             view_theme.update(cx, |this, cx| {
@@ -1868,7 +1922,11 @@ impl DashboardView {
                             .pt_1()
                             .child(secondary_button(
                                 "profile-switch-lang-btn",
-                                format!("Language: {}", self.language.label()),
+                                format!(
+                                    "{}: {}",
+                                    text(lang, "section.language_label"),
+                                    self.language.label()
+                                ),
                                 palette,
                                 move |_e, w, cx| {
                                     view_lang.update(cx, |this, cx| {
@@ -1879,7 +1937,7 @@ impl DashboardView {
                             ))
                             .child(destructive_button(
                                 "profile-signout-btn",
-                                text(self.language, "dashboard.sign_out"),
+                                text(lang, "dashboard.sign_out"),
                                 palette,
                                 move |_e, _w, cx| {
                                     view_sign_out.update(cx, |_this, cx| {
@@ -1904,11 +1962,11 @@ impl DashboardView {
                     .text_sm()
                     .font_weight(FontWeight::EXTRA_BOLD)
                     .text_color(palette.text_primary)
-                    .child("Family Governance Rules"),
+                    .child(text(lang, "cozy.governance_rules_title")),
             )
             .child(card_elevated(palette).child(toggle_field(
                 "rule-multisig-30k",
-                "Require 2-Admin Approval over 30k RWF",
+                text(lang, "cozy.rule_multisig_30k"),
                 None::<&str>,
                 r1,
                 palette,
@@ -1921,7 +1979,7 @@ impl DashboardView {
             )))
             .child(card_elevated(palette).child(toggle_field(
                 "rule-sunday-digest",
-                "Sunday Evening Family Treasury Digest",
+                text(lang, "cozy.rule_sunday_digest"),
                 None::<&str>,
                 r2,
                 palette,
@@ -1934,7 +1992,7 @@ impl DashboardView {
             )))
             .child(card_elevated(palette).child(toggle_field(
                 "rule-auto-roundup",
-                "Auto-Round Up MoMo Change to Projects",
+                text(lang, "cozy.rule_auto_roundup"),
                 None::<&str>,
                 r3,
                 palette,
@@ -1953,7 +2011,7 @@ impl DashboardView {
                     .text_sm()
                     .font_weight(FontWeight::EXTRA_BOLD)
                     .text_color(palette.text_primary)
-                    .child("Connected Rwandan Channels"),
+                    .child(text(lang, "cozy.connected_channels_title")),
             )
             .child(
                 div()
@@ -1982,7 +2040,7 @@ impl DashboardView {
                                     .text_size(px(10.0))
                                     .font_weight(FontWeight::EXTRA_BOLD)
                                     .text_color(palette.income_text)
-                                    .child("Linked"),
+                                    .child(text(lang, "cozy.channel_linked")),
                             ),
                     )
                     .child(
@@ -2007,7 +2065,7 @@ impl DashboardView {
                                     .text_size(px(10.0))
                                     .font_weight(FontWeight::EXTRA_BOLD)
                                     .text_color(palette.income_text)
-                                    .child("Linked"),
+                                    .child(text(lang, "cozy.channel_linked")),
                             ),
                     )
                     .child(
@@ -2032,7 +2090,7 @@ impl DashboardView {
                                     .text_size(px(10.0))
                                     .font_weight(FontWeight::EXTRA_BOLD)
                                     .text_color(palette.income_text)
-                                    .child("Treasury"),
+                                    .child(text(lang, "cozy.channel_treasury")),
                             ),
                     ),
             );
@@ -2040,8 +2098,8 @@ impl DashboardView {
         let view_sync = view_entity;
         let storage_card = card_surface(palette)
             .child(card_header(
-                text(self.language, "dashboard.storage_health"),
-                Some("Authoritative PostgreSQL • Local SQLite replica & outbox"),
+                text(lang, "dashboard.storage_health"),
+                Some(text(lang, "cozy.storage_sub")),
                 palette,
             ))
             .child(
@@ -2071,7 +2129,7 @@ impl DashboardView {
                     )
                     .child(pill_button(
                         "profile-sync-now-btn",
-                        text(self.language, "dashboard.sync_now"),
+                        text(lang, "dashboard.sync_now"),
                         palette,
                         move |_e, _w, cx| {
                             view_sync.update(cx, |_this, cx| {

@@ -100,13 +100,13 @@ pub fn money_section(
         LOANS
             .iter()
             .enumerate()
-            .map(|(idx, l)| loan_card(idx, l, palette, |_e, _w, _cx| {})),
+            .map(|(idx, l)| loan_card(idx, l, language, palette, |_e, _w, _cx| {})),
     );
 
     let transactions = card_surface(palette)
         .child(card_header(
             text(language, "dashboard.recent_activity"),
-            Some("Latest treasury transactions and contributions"),
+            Some(text(language, "cozy.recent_activity_sub")),
             palette,
         ))
         .child(
@@ -170,7 +170,7 @@ pub fn projects_section(theme: ThemeMode, language: Language) -> impl IntoElemen
                                         .text_xs()
                                         .font_weight(FontWeight::BOLD)
                                         .text_color(palette.text_secondary)
-                                        .child("Total Saved Across Family Plans"),
+                                        .child(text(language, "cozy.total_saved_plans")),
                                 )
                                 .child(
                                     div()
@@ -182,7 +182,7 @@ pub fn projects_section(theme: ThemeMode, language: Language) -> impl IntoElemen
                         )
                         .child(compact_primary_button(
                             "projects-sec-new-btn",
-                            "+ New Project",
+                            text(language, "cozy.new_project_btn"),
                             palette,
                             |_e, _w, _cx| {},
                         )),
@@ -197,6 +197,7 @@ pub fn projects_section(theme: ThemeMode, language: Language) -> impl IntoElemen
                                 idx,
                                 project,
                                 false,
+                                language,
                                 palette,
                                 |_e, _w, _cx| {},
                                 |_e, _w, _cx| {},
@@ -246,7 +247,10 @@ pub fn members_section(theme: ThemeMode, language: Language) -> impl IntoElement
                                                 .text_xs()
                                                 .font_weight(FontWeight::BOLD)
                                                 .text_color(palette.text_secondary)
-                                                .child("Family Circle Monthly Pledge"),
+                                                .child(text(
+                                                    language,
+                                                    "cozy.circle_monthly_pledge",
+                                                )),
                                         )
                                         .child(
                                             div()
@@ -263,7 +267,7 @@ pub fn members_section(theme: ThemeMode, language: Language) -> impl IntoElement
                                 )
                                 .child(compact_primary_button(
                                     "members-sec-invite-btn",
-                                    "+ Invite",
+                                    text(language, "cozy.invite_btn"),
                                     palette,
                                     |_e, _w, _cx| {},
                                 )),
@@ -272,7 +276,14 @@ pub fn members_section(theme: ThemeMode, language: Language) -> impl IntoElement
                 )
                 .child(div().flex().flex_col().gap_3().children(
                     FAMILY_MEMBERS.iter().enumerate().map(|(idx, member)| {
-                        member_pledge_card(idx, member, palette, |_e, _w, _cx| {}, |_e, _w, _cx| {})
+                        member_pledge_card(
+                            idx,
+                            member,
+                            language,
+                            palette,
+                            |_e, _w, _cx| {},
+                            |_e, _w, _cx| {},
+                        )
                     }),
                 )),
         ),
@@ -318,7 +329,7 @@ where
                             .gap_3()
                             .child(member_avatar(
                                 member_name,
-                                Some("Co-Admin · Family Planner"),
+                                Some(&text(language, "cozy.coadmin_planner")),
                                 AvatarSize::Xl,
                                 palette,
                             ))

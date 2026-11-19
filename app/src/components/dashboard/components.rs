@@ -8,8 +8,9 @@ use super::data::{
 use crate::brand::ThemeColors;
 use crate::components::ui::{
     badge, card_elevated, card_surface, compact_primary_button, filter_pill_group, icon_badge_box,
-    kawaii_progress_bar, member_avatar, pill_button, pill_button_colored, AvatarSize, BadgeVariant,
+    kawaii_progress_bar, member_avatar, pill_button, pill_button_colored, AvatarSize,
 };
+use crate::i18n::{text, Language};
 use crate::icons;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
@@ -17,6 +18,7 @@ use gpui_kit::*;
 pub fn treasury_hero_card<F>(
     total_treasury_label: impl Into<SharedString>,
     net_saved_label: impl Into<SharedString>,
+    language: Language,
     palette: ThemeColors,
     on_quick_action: F,
 ) -> impl IntoElement
@@ -63,7 +65,7 @@ where
                                         .text_size(px(10.0))
                                         .font_weight(FontWeight::EXTRA_BOLD)
                                         .text_color(palette.text_secondary)
-                                        .child("SHARED FAMILY POOL"),
+                                        .child(text(language, "cozy.hero_shared_pool")),
                                 ),
                         )
                         .child(
@@ -121,28 +123,28 @@ where
                         .min_w(px(105.0))
                         .child(compact_primary_button(
                             "hero-qa-income",
-                            "+ Income",
+                            text(language, "cozy.qa_income"),
                             palette,
                             move |_e, w, cx| act_income(QuickEntryKind::Income, w, cx),
                         )),
                 )
                 .child(div().flex_1().min_w(px(105.0)).child(pill_button_colored(
                     "hero-qa-expense",
-                    "- Expense",
+                    text(language, "cozy.qa_expense"),
                     palette.expense_text,
                     palette,
                     move |_e, w, cx| act_expense(QuickEntryKind::Expense, w, cx),
                 )))
                 .child(div().flex_1().min_w(px(95.0)).child(pill_button_colored(
                     "hero-qa-loan",
-                    "Loan",
+                    text(language, "cozy.qa_loan"),
                     palette.loan_text,
                     palette,
                     move |_e, w, cx| act_loan(QuickEntryKind::Loan, w, cx),
                 )))
                 .child(div().flex_1().min_w(px(95.0)).child(pill_button_colored(
                     "hero-qa-project",
-                    "Project",
+                    text(language, "cozy.qa_project"),
                     palette.accent_primary,
                     palette,
                     move |_e, w, cx| act_project(QuickEntryKind::Project, w, cx),
@@ -153,6 +155,7 @@ where
 pub fn pending_approvals_banner<F>(
     count: usize,
     first_item: Option<&ApprovalItem>,
+    language: Language,
     palette: ThemeColors,
     on_review: F,
 ) -> impl IntoElement
@@ -167,7 +170,7 @@ where
             format_rwf(item.amount_rwf)
         )
     } else {
-        "All family multi-signature requests are up to date".to_string()
+        text(language, "cozy.all_approvals_up_to_date")
     };
 
     card_surface(palette)
@@ -199,7 +202,10 @@ where
                                 .text_xs()
                                 .font_weight(FontWeight::EXTRA_BOLD)
                                 .text_color(palette.text_primary)
-                                .child(format!("{count} Pending Family Approvals")),
+                                .child(format!(
+                                    "{count} {}",
+                                    text(language, "cozy.pending_approvals_suffix")
+                                )),
                         )
                         .child(
                             div()
@@ -211,7 +217,7 @@ where
         )
         .child(pill_button(
             "home-review-approvals-btn",
-            "Review ->",
+            text(language, "cozy.review_arrow"),
             palette,
             on_review,
         ))
@@ -221,6 +227,7 @@ pub fn cashflow_insights_card<F>(
     mode: ChartMode,
     cashflow: &[MonthlyCashflowPoint],
     categories: &[ExpenseCategoryRow],
+    language: Language,
     palette: ThemeColors,
     on_mode_change: F,
 ) -> impl IntoElement
@@ -231,12 +238,12 @@ where
         (
             "chart-mode-cashflow",
             ChartMode::Cashflow,
-            "Cashflow".to_string(),
+            text(language, "cozy.chart_cashflow"),
         ),
         (
             "chart-mode-spending",
             ChartMode::Spending,
-            "Spending".to_string(),
+            text(language, "cozy.chart_spending"),
         ),
     ];
 
@@ -327,7 +334,7 @@ where
                             .child(
                                 div()
                                     .text_color(palette.text_secondary)
-                                    .child("Income (Jun - Nov)"),
+                                    .child(text(language, "cozy.legend_income")),
                             ),
                     )
                     .child(
@@ -342,7 +349,11 @@ where
                                     .rounded(px(3.0))
                                     .bg(palette.expense_text),
                             )
-                            .child(div().text_color(palette.text_secondary).child("Expenses")),
+                            .child(
+                                div()
+                                    .text_color(palette.text_secondary)
+                                    .child(text(language, "cozy.legend_expenses")),
+                            ),
                     ),
             )
             .into_any_element(),
@@ -412,13 +423,13 @@ where
                                 .text_sm()
                                 .font_weight(FontWeight::EXTRA_BOLD)
                                 .text_color(palette.text_primary)
-                                .child("Family Money Insights"),
+                                .child(text(language, "cozy.insights_title")),
                         )
                         .child(
                             div()
                                 .text_xs()
                                 .text_color(palette.text_secondary)
-                                .child("6-month cashflow & spending mix"),
+                                .child(text(language, "cozy.insights_sub")),
                         ),
                 )
                 .child(filter_pill_group(&pills, mode, palette, on_mode_change)),
@@ -509,6 +520,7 @@ pub fn transaction_row(
 pub fn project_preview_row<F>(
     index: usize,
     project: &ProjectSummary,
+    language: Language,
     palette: ThemeColors,
     on_boost: F,
 ) -> impl IntoElement
@@ -562,7 +574,7 @@ where
                 )
                 .child(pill_button_colored(
                     ("home-proj-boost", index),
-                    "+50k Boost",
+                    text(language, "cozy.boost_50k"),
                     palette.income_text,
                     palette,
                     on_boost,
@@ -576,6 +588,7 @@ where
 }
 
 pub fn project_card(project: &ProjectSummary, palette: ThemeColors) -> impl IntoElement {
+    let lang = Language::default();
     card_elevated(palette)
         .gap_2()
         .child(
@@ -598,7 +611,12 @@ pub fn project_card(project: &ProjectSummary, palette: ThemeColors) -> impl Into
                             div()
                                 .text_xs()
                                 .text_color(palette.text_secondary)
-                                .child(format!("Lead: {} · {}", project.lead, project.deadline)),
+                                .child(format!(
+                                    "{} {} · {}",
+                                    text(lang, "cozy.lead_prefix"),
+                                    project.lead,
+                                    project.deadline
+                                )),
                         ),
                 )
                 .child(badge(project.progress.clone(), project.variant, palette)),
@@ -615,8 +633,16 @@ pub fn project_card(project: &ProjectSummary, palette: ThemeColors) -> impl Into
                 .items_center()
                 .text_xs()
                 .text_color(palette.text_secondary)
-                .child(format!("Saved: {}", format_rwf(project.saved_rwf)))
-                .child(format!("Goal: {}", format_rwf(project.target_rwf))),
+                .child(format!(
+                    "{} {}",
+                    text(lang, "cozy.saved_prefix"),
+                    format_rwf(project.saved_rwf)
+                ))
+                .child(format!(
+                    "{} {}",
+                    text(lang, "cozy.goal_prefix"),
+                    format_rwf(project.target_rwf)
+                )),
         )
 }
 
@@ -624,6 +650,7 @@ pub fn project_goal_card<B, D>(
     index: usize,
     project: &ProjectSummary,
     show_details: bool,
+    language: Language,
     palette: ThemeColors,
     on_boost: B,
     on_toggle_details: D,
@@ -666,7 +693,13 @@ where
                                         .child(project.name.clone()),
                                 )
                                 .child(div().text_xs().text_color(palette.text_secondary).child(
-                                    format!("Lead: {} · Target {}", project.lead, project.deadline),
+                                    format!(
+                                        "{} {} · {} {}",
+                                        text(language, "cozy.lead_prefix"),
+                                        project.lead,
+                                        text(language, "cozy.target_prefix"),
+                                        project.deadline
+                                    ),
                                 )),
                         ),
                 )
@@ -696,16 +729,16 @@ where
                 .justify_between()
                 .text_xs()
                 .font_weight(FontWeight::BOLD)
-                .child(
-                    div()
-                        .text_color(palette.text_primary)
-                        .child(format!("{} saved", format_rwf(project.saved_rwf))),
-                )
-                .child(
-                    div()
-                        .text_color(palette.text_secondary)
-                        .child(format!("Goal: {}", format_rwf(project.target_rwf))),
-                ),
+                .child(div().text_color(palette.text_primary).child(format!(
+                    "{} {}",
+                    format_rwf(project.saved_rwf),
+                    text(language, "cozy.saved_suffix")
+                )))
+                .child(div().text_color(palette.text_secondary).child(format!(
+                    "{} {}",
+                    text(language, "cozy.goal_prefix"),
+                    format_rwf(project.target_rwf)
+                ))),
         )
         .when(show_details, |this| {
             let remaining = (project.target_rwf - project.saved_rwf).max(0);
@@ -719,8 +752,9 @@ where
                             .font_weight(FontWeight::EXTRA_BOLD)
                             .text_color(palette.text_primary)
                             .child(format!(
-                                "{} · Remaining to goal: {}",
+                                "{} · {} {}",
                                 project.contributors,
+                                text(language, "cozy.remaining_to_goal"),
                                 format_rwf(remaining)
                             )),
                     )
@@ -728,7 +762,7 @@ where
                         div()
                             .text_size(px(11.0))
                             .text_color(palette.text_secondary)
-                            .child("Protected by Umuryango 2-Admin Treasury multi-signature rule."),
+                            .child(text(language, "cozy.multisig_protected_note")),
                     ),
             )
         })
@@ -740,13 +774,17 @@ where
                 .pt_1()
                 .child(div().flex_1().child(compact_primary_button(
                     ("proj-full-boost", index),
-                    "+50k Quick Boost",
+                    text(language, "cozy.quick_boost_50k"),
                     palette,
                     on_boost,
                 )))
                 .child(pill_button(
                     ("proj-full-details", index),
-                    if show_details { "Hide" } else { "Details" },
+                    if show_details {
+                        text(language, "cozy.hide_btn")
+                    } else {
+                        text(language, "cozy.details_btn")
+                    },
                     palette,
                     on_toggle_details,
                 )),
@@ -756,6 +794,7 @@ where
 pub fn approval_request_card<A, D>(
     index: usize,
     item: &ApprovalItem,
+    language: Language,
     palette: ThemeColors,
     on_approve: A,
     on_decline: D,
@@ -789,8 +828,10 @@ where
                                 .text_size(px(11.0))
                                 .text_color(palette.text_secondary)
                                 .child(format!(
-                                    "Requested by {} · {}",
-                                    item.requester, item.category
+                                    "{} {} · {}",
+                                    text(language, "cozy.requested_by"),
+                                    item.requester,
+                                    item.category
                                 )),
                         ),
                 )
@@ -809,13 +850,13 @@ where
                 .gap_2()
                 .child(div().flex_1().child(compact_primary_button(
                     ("approve-req-btn", index),
-                    "✓ Approve & Release",
+                    text(language, "cozy.approve_release_btn"),
                     palette,
                     on_approve,
                 )))
                 .child(pill_button(
                     ("decline-req-btn", index),
-                    "✕ Decline",
+                    text(language, "cozy.decline_btn"),
                     palette,
                     on_decline,
                 )),
@@ -940,6 +981,7 @@ pub fn expense_category_card(
 pub fn loan_card<F>(
     index: usize,
     loan: &LoanItem,
+    language: Language,
     palette: ThemeColors,
     on_repay: F,
 ) -> impl IntoElement
@@ -953,7 +995,7 @@ where
             palette.income_bg,
             palette.income_border,
             palette.income_text,
-            "Lent",
+            text(language, "cozy.badge_lent"),
             palette.income_text,
         )
     } else {
@@ -961,7 +1003,7 @@ where
             palette.loan_bg,
             palette.loan_border,
             palette.loan_text,
-            "Borrowed",
+            text(language, "cozy.badge_borrowed"),
             palette.loan_text,
         )
     };
@@ -1012,7 +1054,12 @@ where
                             div()
                                 .text_xs()
                                 .text_color(palette.text_secondary)
-                                .child(format!("{} · Due {}", loan.reason, loan.due)),
+                                .child(format!(
+                                    "{} · {} {}",
+                                    loan.reason,
+                                    text(language, "cozy.due_prefix"),
+                                    loan.due
+                                )),
                         ),
                 )
                 .child(
@@ -1031,7 +1078,7 @@ where
                             div()
                                 .text_size(px(10.0))
                                 .text_color(palette.text_secondary)
-                                .child("left"),
+                                .child(text(language, "cozy.left_suffix")),
                         ),
                 ),
         )
@@ -1047,7 +1094,8 @@ where
                         .text_xs()
                         .text_color(palette.text_secondary)
                         .child(format!(
-                            "Repaid: {} / {} ({}%)",
+                            "{} {} / {} ({}%)",
+                            text(language, "cozy.repaid_prefix"),
                             format_rwf(loan.paid_rwf),
                             format_rwf(loan.total_rwf),
                             pct
@@ -1055,7 +1103,7 @@ where
                 )
                 .child(pill_button(
                     ("loan-repay-btn", index),
-                    "+30k Repayment",
+                    text(language, "cozy.repay_30k_btn"),
                     palette,
                     on_repay,
                 )),
@@ -1065,6 +1113,7 @@ where
 pub fn member_pledge_card<C, R>(
     index: usize,
     member: &MemberContributionRow,
+    language: Language,
     palette: ThemeColors,
     on_log_contribution: C,
     on_remind: R,
@@ -1117,7 +1166,7 @@ where
                             div()
                                 .font_weight(FontWeight::BOLD)
                                 .text_color(palette.text_secondary)
-                                .child("Monthly Contribution"),
+                                .child(text(language, "cozy.monthly_contribution_label")),
                         )
                         .child(
                             div()
@@ -1139,13 +1188,13 @@ where
                 .gap_2()
                 .child(div().flex_1().child(compact_primary_button(
                     ("member-contrib-btn", index),
-                    "+ Log 25k Contribution",
+                    text(language, "cozy.log_25k_btn"),
                     palette,
                     on_log_contribution,
                 )))
                 .child(pill_button(
                     ("member-remind-btn", index),
-                    "Send Reminder",
+                    text(language, "cozy.send_reminder_btn"),
                     palette,
                     on_remind,
                 )),
