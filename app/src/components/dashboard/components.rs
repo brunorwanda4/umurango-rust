@@ -223,6 +223,62 @@ where
         ))
 }
 
+fn spending_donut_svg(categories: &[ExpenseCategoryRow]) -> String {
+    use std::f32::consts::PI;
+
+    let total: f32 = categories.iter().map(|c| c.pct as f32).sum();
+    let total = if total <= 0.0 { 100.0 } else { total };
+
+    let cx = 60.0_f32;
+    let cy = 60.0_f32;
+    let r = 42.0_f32;
+    let stroke_width = 17.0_f32;
+    let cap_angle = (stroke_width / 2.0) / r;
+    let gap_angle = 5.0_f32 / r;
+    let inset = cap_angle + (gap_angle / 2.0);
+
+    let mut paths = String::new();
+    let mut current_angle = -PI / 2.0;
+
+    for cat in categories {
+        if cat.pct == 0 {
+            continue;
+        }
+        let fraction = (cat.pct as f32) / total;
+        let delta = fraction * 2.0 * PI;
+
+        let (a1, a2) = if delta > (2.0 * inset + 0.02) {
+            (current_angle + inset, current_angle + delta - inset)
+        } else {
+            let mid = current_angle + delta / 2.0;
+            (mid - 0.01, mid + 0.01)
+        };
+
+        let x1 = cx + r * a1.cos();
+        let y1 = cy + r * a1.sin();
+        let x2 = cx + r * a2.cos();
+        let y2 = cy + r * a2.sin();
+
+        let large_arc = if (a2 - a1) > PI { 1 } else { 0 };
+        let hex = format!(
+            "#{:02x}{:02x}{:02x}",
+            (cat.color.r * 255.0).round() as u8,
+            (cat.color.g * 255.0).round() as u8,
+            (cat.color.b * 255.0).round() as u8
+        );
+
+        paths.push_str(&format!(
+            r#"<path d="M {x1:.2} {y1:.2} A {r:.2} {r:.2} 0 {large_arc} 1 {x2:.2} {y2:.2}" fill="none" stroke="{hex}" stroke-width="{stroke_width:.1}" stroke-linecap="round" />"#
+        ));
+
+        current_angle += delta;
+    }
+
+    format!(
+        r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">{paths}</svg>"#
+    )
+}
+
 pub fn cashflow_insights_card<F>(
     mode: ChartMode,
     cashflow: &[MonthlyCashflowPoint],
@@ -247,163 +303,173 @@ where
         ),
     ];
 
-    let body: AnyElement = match mode {
-        ChartMode::Cashflow => div()
-            .flex()
-            .flex_col()
-            .gap_3()
-            .child(
-                div()
-                    .h(px(148.0))
-                    .px_2()
-                    .pt_4()
-                    .pb_2()
-                    .rounded(px(18.0))
-                    .bg(palette.bg_elevated)
-                    .border(px(2.0))
-                    .border_color(palette.border_color)
-                    .flex()
-                    .items_end()
-                    .justify_around()
-                    .gap_2()
-                    .children(cashflow.iter().map(|pt| {
-                        let inc_h = (pt.income_pct as f32).clamp(15.0, 96.0);
-                        let exp_h = (pt.expense_pct as f32).clamp(12.0, 96.0);
+    let body: AnyElement =
+        match mode {
+            ChartMode::Cashflow => div()
+                .flex()
+                .flex_col()
+                .gap_3()
+                .child(
+                    div()
+                        .h(px(148.0))
+                        .px_2()
+                        .pt_4()
+                        .pb_2()
+                        .rounded(px(18.0))
+                        .bg(palette.bg_elevated)
+                        .border(px(2.0))
+                        .border_color(palette.border_color)
+                        .flex()
+                        .items_end()
+                        .justify_around()
+                        .gap_2()
+                        .children(cashflow.iter().map(|pt| {
+                            let inc_h = (pt.income_pct as f32).clamp(15.0, 96.0);
+                            let exp_h = (pt.expense_pct as f32).clamp(12.0, 96.0);
 
-                        div()
-                            .flex_1()
-                            .h_full()
-                            .flex()
-                            .flex_col()
-                            .items_center()
-                            .justify_end()
-                            .gap_1p5()
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_end()
-                                    .gap_1()
-                                    .h(px(102.0))
-                                    .child(
-                                        div()
-                                            .w(px(13.0))
-                                            .h(px(inc_h))
-                                            .rounded(px(6.0))
-                                            .bg(palette.income_text)
-                                            .border(px(1.5))
-                                            .border_color(palette.border_color),
-                                    )
-                                    .child(
-                                        div()
-                                            .w(px(13.0))
-                                            .h(px(exp_h))
-                                            .rounded(px(6.0))
-                                            .bg(palette.expense_text)
-                                            .border(px(1.5))
-                                            .border_color(palette.border_color),
-                                    ),
-                            )
-                            .child(
-                                div()
-                                    .text_size(px(10.0))
-                                    .font_weight(FontWeight::EXTRA_BOLD)
-                                    .text_color(palette.text_secondary)
-                                    .child(pt.month),
-                            )
-                    })),
-            )
-            .child(
+                            div()
+                                .flex_1()
+                                .h_full()
+                                .flex()
+                                .flex_col()
+                                .items_center()
+                                .justify_end()
+                                .gap_1p5()
+                                .child(
+                                    div()
+                                        .flex()
+                                        .items_end()
+                                        .gap_1()
+                                        .h(px(102.0))
+                                        .child(
+                                            div()
+                                                .w(px(13.0))
+                                                .h(px(inc_h))
+                                                .rounded(px(6.0))
+                                                .bg(palette.income_text)
+                                                .border(px(1.5))
+                                                .border_color(palette.border_color),
+                                        )
+                                        .child(
+                                            div()
+                                                .w(px(13.0))
+                                                .h(px(exp_h))
+                                                .rounded(px(6.0))
+                                                .bg(palette.expense_text)
+                                                .border(px(1.5))
+                                                .border_color(palette.border_color),
+                                        ),
+                                )
+                                .child(
+                                    div()
+                                        .text_size(px(10.0))
+                                        .font_weight(FontWeight::EXTRA_BOLD)
+                                        .text_color(palette.text_secondary)
+                                        .child(pt.month),
+                                )
+                        })),
+                )
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .justify_between()
+                        .text_xs()
+                        .font_weight(FontWeight::BOLD)
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap_1p5()
+                                .child(
+                                    div()
+                                        .w(px(10.0))
+                                        .h(px(10.0))
+                                        .rounded(px(3.0))
+                                        .bg(palette.income_text),
+                                )
+                                .child(
+                                    div()
+                                        .text_color(palette.text_secondary)
+                                        .child(text(language, "cozy.legend_income")),
+                                ),
+                        )
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap_1p5()
+                                .child(
+                                    div()
+                                        .w(px(10.0))
+                                        .h(px(10.0))
+                                        .rounded(px(3.0))
+                                        .bg(palette.expense_text),
+                                )
+                                .child(
+                                    div()
+                                        .text_color(palette.text_secondary)
+                                        .child(text(language, "cozy.legend_expenses")),
+                                ),
+                        ),
+                )
+                .into_any_element(),
+            ChartMode::Spending => {
+                let svg_data = spending_donut_svg(categories);
                 div()
                     .flex()
                     .items_center()
-                    .justify_between()
-                    .text_xs()
-                    .font_weight(FontWeight::BOLD)
+                    .gap_6()
+                    .py_2()
                     .child(
                         div()
+                            .w(px(120.0))
+                            .h(px(120.0))
+                            .flex_none()
                             .flex()
                             .items_center()
-                            .gap_1p5()
-                            .child(
-                                div()
-                                    .w(px(10.0))
-                                    .h(px(10.0))
-                                    .rounded(px(3.0))
-                                    .bg(palette.income_text),
-                            )
-                            .child(
-                                div()
-                                    .text_color(palette.text_secondary)
-                                    .child(text(language, "cozy.legend_income")),
-                            ),
+                            .justify_center()
+                            .child(svg().data(svg_data.as_bytes()).size(px(120.0))),
                     )
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_1p5()
-                            .child(
-                                div()
-                                    .w(px(10.0))
-                                    .h(px(10.0))
-                                    .rounded(px(3.0))
-                                    .bg(palette.expense_text),
-                            )
-                            .child(
-                                div()
-                                    .text_color(palette.text_secondary)
-                                    .child(text(language, "cozy.legend_expenses")),
-                            ),
-                    ),
-            )
-            .into_any_element(),
-        ChartMode::Spending => div()
-            .flex()
-            .flex_col()
-            .gap_2p5()
-            .children(categories.iter().map(|cat| {
-                card_elevated(palette)
-                    .p_2p5()
-                    .gap_1p5()
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .justify_between()
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .gap_2()
-                                    .child(
-                                        icons::icon(cat.icon_name)
-                                            .size(px(13.0))
-                                            .text_color(cat.color),
-                                    )
-                                    .child(
-                                        div()
-                                            .text_xs()
-                                            .font_weight(FontWeight::EXTRA_BOLD)
-                                            .text_color(palette.text_primary)
-                                            .child(cat.name.clone()),
-                                    ),
-                            )
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .font_weight(FontWeight::EXTRA_BOLD)
-                                    .text_color(palette.text_secondary)
-                                    .child(format!(
-                                        "{} ({}%)",
-                                        format_rwf(cat.amount_rwf),
-                                        cat.pct
-                                    )),
-                            ),
-                    )
-                    .child(kawaii_progress_bar(cat.pct, cat.color, palette))
-            }))
-            .into_any_element(),
-    };
+                    .child(div().flex_1().flex().flex_col().gap_3().children(
+                        categories.iter().map(|cat| {
+                            div()
+                                .flex()
+                                .items_center()
+                                .justify_between()
+                                .child(
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .gap_2p5()
+                                        .child(
+                                            div()
+                                                .w(px(8.0))
+                                                .h(px(8.0))
+                                                .rounded_full()
+                                                .bg(cat.color),
+                                        )
+                                        .child(div().text_size(px(14.0)).child(cat.emoji))
+                                        .child(
+                                            div()
+                                                .text_sm()
+                                                .font_weight(FontWeight::BOLD)
+                                                .text_color(palette.text_primary)
+                                                .child(cat.name.clone()),
+                                        ),
+                                )
+                                .child(
+                                    div()
+                                        .text_sm()
+                                        .font_weight(FontWeight::BOLD)
+                                        .text_color(palette.text_primary)
+                                        .child(format!("{}%", cat.pct)),
+                                )
+                        }),
+                    ))
+                    .into_any_element()
+            }
+        };
 
     card_surface(palette)
         .gap_3()

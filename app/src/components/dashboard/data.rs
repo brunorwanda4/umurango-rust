@@ -248,7 +248,7 @@ pub struct ProjectSummary {
 
 impl ProjectSummary {
     pub fn from_dto(dto: &ProjectDto) -> Self {
-        let pct = dto.progress_percentage.clamp(0, 100) as u8;
+        let pct = dto.progress_percentage.clamp(0, 100);
         let is_completed = pct >= 100;
         let variant = if pct >= 70 {
             BadgeVariant::Success
@@ -428,6 +428,7 @@ pub struct ExpenseCategoryRow {
     pub pct: u8,
     pub icon_name: &'static str,
     pub color: Rgba,
+    pub emoji: &'static str,
 }
 
 pub static EXPENSE_CATEGORIES: LazyLock<[ExpenseCategoryRow; 4]> = LazyLock::new(|| {
@@ -438,7 +439,8 @@ pub static EXPENSE_CATEGORIES: LazyLock<[ExpenseCategoryRow; 4]> = LazyLock::new
             budget_rwf: 200_000,
             pct: 40,
             icon_name: icons::ICON_CART_SHOPPING,
-            color: rgb(0xFFA69E),
+            color: rgb(0x8CE0B8),
+            emoji: "🥕",
         },
         ExpenseCategoryRow {
             name: "School & Kids".into(),
@@ -446,7 +448,8 @@ pub static EXPENSE_CATEGORIES: LazyLock<[ExpenseCategoryRow; 4]> = LazyLock::new
             budget_rwf: 120_000,
             pct: 28,
             icon_name: icons::ICON_GRADUATION_CAP,
-            color: rgb(0xF9D67A),
+            color: rgb(0xFFA69E),
+            emoji: "🎒",
         },
         ExpenseCategoryRow {
             name: "Ibimina Savings".into(),
@@ -454,7 +457,8 @@ pub static EXPENSE_CATEGORIES: LazyLock<[ExpenseCategoryRow; 4]> = LazyLock::new
             budget_rwf: 100_000,
             pct: 20,
             icon_name: icons::ICON_SEEDLING,
-            color: rgb(0x8CE0B8),
+            color: rgb(0xB8A9FF),
+            emoji: "🐷",
         },
         ExpenseCategoryRow {
             name: "Power & Water".into(),
@@ -462,7 +466,8 @@ pub static EXPENSE_CATEGORIES: LazyLock<[ExpenseCategoryRow; 4]> = LazyLock::new
             budget_rwf: 60_000,
             pct: 12,
             icon_name: icons::ICON_BOLT,
-            color: rgb(0xA9C9FF),
+            color: rgb(0xF9D67A),
+            emoji: "💡",
         },
     ]
 });
