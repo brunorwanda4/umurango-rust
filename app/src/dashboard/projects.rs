@@ -145,5 +145,4 @@ impl DashboardView {
             .child(projects_grid)
             .into_any_element()
     }
-
 }

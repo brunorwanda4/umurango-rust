@@ -85,6 +85,7 @@ pub enum EntryModalKind {
     Loan,
     Project,
     MemberInvite,
+    Category,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

@@ -31,12 +31,10 @@ impl DashboardView {
                         text(self.language, "cozy.toast_boosted")
                     ));
                     self.refresh_from_backend(cx);
-                    return;
                 }
                 Err(err) => {
                     self.toast_notice = Some(err);
                     cx.notify();
-                    return;
                 }
             }
         }
@@ -341,5 +339,4 @@ impl DashboardView {
             self.set_language(language, window, cx);
         }
     }
-
 }

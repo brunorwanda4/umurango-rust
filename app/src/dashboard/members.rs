@@ -1,7 +1,11 @@
 use super::*;
 
 impl DashboardView {
-    pub(super) fn render_people_screen(&self, palette: ThemeColors, view_entity: Entity<Self>) -> AnyElement {
+    pub(super) fn render_people_screen(
+        &self,
+        palette: ThemeColors,
+        view_entity: Entity<Self>,
+    ) -> AnyElement {
         let lang = self.language;
         let total_pledge: i64 = self.family_members.iter().map(|m| m.monthly_goal_rwf).sum();
         let total_contributed: i64 = self.family_members.iter().map(|m| m.contributed_rwf).sum();
@@ -103,5 +107,4 @@ impl DashboardView {
             .child(members_grid)
             .into_any_element()
     }
-
 }

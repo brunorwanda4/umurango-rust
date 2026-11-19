@@ -1,5 +1,5 @@
-use crate::brand::{colors, ThemeColors, ThemeMode};
 pub(super) use crate::brand::{apply_theme, CozyMood};
+use crate::brand::{colors, ThemeColors, ThemeMode};
 pub(super) use crate::components::dashboard::*;
 pub(super) use crate::components::layouts::responsive::app_content_width;
 pub(super) use crate::components::layouts::{app_layout, AppLayoutProps, AppSection};
@@ -50,6 +50,11 @@ pub struct DashboardView {
     entry_secondary_input: Entity<InputState>,
     entry_amount_input: Entity<InputState>,
     entry_loan_is_lent: bool,
+    pub(super) entry_category_is_income: bool,
+    pub(super) entry_category_return_modal: Option<EntryModalKind>,
+    pub(super) saved_tx_title: String,
+    pub(super) saved_tx_amount: String,
+    pub custom_categories: Vec<(String, bool)>,
     show_approval_alert: bool,
     pending_approval_count: usize,
     pending_approval_tx_id: Option<String>,
@@ -117,6 +122,11 @@ impl DashboardView {
             entry_secondary_input,
             entry_amount_input,
             entry_loan_is_lent: true,
+            entry_category_is_income: false,
+            entry_category_return_modal: None,
+            saved_tx_title: String::new(),
+            saved_tx_amount: String::new(),
+            custom_categories: Vec::new(),
             show_approval_alert: false,
             pending_approval_count: 0,
             pending_approval_tx_id: None,
@@ -233,7 +243,6 @@ impl DashboardView {
             cx.notify();
         }
     }
-
 }
 
 impl Render for DashboardView {

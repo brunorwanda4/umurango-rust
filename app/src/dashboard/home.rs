@@ -308,5 +308,4 @@ impl DashboardView {
             .child(recent_activity_card)
             .into_any_element()
     }
-
 }

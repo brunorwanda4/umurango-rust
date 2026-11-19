@@ -317,5 +317,15 @@
   "modal.member_role_ph": "Inshingano",
   "modal.amount_rwf_ph": "Amafaranga",
   "modal.loan_amount_rwf_ph": "Amafaranga",
-  "modal.target_amount_rwf_ph": "Intego"
+  "modal.target_amount_rwf_ph": "Intego",
+  "modal.category_title": "Icyiciro Gishya",
+  "modal.category_name": "Izina",
+  "modal.category_desc": "Ibisobanuro",
+  "modal.category_type": "Ubwoko",
+  "modal.category_income": "Umusanzu",
+  "modal.category_expense": "Ibyakoreshejwe",
+  "modal.add_category_btn": "+ Icyiciro",
+  "modal.category_name_ph": "Izina",
+  "modal.category_desc_ph": "Ibisobanuro",
+  "modal.category_saved_toast": "Icyiciro cyabitswe"
 }

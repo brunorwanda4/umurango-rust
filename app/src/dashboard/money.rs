@@ -378,6 +378,7 @@ impl DashboardView {
             }
             MoneySubTab::Income => {
                 let view_log_inc = view_entity.clone();
+                let view_add_cat_inc = view_entity.clone();
                 let banner = card_surface(palette)
                     .flex_row()
                     .items_center()
@@ -410,16 +411,32 @@ impl DashboardView {
                                     .child(text(lang, "cozy.monthly_inflow_sub")),
                             ),
                     )
-                    .child(compact_primary_button(
-                        "money-inc-log-btn",
-                        text(lang, "cozy.log_income_btn"),
-                        palette,
-                        move |_e, w, cx| {
-                            view_log_inc.update(cx, |this, cx| {
-                                this.open_entry_modal(EntryModalKind::Income, w, cx);
-                            });
-                        },
-                    ));
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .child(pill_button(
+                                "money-inc-add-cat-btn",
+                                text(lang, "modal.add_category_btn"),
+                                palette,
+                                move |_e, w, cx| {
+                                    view_add_cat_inc.update(cx, |this, cx| {
+                                        this.open_category_modal(true, w, cx);
+                                    });
+                                },
+                            ))
+                            .child(compact_primary_button(
+                                "money-inc-log-btn",
+                                text(lang, "cozy.log_income_btn"),
+                                palette,
+                                move |_e, w, cx| {
+                                    view_log_inc.update(cx, |this, cx| {
+                                        this.open_entry_modal(EntryModalKind::Income, w, cx);
+                                    });
+                                },
+                            )),
+                    );
 
                 let streams_grid = div().flex().flex_col().gap_3().children(
                     self.income_streams
@@ -458,6 +475,7 @@ impl DashboardView {
             }
             MoneySubTab::Expenses => {
                 let view_log_exp = view_entity.clone();
+                let view_add_cat_exp = view_entity.clone();
                 let banner = card_surface(palette)
                     .flex_row()
                     .items_center()
@@ -490,17 +508,33 @@ impl DashboardView {
                                     .child(text(lang, "cozy.monthly_spending_sub")),
                             ),
                     )
-                    .child(pill_button_colored(
-                        "money-exp-log-btn",
-                        text(lang, "cozy.log_expense_btn"),
-                        palette.expense_text,
-                        palette,
-                        move |_e, w, cx| {
-                            view_log_exp.update(cx, |this, cx| {
-                                this.open_entry_modal(EntryModalKind::Expense, w, cx);
-                            });
-                        },
-                    ));
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .child(pill_button(
+                                "money-exp-add-cat-btn",
+                                text(lang, "modal.add_category_btn"),
+                                palette,
+                                move |_e, w, cx| {
+                                    view_add_cat_exp.update(cx, |this, cx| {
+                                        this.open_category_modal(false, w, cx);
+                                    });
+                                },
+                            ))
+                            .child(pill_button_colored(
+                                "money-exp-log-btn",
+                                text(lang, "cozy.log_expense_btn"),
+                                palette.expense_text,
+                                palette,
+                                move |_e, w, cx| {
+                                    view_log_exp.update(cx, |this, cx| {
+                                        this.open_entry_modal(EntryModalKind::Expense, w, cx);
+                                    });
+                                },
+                            )),
+                    );
 
                 let categories_grid = div().flex().flex_col().gap_3().children(
                     self.expense_categories
@@ -680,5 +714,4 @@ impl DashboardView {
             .child(sub_content)
             .into_any_element()
     }
-
 }

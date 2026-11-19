@@ -371,5 +371,4 @@ impl DashboardView {
             )
             .into_any_element()
     }
-
 }

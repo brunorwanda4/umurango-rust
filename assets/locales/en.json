@@ -317,5 +317,15 @@
   "modal.member_role_ph": "Role",
   "modal.amount_rwf_ph": "Amount",
   "modal.loan_amount_rwf_ph": "Amount",
-  "modal.target_amount_rwf_ph": "Target"
+  "modal.target_amount_rwf_ph": "Target",
+  "modal.category_title": "New Category",
+  "modal.category_name": "Category Name",
+  "modal.category_desc": "Description",
+  "modal.category_type": "Type",
+  "modal.category_income": "Income",
+  "modal.category_expense": "Expense",
+  "modal.add_category_btn": "+ Category",
+  "modal.category_name_ph": "Name",
+  "modal.category_desc_ph": "Description",
+  "modal.category_saved_toast": "Category saved"
 }
