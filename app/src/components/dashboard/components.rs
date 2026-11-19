@@ -365,7 +365,7 @@ where
                                         .text_size(px(10.0))
                                         .font_weight(FontWeight::EXTRA_BOLD)
                                         .text_color(palette.text_secondary)
-                                        .child(pt.month),
+                                        .child(pt.month.clone()),
                                 )
                         })),
                 )

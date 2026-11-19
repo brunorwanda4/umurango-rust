@@ -1,3 +1,3 @@
 pub mod service;
 
-pub use service::list_members;
+pub use service::{invite_member, list_members};

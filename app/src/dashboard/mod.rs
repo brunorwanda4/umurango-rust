@@ -1,12 +1,12 @@
 use crate::brand::{apply_theme, colors, ThemeColors, ThemeMode};
 use crate::components::dashboard::{
-    approval_request_card, cashflow_insights_card, expense_category_card, format_rwf,
-    format_signed_rwf, income_stream_card, loan_card, member_pledge_card, pending_approvals_banner,
-    project_goal_card, project_preview_row, transaction_row, treasury_hero_card, ApprovalItem,
-    ChartMode, ExpenseCategoryRow, IncomeStreamRow, LoanFilter, LoanItem, MemberContributionRow,
-    MoneySubTab, ProjectFilter, ProjectSummary, QuickEntryKind, TransactionRow, APPROVALS,
-    EXPENSE_CATEGORIES, FAMILY_MEMBERS, INCOME_STREAMS, LOANS, MONTHLY_CASHFLOW, PROJECTS,
-    TRANSACTIONS,
+    approval_request_card, cashflow_insights_card, derive_expense_categories,
+    derive_income_streams, derive_monthly_cashflow, expense_category_card,
+    format_compact_signed_rwf, format_rwf, format_signed_rwf, income_stream_card, loan_card,
+    member_pledge_card, pending_approvals_banner, project_goal_card, project_preview_row,
+    transaction_row, treasury_hero_card, ApprovalItem, ChartMode, EntryModalKind,
+    ExpenseCategoryRow, IncomeStreamRow, LoanFilter, LoanItem, MemberContributionRow, MoneySubTab,
+    MonthlyCashflowPoint, ProjectFilter, ProjectSummary, QuickEntryKind, TransactionRow,
 };
 use crate::components::layouts::responsive::app_content_width;
 use crate::components::layouts::{app_layout, AppLayoutProps, AppSection};
@@ -15,8 +15,8 @@ use crate::components::ui::{
     card_elevated, card_header, card_surface, compact_primary_button, destructive_button,
     dismissible_alert, filter_pill_group, icon_badge_box, interactive_card, kawaii_progress_bar,
     member_avatar, pill_button, pill_button_colored, primary_button, search_input,
-    secondary_button, segmented_tab_bar, stateful_input_container, toggle_field, AlertVariant,
-    AvatarSize, BadgeVariant, SegmentedTabItem,
+    secondary_button, segmented_tab_bar, stateful_input_container, text_input, toggle_field,
+    AlertVariant, AvatarSize, BadgeVariant, SegmentedTabItem,
 };
 use crate::i18n::{text, Language};
 use crate::icons;
@@ -31,10 +31,8 @@ pub enum DashboardEvent {
     ThemeChanged(ThemeMode),
     LanguageChanged(Language),
     SignOutRequested,
-    RecordContributionRequested,
-    AddExpenseRequested,
-    NewProjectRequested,
     SyncRequested,
+    QueueOutboxMutation { command: String, payload: String },
 }
 
 pub struct DashboardView {
@@ -49,8 +47,15 @@ pub struct DashboardView {
     expanded_project_index: Option<usize>,
     nav_history: Vec<(AppSection, MoneySubTab)>,
     member_name: String,
+    member_role: String,
+    member_contact: String,
     pub family_name: String,
     search_state: Entity<InputState>,
+    active_entry_modal: Option<EntryModalKind>,
+    entry_title_input: Entity<InputState>,
+    entry_secondary_input: Entity<InputState>,
+    entry_amount_input: Entity<InputState>,
+    entry_loan_is_lent: bool,
     show_approval_alert: bool,
     pending_approval_count: usize,
     pending_approval_tx_id: Option<String>,
@@ -69,6 +74,7 @@ pub struct DashboardView {
     pub family_members: Vec<MemberContributionRow>,
     pub income_streams: Vec<IncomeStreamRow>,
     pub expense_categories: Vec<ExpenseCategoryRow>,
+    pub monthly_cashflow: Vec<MonthlyCashflowPoint>,
     pub loans: Vec<LoanItem>,
     pub approvals: Vec<ApprovalItem>,
     pub rule_multi_sig_over_30k: bool,
@@ -92,31 +98,9 @@ impl DashboardView {
         let search_state = cx.new(|cx| {
             InputState::new(window, cx).placeholder(text(language, "dashboard.search_placeholder"))
         });
-
-        let default_members = vec![
-            (
-                "Bruno N.".to_string(),
-                "Co-Admin · Family Planner".to_string(),
-                BadgeVariant::Primary,
-            ),
-            (
-                "Agnes Ingabire".to_string(),
-                "Co-Admin · Treasury Keeper".to_string(),
-                BadgeVariant::Success,
-            ),
-            (
-                "Papa Jean".to_string(),
-                "Elder Advisor · Musanze".to_string(),
-                BadgeVariant::Warning,
-            ),
-            (
-                "Grandma Rose".to_string(),
-                "Family Blessing · Gisenyi".to_string(),
-                BadgeVariant::Info,
-            ),
-        ];
-
-        let approvals = APPROVALS.to_vec();
+        let entry_title_input = cx.new(|cx| InputState::new(window, cx));
+        let entry_secondary_input = cx.new(|cx| InputState::new(window, cx));
+        let entry_amount_input = cx.new(|cx| InputState::new(window, cx));
 
         Self {
             theme,
@@ -129,29 +113,37 @@ impl DashboardView {
             project_filter: ProjectFilter::Active,
             expanded_project_index: None,
             nav_history: Vec::new(),
-            member_name: "Bruno N.".to_string(),
-            family_name: "Kigali · 4 Members".to_string(),
+            member_name: String::new(),
+            member_role: String::new(),
+            member_contact: String::new(),
+            family_name: String::new(),
             search_state,
-            show_approval_alert: true,
-            pending_approval_count: approvals.len(),
+            active_entry_modal: None,
+            entry_title_input,
+            entry_secondary_input,
+            entry_amount_input,
+            entry_loan_is_lent: true,
+            show_approval_alert: false,
+            pending_approval_count: 0,
             pending_approval_tx_id: None,
-            pending_approval_tx_title: Some("Musanze Farm Fertilizer & Seeds".to_string()),
-            pending_approval_tx_amount: Some("75,000 RWF".to_string()),
-            total_treasury: "4,280,000 RWF".to_string(),
-            monthly_contributions: "850,000 RWF".to_string(),
-            monthly_expenses: "410,000 RWF".to_string(),
-            emergency_reserve: "1,500,000 RWF".to_string(),
-            treasury_balance_rwf: 4_280_000,
-            monthly_income_rwf: 850_000,
-            monthly_expenses_rwf: 410_000,
-            transactions: TRANSACTIONS.to_vec(),
-            projects: PROJECTS.to_vec(),
-            members: default_members,
-            family_members: FAMILY_MEMBERS.to_vec(),
-            income_streams: INCOME_STREAMS.to_vec(),
-            expense_categories: EXPENSE_CATEGORIES.to_vec(),
-            loans: LOANS.to_vec(),
-            approvals,
+            pending_approval_tx_title: None,
+            pending_approval_tx_amount: None,
+            total_treasury: "0 RWF".to_string(),
+            monthly_contributions: "0 RWF".to_string(),
+            monthly_expenses: "0 RWF".to_string(),
+            emergency_reserve: "0 RWF".to_string(),
+            treasury_balance_rwf: 0,
+            monthly_income_rwf: 0,
+            monthly_expenses_rwf: 0,
+            transactions: Vec::new(),
+            projects: Vec::new(),
+            members: Vec::new(),
+            family_members: Vec::new(),
+            income_streams: Vec::new(),
+            expense_categories: Vec::new(),
+            monthly_cashflow: derive_monthly_cashflow(&[]),
+            loans: Vec::new(),
+            approvals: Vec::new(),
             rule_multi_sig_over_30k: true,
             rule_sunday_digest: true,
             rule_auto_roundup_momo: false,
@@ -247,132 +239,389 @@ impl DashboardView {
         }
     }
 
-    fn sync_formatted_totals(&mut self) {
-        self.total_treasury = format_rwf(self.treasury_balance_rwf);
-        self.monthly_contributions = format_rwf(self.monthly_income_rwf);
-        self.monthly_expenses = format_rwf(self.monthly_expenses_rwf);
-        self.pending_approval_count = self.approvals.len();
+    pub fn open_entry_modal(
+        &mut self,
+        kind: EntryModalKind,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let (title_ph, title_val, sec_ph, sec_val, amt_ph, amt_val) = match kind {
+            EntryModalKind::Income => (
+                "Description (e.g. Monthly Family Contribution)",
+                "Monthly Family Contribution",
+                "Category (e.g. Contribution, Salary, Rent)",
+                "Contribution",
+                "Amount in RWF",
+                "50000",
+            ),
+            EntryModalKind::Expense => (
+                "Description (e.g. Market Groceries & Supplies)",
+                "Market Groceries & Supplies",
+                "Category (e.g. Groceries, Education, Utilities)",
+                "Groceries",
+                "Amount in RWF",
+                "35000",
+            ),
+            EntryModalKind::Loan => (
+                "Reason / Purpose (e.g. Seed Potato Transport Bridge)",
+                "Family Bridge Support",
+                "Person / Counterparty Name",
+                "Family Contact",
+                "Total Loan Amount in RWF",
+                "120000",
+            ),
+            EntryModalKind::Project => (
+                "Project Name (e.g. Solar Roof & Battery)",
+                "Community Solar Water System",
+                "Category (HOUSE, EDUCATION, BUSINESS, VEHICLE, EVENT)",
+                "HOUSE",
+                "Target Amount in RWF",
+                "1200000",
+            ),
+            EntryModalKind::MemberInvite => (
+                "Member Full Name",
+                "",
+                "Phone Number (e.g. +250788123456)",
+                "+25078",
+                "Role (MEMBER, ADMIN, HEAD)",
+                "MEMBER",
+            ),
+        };
+
+        self.entry_title_input.update(cx, |state, cx| {
+            state.set_placeholder(title_ph, window, cx);
+            state.set_value(title_val, window, cx);
+        });
+        self.entry_secondary_input.update(cx, |state, cx| {
+            state.set_placeholder(sec_ph, window, cx);
+            state.set_value(sec_val, window, cx);
+        });
+        self.entry_amount_input.update(cx, |state, cx| {
+            state.set_placeholder(amt_ph, window, cx);
+            state.set_value(amt_val, window, cx);
+        });
+        self.active_entry_modal = Some(kind);
+        cx.notify();
+    }
+
+    pub fn submit_entry_modal(&mut self, cx: &mut Context<Self>) {
+        let Some(kind) = self.active_entry_modal else {
+            return;
+        };
+        let title_str = self.entry_title_input.read(cx).value().trim().to_string();
+        let secondary_str = self
+            .entry_secondary_input
+            .read(cx)
+            .value()
+            .trim()
+            .to_string();
+        let amount_raw = self.entry_amount_input.read(cx).value().trim().to_string();
+        let parsed_amount: i64 = amount_raw
+            .chars()
+            .filter(|c| c.is_ascii_digit())
+            .collect::<String>()
+            .parse::<i64>()
+            .unwrap_or(0);
+
+        let Some(fid) = crate::auth::client::get_current_family_id() else {
+            self.toast_notice = Some("No active family workspace selected.".to_string());
+            self.active_entry_modal = None;
+            cx.notify();
+            return;
+        };
+
+        match kind {
+            EntryModalKind::Income | EntryModalKind::Expense => {
+                let is_income = kind == EntryModalKind::Income;
+                let amount = if parsed_amount > 0 {
+                    parsed_amount
+                } else {
+                    50_000
+                };
+                let description = if title_str.is_empty() {
+                    if is_income {
+                        "Family Contribution".to_string()
+                    } else {
+                        "Family Expense".to_string()
+                    }
+                } else {
+                    title_str
+                };
+                let category = if secondary_str.is_empty() {
+                    if is_income {
+                        "Contribution".to_string()
+                    } else {
+                        "General".to_string()
+                    }
+                } else {
+                    secondary_str
+                };
+
+                let req = umuryango_shared::CreateTransactionRequest {
+                    amount_minor_units: amount,
+                    is_income,
+                    category,
+                    description: description.clone(),
+                    notes: None,
+                    idempotency_key: Some(uuid::Uuid::new_v4().to_string()),
+                };
+
+                match crate::auth::client::api_create_transaction(&fid, &req) {
+                    Ok(_) => {
+                        self.toast_notice = Some(format!(
+                            "{} ({})",
+                            description,
+                            format_signed_rwf(amount, is_income)
+                        ));
+                        self.active_entry_modal = None;
+                        self.refresh_from_backend(cx);
+                    }
+                    Err(err) => {
+                        if let Ok(payload) = serde_json::to_string(&req) {
+                            let command = if is_income {
+                                "CREATE_CONTRIBUTION".to_string()
+                            } else {
+                                "CREATE_EXPENSE".to_string()
+                            };
+                            cx.emit(DashboardEvent::QueueOutboxMutation { command, payload });
+                        }
+                        self.toast_notice = Some(format!("Queued offline ({err})"));
+                        self.active_entry_modal = None;
+                        cx.notify();
+                    }
+                }
+            }
+            EntryModalKind::Project => {
+                let target = if parsed_amount > 0 {
+                    parsed_amount
+                } else {
+                    1_000_000
+                };
+                let name = if title_str.is_empty() {
+                    "Family Project".to_string()
+                } else {
+                    title_str
+                };
+                let category = if secondary_str.is_empty() {
+                    "OTHER".to_string()
+                } else {
+                    secondary_str
+                };
+                let req = umuryango_shared::CreateProjectRequest {
+                    name: name.clone(),
+                    category,
+                    target_amount_minor_units: target,
+                    description: Some(self.member_name.clone()),
+                    target_date: None,
+                };
+                match crate::auth::client::api_create_project(&fid, &req) {
+                    Ok(_) => {
+                        self.toast_notice = Some(format!("Created project: {name}"));
+                        self.active_entry_modal = None;
+                        self.refresh_from_backend(cx);
+                    }
+                    Err(err) => {
+                        self.toast_notice = Some(err);
+                        cx.notify();
+                    }
+                }
+            }
+            EntryModalKind::Loan => {
+                let total = if parsed_amount > 0 {
+                    parsed_amount
+                } else {
+                    100_000
+                };
+                let title = if title_str.is_empty() {
+                    "Family Bridge Loan".to_string()
+                } else {
+                    title_str
+                };
+                let counterparty_name = if secondary_str.is_empty() {
+                    "Family Contact".to_string()
+                } else {
+                    secondary_str
+                };
+                let req = umuryango_shared::CreateLoanRequest {
+                    title,
+                    counterparty_name: counterparty_name.clone(),
+                    is_lent: self.entry_loan_is_lent,
+                    total_amount_minor_units: total,
+                    paid_amount_minor_units: 0,
+                    due_date: None,
+                };
+                match crate::auth::client::api_create_loan(&fid, &req) {
+                    Ok(_) => {
+                        self.toast_notice = Some(format!(
+                            "{} · {counterparty_name} ({})",
+                            text(self.language, "cozy.toast_new_loan"),
+                            format_rwf(total)
+                        ));
+                        self.active_entry_modal = None;
+                        self.refresh_from_backend(cx);
+                    }
+                    Err(err) => {
+                        self.toast_notice = Some(err);
+                        cx.notify();
+                    }
+                }
+            }
+            EntryModalKind::MemberInvite => {
+                if secondary_str.is_empty() {
+                    self.toast_notice = Some("Phone number is required.".to_string());
+                    cx.notify();
+                    return;
+                }
+                let req = umuryango_shared::InviteFamilyMemberRequest {
+                    phone: secondary_str,
+                    full_name: if title_str.is_empty() {
+                        None
+                    } else {
+                        Some(title_str)
+                    },
+                    role: if amount_raw.is_empty() {
+                        None
+                    } else {
+                        Some(amount_raw)
+                    },
+                };
+                match crate::auth::client::api_invite_member(&fid, &req) {
+                    Ok(member) => {
+                        self.toast_notice = Some(format!(
+                            "{} ({})",
+                            text(self.language, "cozy.toast_invited"),
+                            member.full_name
+                        ));
+                        self.active_entry_modal = None;
+                        self.refresh_from_backend(cx);
+                    }
+                    Err(err) => {
+                        self.toast_notice = Some(err);
+                        cx.notify();
+                    }
+                }
+            }
+        }
     }
 
     pub fn boost_project(&mut self, index: usize, amount_rwf: i64, cx: &mut Context<Self>) {
-        if let Some(proj) = self.projects.get_mut(index) {
-            proj.boost(amount_rwf);
-            let proj_name = proj.name.clone();
-            self.transactions.insert(
-                0,
-                TransactionRow {
-                    actor: format!("{} · Family Pool", self.member_name).into(),
-                    title: format!("Boosted {proj_name}").into(),
-                    date: "Just now".into(),
-                    amount: format_signed_rwf(amount_rwf, true).into(),
-                    amount_rwf,
-                    is_income: true,
-                    is_loan: false,
-                    icon_name: icons::ICON_BULLSEYE,
-                    category: "Project Boost".into(),
-                    category_variant: BadgeVariant::Success,
-                    status: "Approved".into(),
-                    status_variant: BadgeVariant::Success,
-                },
-            );
-            self.toast_notice = Some(format!(
-                "{} {proj_name}!",
-                text(self.language, "cozy.toast_boosted")
-            ));
-            cx.notify();
+        let Some((project_id, proj_name)) = self
+            .projects
+            .get(index)
+            .map(|p| (p.id.to_string(), p.name.to_string()))
+        else {
+            return;
+        };
+
+        if let Some(fid) = crate::auth::client::get_current_family_id() {
+            let req = umuryango_shared::ProjectContributionRequest {
+                amount_minor_units: amount_rwf,
+                note: Some(format!("Boosted {proj_name}")),
+            };
+            match crate::auth::client::api_contribute_project(&fid, &project_id, &req) {
+                Ok(_) => {
+                    let tx_req = umuryango_shared::CreateTransactionRequest {
+                        amount_minor_units: amount_rwf,
+                        is_income: true,
+                        category: "Project Boost".to_string(),
+                        description: format!("Boosted {proj_name}"),
+                        notes: None,
+                        idempotency_key: Some(uuid::Uuid::new_v4().to_string()),
+                    };
+                    let _ = crate::auth::client::api_create_transaction(&fid, &tx_req);
+                    self.toast_notice = Some(format!(
+                        "{} {proj_name}!",
+                        text(self.language, "cozy.toast_boosted")
+                    ));
+                    self.refresh_from_backend(cx);
+                    return;
+                }
+                Err(err) => {
+                    self.toast_notice = Some(err);
+                    cx.notify();
+                    return;
+                }
+            }
         }
     }
 
     pub fn record_loan_repayment(&mut self, index: usize, amount_rwf: i64, cx: &mut Context<Self>) {
-        if let Some(loan) = self.loans.get_mut(index) {
-            let step = amount_rwf.min(loan.remaining_rwf());
-            if step <= 0 {
-                self.toast_notice = Some(format!(
-                    "{} {}",
-                    text(self.language, "cozy.toast_loan_settled"),
-                    loan.person
-                ));
-                cx.notify();
-                return;
-            }
-            loan.paid_rwf += step;
-            let person = loan.person.clone();
-            let is_lent = loan.is_lent;
-            if is_lent {
-                self.treasury_balance_rwf += step;
-            } else {
-                self.treasury_balance_rwf = (self.treasury_balance_rwf - step).max(0);
-            }
-            self.sync_formatted_totals();
-            self.transactions.insert(
-                0,
-                TransactionRow {
-                    actor: format!("{person} · MoMo").into(),
-                    title: format!("Loan Repayment · {person}").into(),
-                    date: "Just now".into(),
-                    amount: format_signed_rwf(step, is_lent).into(),
-                    amount_rwf: step,
-                    is_income: is_lent,
-                    is_loan: true,
-                    icon_name: icons::ICON_HANDSHAKE,
-                    category: "Loan".into(),
-                    category_variant: BadgeVariant::Warning,
-                    status: "Approved".into(),
-                    status_variant: BadgeVariant::Success,
-                },
-            );
+        let Some((loan_id, person, remaining)) = self
+            .loans
+            .get(index)
+            .map(|l| (l.id.to_string(), l.person.to_string(), l.remaining_rwf()))
+        else {
+            return;
+        };
+
+        let step = amount_rwf.min(remaining);
+        if step <= 0 {
             self.toast_notice = Some(format!(
-                "{} {person} ({})!",
-                text(self.language, "cozy.toast_loan_repaid"),
-                format_rwf(step)
+                "{} {person}",
+                text(self.language, "cozy.toast_loan_settled")
             ));
             cx.notify();
+            return;
+        }
+
+        if let Some(fid) = crate::auth::client::get_current_family_id() {
+            let req = umuryango_shared::LoanRepaymentRequest {
+                amount_minor_units: step,
+                note: Some(format!("Loan Repayment · {person}")),
+            };
+            match crate::auth::client::api_repay_loan(&fid, &loan_id, &req) {
+                Ok(_) => {
+                    self.toast_notice = Some(format!(
+                        "{} {person} ({})!",
+                        text(self.language, "cozy.toast_loan_repaid"),
+                        format_rwf(step)
+                    ));
+                    self.refresh_from_backend(cx);
+                }
+                Err(err) => {
+                    self.toast_notice = Some(err);
+                    cx.notify();
+                }
+            }
         }
     }
 
     pub fn resolve_approval(&mut self, index: usize, approve: bool, cx: &mut Context<Self>) {
-        if index < self.approvals.len() {
-            let item = self.approvals.remove(index);
-            if approve {
-                if let Some(id) = self.pending_approval_tx_id.clone() {
-                    if let Some(fid) = crate::auth::client::get_current_family_id() {
-                        let _ = crate::auth::client::api_approve_transaction(&fid, &id);
-                    }
-                }
-                self.treasury_balance_rwf = (self.treasury_balance_rwf - item.amount_rwf).max(0);
-                self.monthly_expenses_rwf += item.amount_rwf;
-                self.transactions.insert(
-                    0,
-                    TransactionRow {
-                        actor: format!("{} · 2/2 Approved", item.requester).into(),
-                        title: item.title.clone(),
-                        date: "Just now".into(),
-                        amount: format_signed_rwf(item.amount_rwf, false).into(),
-                        amount_rwf: item.amount_rwf,
-                        is_income: false,
-                        is_loan: false,
-                        icon_name: icons::ICON_CIRCLE_CHECK,
-                        category: item.category.clone(),
-                        category_variant: BadgeVariant::Success,
-                        status: "Approved".into(),
-                        status_variant: BadgeVariant::Success,
-                    },
-                );
-                self.toast_notice = Some(format!(
-                    "{} {} ({})",
-                    text(self.language, "cozy.toast_approved"),
-                    item.title,
-                    format_rwf(item.amount_rwf)
-                ));
+        let Some(item) = self.approvals.get(index).cloned() else {
+            return;
+        };
+        let tx_id = item.id.to_string();
+
+        if let Some(fid) = crate::auth::client::get_current_family_id() {
+            let res = if approve {
+                crate::auth::client::api_approve_transaction(&fid, &tx_id)
             } else {
-                self.toast_notice = Some(format!(
-                    "{} {}",
-                    text(self.language, "cozy.toast_declined"),
-                    item.title
-                ));
+                crate::auth::client::api_reject_transaction(&fid, &tx_id)
+            };
+
+            match res {
+                Ok(_) => {
+                    self.toast_notice = if approve {
+                        Some(format!(
+                            "{} {} ({})",
+                            text(self.language, "cozy.toast_approved"),
+                            item.title,
+                            format_rwf(item.amount_rwf)
+                        ))
+                    } else {
+                        Some(format!(
+                            "{} {}",
+                            text(self.language, "cozy.toast_declined"),
+                            item.title
+                        ))
+                    };
+                    self.refresh_from_backend(cx);
+                }
+                Err(err) => {
+                    self.toast_notice = Some(err);
+                    cx.notify();
+                }
             }
-            self.sync_formatted_totals();
-            cx.notify();
         }
     }
 
@@ -382,38 +631,66 @@ impl DashboardView {
         amount_rwf: i64,
         cx: &mut Context<Self>,
     ) {
-        if let Some(member) = self.family_members.get_mut(index) {
-            member.contributed_rwf += amount_rwf;
-            let name = member.name.clone();
-            self.treasury_balance_rwf += amount_rwf;
-            self.monthly_income_rwf += amount_rwf;
-            self.sync_formatted_totals();
-            self.transactions.insert(
-                0,
-                TransactionRow {
-                    actor: format!("{name} · MTN MoMo").into(),
-                    title: format!("{name} Family Circle Pledge").into(),
-                    date: "Just now".into(),
-                    amount: format_signed_rwf(amount_rwf, true).into(),
-                    amount_rwf,
-                    is_income: true,
-                    is_loan: false,
-                    icon_name: icons::ICON_COINS,
-                    category: "Contribution".into(),
-                    category_variant: BadgeVariant::Success,
-                    status: "Approved".into(),
-                    status_variant: BadgeVariant::Success,
-                },
-            );
-            self.toast_notice = Some(format!(
-                "{} {name}!",
-                text(self.language, "cozy.toast_member_contrib")
-            ));
-            cx.notify();
+        let Some(name) = self.family_members.get(index).map(|m| m.name.to_string()) else {
+            return;
+        };
+
+        if let Some(fid) = crate::auth::client::get_current_family_id() {
+            let req = umuryango_shared::CreateTransactionRequest {
+                amount_minor_units: amount_rwf,
+                is_income: true,
+                category: "Contribution".to_string(),
+                description: format!("{name} Family Circle Pledge"),
+                notes: Some(format!("Recorded for {name}")),
+                idempotency_key: Some(uuid::Uuid::new_v4().to_string()),
+            };
+            match crate::auth::client::api_create_transaction(&fid, &req) {
+                Ok(_) => {
+                    self.toast_notice = Some(format!(
+                        "{} {name}!",
+                        text(self.language, "cozy.toast_member_contrib")
+                    ));
+                    self.refresh_from_backend(cx);
+                }
+                Err(err) => {
+                    self.toast_notice = Some(err);
+                    cx.notify();
+                }
+            }
         }
     }
 
     pub fn refresh_from_backend(&mut self, cx: &mut Context<Self>) {
+        // 1. Refresh authenticated user profile
+        let current_user = crate::auth::client::get_current_user()
+            .or_else(|| crate::auth::client::api_get_me().ok());
+        if let Some(ref user) = current_user {
+            if !user.full_name.trim().is_empty() {
+                self.member_name = user.full_name.clone();
+            }
+            let mut contact_parts = Vec::new();
+            if let Some(ref email) = user.email {
+                if !email.trim().is_empty() {
+                    contact_parts.push(email.trim().to_string());
+                }
+            }
+            if let Some(ref phone) = user.phone_number {
+                if !phone.trim().is_empty() {
+                    contact_parts.push(phone.trim().to_string());
+                }
+            }
+            self.member_contact = contact_parts.join(" · ");
+        }
+
+        if let Some(role) = crate::auth::client::get_current_role() {
+            self.member_role = match role.as_str() {
+                "HEAD" => "Family Head · Co-Admin".to_string(),
+                "ADMIN" => "Co-Admin · Treasury Keeper".to_string(),
+                _ => "Family Member".to_string(),
+            };
+        }
+
+        // 2. Resolve active family workspace
         let family_id = crate::auth::client::get_current_family_id().or_else(|| {
             if let Ok(fams) = crate::auth::client::api_list_families() {
                 if let Some(first) = fams.first() {
@@ -432,10 +709,11 @@ impl DashboardView {
         }
 
         if let Some(ref fid) = family_id {
+            // 3. Authoritative treasury summary
             if let Ok(summary) = crate::auth::client::api_get_treasury_summary(fid) {
-                self.treasury_balance_rwf = summary.total_treasury_minor_units / 100;
-                self.monthly_income_rwf = summary.monthly_contributions_minor_units / 100;
-                self.monthly_expenses_rwf = summary.monthly_expenses_minor_units / 100;
+                self.treasury_balance_rwf = summary.total_treasury_minor_units;
+                self.monthly_income_rwf = summary.monthly_contributions_minor_units;
+                self.monthly_expenses_rwf = summary.monthly_expenses_minor_units;
                 self.total_treasury = umuryango_shared::format_money(
                     summary.total_treasury_minor_units,
                     &summary.currency,
@@ -452,8 +730,11 @@ impl DashboardView {
                     summary.emergency_reserve_minor_units,
                     &summary.currency,
                 );
+                self.pending_approval_count = summary.pending_approval_count;
             }
 
+            // 4. Authoritative transactions + dynamic income streams, expense categories, cashflow, and approvals
+            let mut raw_txs = Vec::new();
             if let Ok(txs) = crate::auth::client::api_list_transactions(fid, None) {
                 let pending_items: Vec<ApprovalItem> = txs
                     .iter()
@@ -463,59 +744,87 @@ impl DashboardView {
                         requester: p.actor_name.clone().into(),
                         title: p.title.clone().into(),
                         category: p.category.clone().into(),
-                        amount_rwf: p.amount_minor_units / 100,
-                        votes: "1 of 2 Admins Approved".into(),
+                        amount_rwf: p.amount_minor_units,
+                        votes: "Pending Admin Approval".into(),
                     })
                     .collect();
 
+                self.pending_approval_count = pending_items.len();
                 if let Some(first) = pending_items.first() {
-                    self.pending_approval_count = pending_items.len();
                     self.pending_approval_tx_id = Some(first.id.to_string());
                     self.pending_approval_tx_title = Some(first.title.to_string());
                     self.pending_approval_tx_amount = Some(format_rwf(first.amount_rwf));
-                    self.approvals = pending_items;
                     self.show_approval_alert = true;
+                } else {
+                    self.pending_approval_tx_id = None;
+                    self.pending_approval_tx_title = None;
+                    self.pending_approval_tx_amount = None;
+                    self.show_approval_alert = false;
                 }
-                if !txs.is_empty() {
-                    self.transactions = txs
-                        .into_iter()
-                        .map(|dto| TransactionRow::from_dto(&dto))
-                        .collect();
-                }
+                self.approvals = pending_items;
+
+                self.income_streams = derive_income_streams(&txs);
+                self.expense_categories = derive_expense_categories(&txs);
+                self.monthly_cashflow = derive_monthly_cashflow(&txs);
+                self.transactions = txs.iter().map(TransactionRow::from_dto).collect();
+                raw_txs = txs;
             }
 
+            // 5. Authoritative communal projects
             if let Ok(projs) = crate::auth::client::api_list_projects(fid) {
-                if !projs.is_empty() {
-                    self.projects = projs
-                        .into_iter()
-                        .map(|dto| ProjectSummary::from_dto(&dto))
-                        .collect();
-                }
+                self.projects = projs.iter().map(ProjectSummary::from_dto).collect();
             }
 
+            // 6. Authoritative family loans
+            if let Ok(loans) = crate::auth::client::api_list_loans(fid) {
+                self.loans = loans.iter().map(LoanItem::from_dto).collect();
+            }
+
+            // 7. Authoritative family members roster
             if let Ok(mems) = crate::auth::client::api_list_members(fid) {
-                if !mems.is_empty() {
-                    self.members = mems
-                        .into_iter()
-                        .map(|m| {
-                            let role_desc = match m.role.as_str() {
-                                "HEAD" => "Family Head / Admin",
-                                "TREASURER" => "Treasurer",
-                                "ELDER" => "Elder",
-                                "YOUTH" => "Youth Member",
-                                _ => "Member",
-                            };
-                            let variant = match m.role.as_str() {
-                                "HEAD" => BadgeVariant::Primary,
-                                "TREASURER" => BadgeVariant::Success,
-                                "ELDER" => BadgeVariant::Warning,
-                                "YOUTH" => BadgeVariant::Info,
-                                _ => BadgeVariant::Neutral,
-                            };
-                            (m.full_name, role_desc.to_string(), variant)
-                        })
-                        .collect();
+                if let Some(ref user) = current_user {
+                    if let Some(me_member) = mems.iter().find(|m| m.user_id == user.id) {
+                        self.member_role = match me_member.role.as_str() {
+                            "HEAD" => "Family Head · Co-Admin".to_string(),
+                            "ADMIN" | "TREASURER" => "Co-Admin · Treasury Keeper".to_string(),
+                            "ELDER" => "Elder Advisor".to_string(),
+                            _ => "Family Member".to_string(),
+                        };
+                    }
                 }
+
+                self.family_members = mems
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, m)| MemberContributionRow::from_dto(m, idx, &raw_txs))
+                    .collect();
+
+                let base_fam_name = crate::auth::client::get_current_family_name()
+                    .unwrap_or_else(|| self.family_name.clone());
+                if !base_fam_name.is_empty() {
+                    self.family_name = format!("{} · {} Members", base_fam_name, mems.len());
+                }
+
+                self.members = mems
+                    .into_iter()
+                    .map(|m| {
+                        let role_desc = match m.role.as_str() {
+                            "HEAD" => "Family Head / Admin",
+                            "ADMIN" | "TREASURER" => "Treasurer / Admin",
+                            "ELDER" => "Elder",
+                            "YOUTH" => "Youth Member",
+                            _ => "Member",
+                        };
+                        let variant = match m.role.as_str() {
+                            "HEAD" => BadgeVariant::Primary,
+                            "ADMIN" | "TREASURER" => BadgeVariant::Success,
+                            "ELDER" => BadgeVariant::Warning,
+                            "YOUTH" => BadgeVariant::Info,
+                            _ => BadgeVariant::Neutral,
+                        };
+                        (m.full_name, role_desc.to_string(), variant)
+                    })
+                    .collect();
             }
         }
         cx.notify();
@@ -556,19 +865,21 @@ impl DashboardView {
             net_saved_label,
             lang,
             palette,
-            move |kind, _window, cx| {
+            move |kind, window, cx| {
                 view_for_qa.update(cx, |this, cx| match kind {
                     QuickEntryKind::Income => {
-                        cx.emit(DashboardEvent::RecordContributionRequested);
+                        this.open_entry_modal(EntryModalKind::Income, window, cx);
                     }
                     QuickEntryKind::Expense => {
-                        cx.emit(DashboardEvent::AddExpenseRequested);
+                        this.open_entry_modal(EntryModalKind::Expense, window, cx);
                     }
                     QuickEntryKind::Loan => {
                         this.navigate_to_money_tab(MoneySubTab::Loans, cx);
+                        this.open_entry_modal(EntryModalKind::Loan, window, cx);
                     }
                     QuickEntryKind::Project => {
-                        cx.emit(DashboardEvent::NewProjectRequested);
+                        this.set_active_section(AppSection::Projects, cx);
+                        this.open_entry_modal(EntryModalKind::Project, window, cx);
                     }
                 });
             },
@@ -605,7 +916,7 @@ impl DashboardView {
                             .text_size(px(10.0))
                             .font_weight(FontWeight::EXTRA_BOLD)
                             .text_color(palette.income_text)
-                            .child("+12%"),
+                            .child(format!("{} streams", self.income_streams.len())),
                     ),
             )
             .child(
@@ -654,7 +965,7 @@ impl DashboardView {
                             .text_size(px(10.0))
                             .font_weight(FontWeight::EXTRA_BOLD)
                             .text_color(palette.expense_text)
-                            .child("-4%"),
+                            .child(format!("{} cats", self.expense_categories.len())),
                     ),
             )
             .child(
@@ -711,7 +1022,7 @@ impl DashboardView {
         let view_chart = view_entity.clone();
         let insights_card = cashflow_insights_card(
             self.chart_mode,
-            &MONTHLY_CASHFLOW,
+            &self.monthly_cashflow,
             &self.expense_categories,
             lang,
             palette,
@@ -863,6 +1174,8 @@ impl DashboardView {
             .map(|l| l.remaining_rwf())
             .sum();
         let loans_count_str = self.loans.len().to_string();
+        let inc_badge_str = format_compact_signed_rwf(self.monthly_income_rwf, true);
+        let exp_badge_str = format_compact_signed_rwf(self.monthly_expenses_rwf, false);
 
         let tab_ov_label = MoneySubTab::Overview.label_for(lang);
         let tab_inc_label = MoneySubTab::Income.label_for(lang);
@@ -884,7 +1197,7 @@ impl DashboardView {
                 label: &tab_inc_label,
                 icon: None,
                 dot_color: Some(palette.income_text),
-                badge_text: Some("+850k"),
+                badge_text: Some(inc_badge_str.as_str()),
             },
             SegmentedTabItem {
                 id: "money-subtab-expenses",
@@ -892,7 +1205,7 @@ impl DashboardView {
                 label: &tab_exp_label,
                 icon: None,
                 dot_color: Some(palette.expense_text),
-                badge_text: Some("-410k"),
+                badge_text: Some(exp_badge_str.as_str()),
             },
             SegmentedTabItem {
                 id: "money-subtab-loans",
@@ -960,9 +1273,9 @@ impl DashboardView {
                                 "money-ov-add-entry-btn",
                                 text(lang, "cozy.add_entry_btn"),
                                 palette,
-                                move |_e, _w, cx| {
-                                    view_add.update(cx, |_this, cx| {
-                                        cx.emit(DashboardEvent::RecordContributionRequested);
+                                move |_e, w, cx| {
+                                    view_add.update(cx, |this, cx| {
+                                        this.open_entry_modal(EntryModalKind::Income, w, cx);
                                     });
                                 },
                             )),
@@ -1253,9 +1566,9 @@ impl DashboardView {
                         "money-inc-log-btn",
                         text(lang, "cozy.log_income_btn"),
                         palette,
-                        move |_e, _w, cx| {
-                            view_log_inc.update(cx, |_this, cx| {
-                                cx.emit(DashboardEvent::RecordContributionRequested);
+                        move |_e, w, cx| {
+                            view_log_inc.update(cx, |this, cx| {
+                                this.open_entry_modal(EntryModalKind::Income, w, cx);
                             });
                         },
                     ));
@@ -1334,9 +1647,9 @@ impl DashboardView {
                         text(lang, "cozy.log_expense_btn"),
                         palette.expense_text,
                         palette,
-                        move |_e, _w, cx| {
-                            view_log_exp.update(cx, |_this, cx| {
-                                cx.emit(DashboardEvent::AddExpenseRequested);
+                        move |_e, w, cx| {
+                            view_log_exp.update(cx, |this, cx| {
+                                this.open_entry_modal(EntryModalKind::Expense, w, cx);
                             });
                         },
                     ));
@@ -1473,23 +1786,9 @@ impl DashboardView {
                         "money-new-loan-btn",
                         text(lang, "cozy.new_loan_btn"),
                         palette,
-                        move |_e, _w, cx| {
+                        move |_e, w, cx| {
                             view_new_loan.update(cx, |this, cx| {
-                                this.loans.insert(
-                                    0,
-                                    LoanItem {
-                                        id: format!("l{}", this.loans.len() + 1).into(),
-                                        is_lent: true,
-                                        person: "Uncle Olivier".into(),
-                                        reason: "Seed Potato Transport Bridge".into(),
-                                        total_rwf: 120_000,
-                                        paid_rwf: 30_000,
-                                        due: "Feb 20, 2027".into(),
-                                    },
-                                );
-                                this.toast_notice =
-                                    Some(text(this.language, "cozy.toast_new_loan").to_string());
-                                cx.notify();
+                                this.open_entry_modal(EntryModalKind::Loan, w, cx);
                             });
                         },
                     ));
@@ -1623,9 +1922,9 @@ impl DashboardView {
                         "projects-new-btn",
                         text(lang, "cozy.new_project_btn"),
                         palette,
-                        move |_e, _w, cx| {
-                            view_new_proj.update(cx, |_this, cx| {
-                                cx.emit(DashboardEvent::NewProjectRequested);
+                        move |_e, w, cx| {
+                            view_new_proj.update(cx, |this, cx| {
+                                this.open_entry_modal(EntryModalKind::Project, w, cx);
                             });
                         },
                     )),
@@ -1728,20 +2027,9 @@ impl DashboardView {
                         "people-invite-member-btn",
                         text(lang, "cozy.invite_btn"),
                         palette,
-                        move |_e, _w, cx| {
+                        move |_e, w, cx| {
                             view_invite.update(cx, |this, cx| {
-                                this.family_members.push(MemberContributionRow {
-                                    id: format!("m{}", this.family_members.len() + 1).into(),
-                                    name: "Cousin Clarisse".into(),
-                                    role: "Family Member · Huye".into(),
-                                    monthly_goal_rwf: 75_000,
-                                    contributed_rwf: 25_000,
-                                    status: "Joined ✨".into(),
-                                    accent_color: palette.accent_primary,
-                                });
-                                this.toast_notice =
-                                    Some(text(this.language, "cozy.toast_invited").to_string());
-                                cx.notify();
+                                this.open_entry_modal(EntryModalKind::MemberInvite, w, cx);
                             });
                         },
                     )),
@@ -1806,6 +2094,12 @@ impl DashboardView {
         let view_lang = view_entity.clone();
         let view_sign_out = view_entity.clone();
 
+        let role_subtitle = if self.member_role.is_empty() {
+            text(lang, "cozy.coadmin_planner").to_string()
+        } else {
+            self.member_role.clone()
+        };
+
         let identity_card = card_surface(palette)
             .gap_4()
             .child(
@@ -1816,7 +2110,7 @@ impl DashboardView {
                     .gap_2()
                     .child(member_avatar(
                         &self.member_name,
-                        Some(&text(lang, "cozy.coadmin_planner")),
+                        Some(&role_subtitle),
                         AvatarSize::Xl,
                         palette,
                     ))
@@ -1831,13 +2125,13 @@ impl DashboardView {
                             .text_xs()
                             .font_weight(FontWeight::EXTRA_BOLD)
                             .text_color(palette.income_text)
-                            .child(text(lang, "cozy.coadmin_planner")),
+                            .child(role_subtitle.clone()),
                     )
                     .child(
                         div()
                             .text_xs()
                             .text_color(palette.text_secondary)
-                            .child("bruno@umuryango.rw · +250 788 123 456"),
+                            .child(self.member_contact.clone()),
                     ),
             )
             .child(
@@ -2157,6 +2451,209 @@ impl DashboardView {
             )
             .into_any_element()
     }
+
+    fn render_entry_modal(
+        &self,
+        palette: ThemeColors,
+        view_entity: Entity<Self>,
+    ) -> Option<AnyElement> {
+        let kind = self.active_entry_modal?;
+        let (modal_title, field1_label, field2_label, field3_label) = match kind {
+            EntryModalKind::Income => (
+                "Record Family Income / Contribution",
+                "Description / Title",
+                "Category (e.g. Contribution, Farming, Business)",
+                "Amount (RWF)",
+            ),
+            EntryModalKind::Expense => (
+                "Record Family Expense",
+                "Description / Purpose",
+                "Category (e.g. Education, Healthcare, Farming)",
+                "Amount (RWF)",
+            ),
+            EntryModalKind::Loan => (
+                "Create Family Loan Agreement",
+                "Loan Reason / Purpose",
+                "Counterparty / Member Name",
+                "Total Loan Principal (RWF)",
+            ),
+            EntryModalKind::Project => (
+                "Create Communal Family Project",
+                "Project Name",
+                "Category (e.g. Infrastructure, Agriculture, Education)",
+                "Target Goal Amount (RWF)",
+            ),
+            EntryModalKind::MemberInvite => (
+                "Add or Invite Family Member",
+                "Full Name",
+                "Phone Number (e.g. +250788000000)",
+                "Role (MEMBER, ADMIN, ELDER, TREASURER)",
+            ),
+        };
+
+        let view_close = view_entity.clone();
+        let view_submit = view_entity.clone();
+        let view_toggle_lent = view_entity.clone();
+        let is_lent = self.entry_loan_is_lent;
+
+        let card = card_surface(palette)
+            .gap_3()
+            .border_color(palette.accent_primary)
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .gap_3()
+                    .child(
+                        div()
+                            .text_base()
+                            .font_weight(FontWeight::EXTRA_BOLD)
+                            .text_color(palette.text_primary)
+                            .child(modal_title),
+                    )
+                    .child(pill_button(
+                        "entry-modal-cancel-top-btn",
+                        "Cancel",
+                        palette,
+                        move |_e, _w, cx| {
+                            view_close.update(cx, |this, cx| {
+                                this.active_entry_modal = None;
+                                cx.notify();
+                            });
+                        },
+                    )),
+            )
+            .when(kind == EntryModalKind::Loan, |this| {
+                this.child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_2()
+                        .child(pill_button_colored(
+                            "entry-loan-type-lent",
+                            if is_lent {
+                                "✓ Lent Out by Treasury"
+                            } else {
+                                "Lent Out by Treasury"
+                            },
+                            if is_lent {
+                                palette.income_text
+                            } else {
+                                palette.text_secondary
+                            },
+                            palette,
+                            {
+                                let vt = view_toggle_lent.clone();
+                                move |_e, _w, cx| {
+                                    vt.update(cx, |this, cx| {
+                                        this.entry_loan_is_lent = true;
+                                        cx.notify();
+                                    });
+                                }
+                            },
+                        ))
+                        .child(pill_button_colored(
+                            "entry-loan-type-borrowed",
+                            if !is_lent {
+                                "✓ Borrowed by Family"
+                            } else {
+                                "Borrowed by Family"
+                            },
+                            if !is_lent {
+                                palette.loan_text
+                            } else {
+                                palette.text_secondary
+                            },
+                            palette,
+                            move |_e, _w, cx| {
+                                view_toggle_lent.update(cx, |this, cx| {
+                                    this.entry_loan_is_lent = false;
+                                    cx.notify();
+                                });
+                            },
+                        )),
+                )
+            })
+            .child(
+                div()
+                    .flex()
+                    .gap_3()
+                    .flex_wrap()
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w(px(200.0))
+                            .flex()
+                            .flex_col()
+                            .gap_1()
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(palette.text_secondary)
+                                    .child(field1_label),
+                            )
+                            .child(stateful_input_container(
+                                palette,
+                                &self.entry_title_input,
+                                text_input(&self.entry_title_input, palette),
+                            )),
+                    )
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w(px(180.0))
+                            .flex()
+                            .flex_col()
+                            .gap_1()
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(palette.text_secondary)
+                                    .child(field2_label),
+                            )
+                            .child(stateful_input_container(
+                                palette,
+                                &self.entry_secondary_input,
+                                text_input(&self.entry_secondary_input, palette),
+                            )),
+                    )
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w(px(150.0))
+                            .flex()
+                            .flex_col()
+                            .gap_1()
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(palette.text_secondary)
+                                    .child(field3_label),
+                            )
+                            .child(stateful_input_container(
+                                palette,
+                                &self.entry_amount_input,
+                                text_input(&self.entry_amount_input, palette),
+                            )),
+                    ),
+            )
+            .child(div().flex().justify_end().child(compact_primary_button(
+                "entry-modal-submit-btn",
+                "Save to Backend",
+                palette,
+                move |_e, _w, cx| {
+                    view_submit.update(cx, |this, cx| {
+                        this.submit_entry_modal(cx);
+                    });
+                },
+            )));
+
+        Some(card.into_any_element())
+    }
 }
 
 impl Render for DashboardView {
@@ -2190,9 +2687,19 @@ impl Render for DashboardView {
 
         let quick_entry_action = {
             let view = view_entity.clone();
-            Rc::new(move |_window: &mut Window, cx: &mut App| {
-                view.update(cx, |_this, cx| {
-                    cx.emit(DashboardEvent::RecordContributionRequested);
+            Rc::new(move |window: &mut Window, cx: &mut App| {
+                view.update(cx, |this, cx| {
+                    let modal_kind = match this.active_section {
+                        AppSection::Projects => EntryModalKind::Project,
+                        AppSection::Members => EntryModalKind::MemberInvite,
+                        AppSection::Money => match this.money_sub_tab {
+                            MoneySubTab::Expenses => EntryModalKind::Expense,
+                            MoneySubTab::Loans => EntryModalKind::Loan,
+                            _ => EntryModalKind::Income,
+                        },
+                        _ => EntryModalKind::Income,
+                    };
+                    this.open_entry_modal(modal_kind, window, cx);
                 });
             })
         };
@@ -2260,6 +2767,8 @@ impl Render for DashboardView {
             )
         });
 
+        let entry_modal = self.render_entry_modal(palette, view_entity.clone());
+
         let screen_body: AnyElement = match self.active_section {
             AppSection::Home => self.render_home_screen(stacked, palette, view_entity.clone()),
             AppSection::Money => {
@@ -2286,6 +2795,7 @@ impl Render for DashboardView {
                         .gap_4()
                         .p_5()
                         .when_some(toast_banner, |this, banner| this.child(banner))
+                        .when_some(entry_modal, |this, modal| this.child(modal))
                         .child(screen_body),
                 ),
             );

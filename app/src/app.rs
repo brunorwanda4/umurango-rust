@@ -46,6 +46,12 @@ impl UmuryangoApp {
         if saved.token.is_some() {
             crate::auth::client::set_current_token(saved.token.clone());
         }
+        if saved.family_id.is_some() || saved.family_name.is_some() {
+            crate::auth::client::set_current_family(
+                saved.family_id.clone(),
+                saved.family_name.clone(),
+            );
+        }
 
         let login_view = cx.new(|cx| LoginView::new(window, theme, language, cx));
         let register_view = cx.new(|cx| RegisterView::new(window, theme, language, cx));
@@ -228,87 +234,24 @@ impl UmuryangoApp {
                 DashboardEvent::SignOutRequested => {
                     this.member_name = None;
                     crate::auth::client::set_current_token(None);
+                    crate::auth::client::set_current_user(None, None);
+                    crate::auth::client::set_current_family(None, None);
                     this.set_screen(AuthScreen::Login, cx);
                 }
-                DashboardEvent::RecordContributionRequested => {
-                    let family_id = crate::auth::client::get_current_family_id();
-                    if let Some(fid) = family_id {
-                        let req = umuryango_shared::CreateTransactionRequest {
-                            amount_minor_units: 50_000,
-                            is_income: true,
-                            category: "Contribution".to_string(),
-                            description: "Monthly Family Contribution".to_string(),
-                            notes: Some("App Quick Action".to_string()),
-                            idempotency_key: Some(uuid::Uuid::new_v4().to_string()),
-                        };
-                        match crate::auth::client::api_create_transaction(&fid, &req) {
-                            Ok(_) => {
-                                this.dashboard_view.update(cx, |view, cx| view.refresh_from_backend(cx));
-                            }
-                            Err(_) => {
-                                if let Ok(payload) = serde_json::to_string(&req) {
-                                    let idempotency_key = uuid::Uuid::new_v4().to_string();
-                                    let _ = crate::db::queue_outbox_mutation(
-                                        &this.connection,
-                                        &idempotency_key,
-                                        "CREATE_CONTRIBUTION",
-                                        &payload,
-                                    );
-                                    this.dashboard_view.update(cx, |view, cx| {
-                                        view.set_storage_status("Pending sync (1 outbox mutation queued)".to_string(), cx);
-                                    });
-                                }
-                            }
-                        }
-                    }
-                    cx.notify();
-                }
-                DashboardEvent::AddExpenseRequested => {
-                    let family_id = crate::auth::client::get_current_family_id();
-                    if let Some(fid) = family_id {
-                        let req = umuryango_shared::CreateTransactionRequest {
-                            amount_minor_units: 35_000,
-                            is_income: false,
-                            category: "Farming".to_string(),
-                            description: "Agricultural Supplies & Seeds".to_string(),
-                            notes: Some("App Quick Action".to_string()),
-                            idempotency_key: Some(uuid::Uuid::new_v4().to_string()),
-                        };
-                        match crate::auth::client::api_create_transaction(&fid, &req) {
-                            Ok(_) => {
-                                this.dashboard_view.update(cx, |view, cx| view.refresh_from_backend(cx));
-                            }
-                            Err(_) => {
-                                if let Ok(payload) = serde_json::to_string(&req) {
-                                    let idempotency_key = uuid::Uuid::new_v4().to_string();
-                                    let _ = crate::db::queue_outbox_mutation(
-                                        &this.connection,
-                                        &idempotency_key,
-                                        "CREATE_EXPENSE",
-                                        &payload,
-                                    );
-                                    this.dashboard_view.update(cx, |view, cx| {
-                                        view.set_storage_status("Pending sync (1 outbox mutation queued)".to_string(), cx);
-                                    });
-                                }
-                            }
-                        }
-                    }
-                    cx.notify();
-                }
-                DashboardEvent::NewProjectRequested => {
-                    let family_id = crate::auth::client::get_current_family_id();
-                    if let Some(fid) = family_id {
-                        let req = umuryango_shared::CreateProjectRequest {
-                            name: "Community Solar Water System".to_string(),
-                            category: "Infrastructure".to_string(),
-                            target_amount_minor_units: 1_200_000,
-                            description: Some("Clean water pump and filtration system for the homestead".to_string()),
-                            target_date: None,
-                        };
-                        let _ = crate::auth::client::api_create_project(&fid, &req);
-                        this.dashboard_view.update(cx, |view, cx| view.refresh_from_backend(cx));
-                    }
+                DashboardEvent::QueueOutboxMutation { command, payload } => {
+                    let idempotency_key = uuid::Uuid::new_v4().to_string();
+                    let _ = crate::db::queue_outbox_mutation(
+                        &this.connection,
+                        &idempotency_key,
+                        command,
+                        payload,
+                    );
+                    this.dashboard_view.update(cx, |view, cx| {
+                        view.set_storage_status(
+                            "Pending sync (outbox mutation queued)".to_string(),
+                            cx,
+                        );
+                    });
                     cx.notify();
                 }
                 DashboardEvent::SyncRequested => {
@@ -390,6 +333,8 @@ impl UmuryangoApp {
             screen,
             token: crate::auth::client::get_current_token(),
             member_name: self.member_name.clone(),
+            family_id: crate::auth::client::get_current_family_id(),
+            family_name: crate::auth::client::get_current_family_name(),
         };
         if let Err(err) = navigation::save(&self.connection, &state) {
             eprintln!("failed to save last screen: {err}");

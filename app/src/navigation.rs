@@ -6,6 +6,8 @@ use umuryango_app::db::{get_app_state, set_app_state};
 const SCREEN_KEY: &str = "navigation.last_screen";
 const SESSION_TOKEN_KEY: &str = "session.token";
 const MEMBER_NAME_KEY: &str = "session.member_name";
+const FAMILY_ID_KEY: &str = "session.family_id";
+const FAMILY_NAME_KEY: &str = "session.family_name";
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum AuthScreen {
@@ -61,6 +63,8 @@ pub struct SavedNavigation {
     /// Session token, only kept while the user is on a screen that needs it.
     pub token: Option<String>,
     pub member_name: Option<String>,
+    pub family_id: Option<String>,
+    pub family_name: Option<String>,
 }
 
 /// Loads the last visited screen. Falls back to login when the saved screen is
@@ -83,6 +87,8 @@ pub fn load(connection: &Connection) -> SavedNavigation {
             screen,
             token: Some(token),
             member_name: read(MEMBER_NAME_KEY),
+            family_id: read(FAMILY_ID_KEY),
+            family_name: read(FAMILY_NAME_KEY),
         },
         None => SavedNavigation::default(),
     }
@@ -94,11 +100,15 @@ pub fn save(connection: &Connection, state: &SavedNavigation) -> Result<()> {
     let keep_session = state.screen.requires_session();
     let token = state.token.as_deref().filter(|_| keep_session);
     let member_name = state.member_name.as_deref().filter(|_| keep_session);
+    let family_id = state.family_id.as_deref().filter(|_| keep_session);
+    let family_name = state.family_name.as_deref().filter(|_| keep_session);
 
     let transaction = connection.unchecked_transaction()?;
     set_app_state(&transaction, SCREEN_KEY, Some(state.screen.key()))?;
     set_app_state(&transaction, SESSION_TOKEN_KEY, token)?;
     set_app_state(&transaction, MEMBER_NAME_KEY, member_name)?;
+    set_app_state(&transaction, FAMILY_ID_KEY, family_id)?;
+    set_app_state(&transaction, FAMILY_NAME_KEY, family_name)?;
     transaction.commit()
 }
 
@@ -125,6 +135,8 @@ mod tests {
                 screen: AuthScreen::Terms,
                 token: Some("token".into()),
                 member_name: Some("Aline".into()),
+                family_id: Some("fam-1".into()),
+                family_name: Some("Umuryango".into()),
             },
         )
         .unwrap();
@@ -142,6 +154,8 @@ mod tests {
             screen: AuthScreen::JoinFamily,
             token: Some("token".into()),
             member_name: Some("Aline".into()),
+            family_id: Some("fam-1".into()),
+            family_name: Some("Umuryango".into()),
         };
         save(&connection, &state).unwrap();
 
@@ -157,6 +171,8 @@ mod tests {
                 screen: AuthScreen::CreateFamily,
                 token: None,
                 member_name: Some("Aline".into()),
+                family_id: None,
+                family_name: None,
             },
         )
         .unwrap();

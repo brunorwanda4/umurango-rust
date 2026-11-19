@@ -305,3 +305,54 @@ pub async fn approve_transaction(
         notes: row.get("notes"),
     })
 }
+
+/// Rejects a pending transaction. Only family HEAD or ADMIN can reject.
+pub async fn reject_transaction(
+    pool: &PgPool,
+    user_id: &str,
+    family_id: &str,
+    transaction_id: &str,
+) -> Result<TransactionItemDto, ServiceError> {
+    let (_, authority) = verify_family_member(pool, user_id, family_id).await?;
+
+    if authority != "HEAD" && authority != "ADMIN" {
+        return Err(ServiceError::Forbidden(
+            "Only family administrators can reject transactions".into(),
+        ));
+    }
+
+    let row = sqlx::query(
+        r#"
+        UPDATE "FamilyTransaction"
+        SET "status" = 'REJECTED', "approvedById" = $1, "approvedAt" = NOW(), "updatedAt" = NOW()
+        WHERE "id" = $2 AND "familyId" = $3
+        RETURNING "id", "familyId", "amountMinorUnits", "currency", "type"::TEXT AS tx_type,
+                  "status"::TEXT AS tx_status, "date"::TEXT AS occurred_at, "description", "notes";
+        "#,
+    )
+    .bind(user_id)
+    .bind(transaction_id)
+    .bind(family_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| ServiceError::Internal(format!("Failed to reject transaction: {e}")))?;
+
+    let row = match row {
+        Some(r) => r,
+        None => return Err(ServiceError::NotFound("Transaction not found".into())),
+    };
+
+    Ok(TransactionItemDto {
+        id: row.get("id"),
+        family_id: row.get("familyId"),
+        actor_name: "Family Member".into(),
+        title: row.get("description"),
+        amount_minor_units: row.get("amountMinorUnits"),
+        currency: row.get("currency"),
+        is_income: row.get::<String, _>("tx_type") == "INCOME",
+        category: "General".into(),
+        status: row.get("tx_status"),
+        occurred_at: row.get("occurred_at"),
+        notes: row.get("notes"),
+    })
+}

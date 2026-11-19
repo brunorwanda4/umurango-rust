@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod families;
+pub mod loans;
 pub mod members;
 pub mod projects;
 pub mod sync;

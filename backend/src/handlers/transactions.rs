@@ -12,6 +12,7 @@ use crate::handlers::{error_to_response, extract_user_id};
 use crate::transactions::{
     approve_transaction as svc_approve, create_transaction as svc_create,
     get_treasury_summary as svc_summary, list_transactions as svc_list,
+    reject_transaction as svc_reject,
 };
 
 #[derive(Debug, Deserialize)]
@@ -164,6 +165,42 @@ pub async fn approve_transaction(
 
     let (family_id, transaction_id) = path.into_inner();
     match svc_approve(pool.get_ref(), &user_id, &family_id, &transaction_id).await {
+        Ok(tx) => HttpResponse::Ok().json(tx),
+        Err(err) => error_to_response(err, &http_req),
+    }
+}
+
+/// Reject a pending family transaction (requires HEAD or ADMIN authority).
+#[utoipa::path(
+    post,
+    path = "/api/v1/families/{family_id}/transactions/{id}/reject",
+    params(
+        ("family_id" = String, Path, description = "Family workspace ID"),
+        ("id" = String, Path, description = "Transaction ID")
+    ),
+    responses(
+        (status = 200, description = "Transaction rejected", body = TransactionItemDto),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden - Admin access required", body = ErrorResponse),
+        (status = 404, description = "Transaction not found", body = ErrorResponse)
+    ),
+    security(("bearer_auth" = [])),
+    tag = "transactions"
+)]
+#[post("/{family_id}/transactions/{id}/reject")]
+pub async fn reject_transaction(
+    pool: web::Data<PgPool>,
+    config: web::Data<Config>,
+    http_req: HttpRequest,
+    path: web::Path<(String, String)>,
+) -> impl Responder {
+    let user_id = match extract_user_id(&http_req, &config.jwt_secret) {
+        Ok(id) => id,
+        Err(err) => return error_to_response(err, &http_req),
+    };
+
+    let (family_id, transaction_id) = path.into_inner();
+    match svc_reject(pool.get_ref(), &user_id, &family_id, &transaction_id).await {
         Ok(tx) => HttpResponse::Ok().json(tx),
         Err(err) => error_to_response(err, &http_req),
     }

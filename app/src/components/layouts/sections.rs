@@ -1,10 +1,11 @@
 #![allow(dead_code)]
 
 use crate::brand::{colors, ThemeColors, ThemeMode};
+use crate::components::app_content_width;
 use crate::components::dashboard::{
     expense_category_card, format_rwf, income_stream_card, loan_card, member_pledge_card,
-    project_goal_card, transaction_row, EXPENSE_CATEGORIES, FAMILY_MEMBERS, INCOME_STREAMS, LOANS,
-    PROJECTS, TRANSACTIONS,
+    project_goal_card, transaction_row, ExpenseCategoryRow, IncomeStreamRow, LoanItem,
+    MemberContributionRow, ProjectSummary, TransactionRow,
 };
 use crate::components::scroll::touch_scrollable_fill;
 use crate::components::ui::{
@@ -42,28 +43,65 @@ fn section_header(
 }
 
 pub fn money_section(
-    _viewport_width: Pixels,
+    viewport_width: Pixels,
     theme: ThemeMode,
     language: Language,
 ) -> impl IntoElement {
     let palette = colors(theme);
+    let stacked = app_content_width(viewport_width) < px(640.0);
+    let income_streams: &[IncomeStreamRow] = &[];
+    let expense_categories: &[ExpenseCategoryRow] = &[];
+    let loan_items: &[LoanItem] = &[];
+    let tx_rows: &[TransactionRow] = &[];
+
+    let summary_cards = div()
+        .flex()
+        .gap_4()
+        .when(stacked, |this| this.flex_col())
+        .child(div().flex_1().child(stat_card(
+            "money-stat-treasury",
+            palette,
+            text(language, "dashboard.total_treasury"),
+            "0 RWF",
+            Some(text(language, "dashboard.treasury_trend")),
+            Some(icons::ICON_WALLET),
+            None,
+        )))
+        .child(div().flex_1().child(stat_card(
+            "money-stat-contributions",
+            palette,
+            text(language, "dashboard.monthly_contributions"),
+            "+0 RWF",
+            Some(text(language, "dashboard.contributions_sub")),
+            Some(icons::ICON_CREDIT_CARD),
+            None,
+        )))
+        .child(div().flex_1().child(stat_card(
+            "money-stat-expenses",
+            palette,
+            text(language, "dashboard.monthly_expenses"),
+            "-0 RWF",
+            Some(text(language, "dashboard.expenses_sub")),
+            Some(icons::ICON_ARROW_DOWN),
+            None,
+        )));
 
     let streams = div().flex().flex_col().gap_2p5().children(
-        INCOME_STREAMS
+        income_streams
             .iter()
             .enumerate()
             .map(|(idx, s)| income_stream_card(idx, s, palette)),
     );
 
     let categories = div().flex().flex_col().gap_2p5().children(
-        EXPENSE_CATEGORIES
+        expense_categories
             .iter()
             .enumerate()
             .map(|(idx, c)| expense_category_card(idx, c, palette)),
     );
 
     let loans = div().flex().flex_col().gap_2p5().children(
-        LOANS
+        loan_items
             .iter()
             .enumerate()
             .map(|(idx, l)| loan_card(idx, l, language, palette, |_e, _w, _cx| {})),
@@ -77,7 +115,7 @@ pub fn money_section(
         ))
         .child(
             div().flex().flex_col().gap_2().children(
-                TRANSACTIONS
+                tx_rows
                     .iter()
                     .enumerate()
                     .map(|(index, transaction)| transaction_row(index, transaction, palette)),
@@ -96,6 +134,7 @@ pub fn money_section(
                     text(language, "section.money_subtitle"),
                     palette,
                 ))
+                .child(summary_cards)
                 .child(streams)
                 .child(categories)
                 .child(loans)
@@ -106,7 +145,8 @@ pub fn money_section(
 
 pub fn projects_section(theme: ThemeMode, language: Language) -> impl IntoElement {
     let palette = colors(theme);
-    let total_saved: i64 = PROJECTS.iter().map(|p| p.saved_rwf).sum();
+    let projects: &[ProjectSummary] = &[];
+    let total_saved: i64 = projects.iter().map(|p| p.saved_rwf).sum();
 
     div().size_full().child(
         touch_scrollable_fill("projects-section-scroll").child(
@@ -157,7 +197,7 @@ pub fn projects_section(theme: ThemeMode, language: Language) -> impl IntoElemen
                         .flex()
                         .flex_col()
                         .gap_3()
-                        .children(PROJECTS.iter().enumerate().map(|(idx, project)| {
+                        .children(projects.iter().enumerate().map(|(idx, project)| {
                             project_goal_card(
                                 idx,
                                 project,
@@ -175,8 +215,9 @@ pub fn projects_section(theme: ThemeMode, language: Language) -> impl IntoElemen
 
 pub fn members_section(theme: ThemeMode, language: Language) -> impl IntoElement {
     let palette = colors(theme);
-    let total_pledge: i64 = FAMILY_MEMBERS.iter().map(|m| m.monthly_goal_rwf).sum();
-    let total_contributed: i64 = FAMILY_MEMBERS.iter().map(|m| m.contributed_rwf).sum();
+    let family_members: &[MemberContributionRow] = &[];
+    let total_pledge: i64 = family_members.iter().map(|m| m.monthly_goal_rwf).sum();
+    let total_contributed: i64 = family_members.iter().map(|m| m.contributed_rwf).sum();
     let pct = if total_pledge <= 0 {
         100
     } else {
@@ -240,7 +281,7 @@ pub fn members_section(theme: ThemeMode, language: Language) -> impl IntoElement
                         .child(kawaii_progress_bar(pct, palette.accent_primary, palette)),
                 )
                 .child(div().flex().flex_col().gap_3().children(
-                    FAMILY_MEMBERS.iter().enumerate().map(|(idx, member)| {
+                    family_members.iter().enumerate().map(|(idx, member)| {
                         member_pledge_card(
                             idx,
                             member,

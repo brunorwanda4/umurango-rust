@@ -4,8 +4,8 @@ use crate::components::ui::BadgeVariant;
 use crate::i18n::{text, Language};
 use crate::icons;
 use gpui_kit::{rgb, Rgba, SharedString};
-use std::sync::LazyLock;
-use umuryango_shared::{format_money, ProjectDto, TransactionItemDto};
+use std::collections::BTreeMap;
+use umuryango_shared::{format_money, FamilyMemberDto, LoanDto, ProjectDto, TransactionItemDto};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum MoneySubTab {
@@ -78,6 +78,15 @@ pub enum QuickEntryKind {
     Project,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EntryModalKind {
+    Income,
+    Expense,
+    Loan,
+    Project,
+    MemberInvite,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TransactionRow {
     pub actor: SharedString,
@@ -100,10 +109,14 @@ impl TransactionRow {
             "APPROVED" => (BadgeVariant::Success, "Approved"),
             "PENDING" => (BadgeVariant::Warning, "Pending Approval"),
             "REJECTED" => (BadgeVariant::Error, "Rejected"),
-            _ => (BadgeVariant::Neutral, "Unknown"),
+            _ => (BadgeVariant::Neutral, "Recorded"),
         };
-        let category_variant = if dto.is_income {
-            BadgeVariant::Primary
+        let cat_lower = dto.category.to_lowercase();
+        let is_loan = cat_lower.contains("loan");
+        let category_variant = if is_loan {
+            BadgeVariant::Warning
+        } else if dto.is_income {
+            BadgeVariant::Success
         } else {
             BadgeVariant::Neutral
         };
@@ -117,19 +130,16 @@ impl TransactionRow {
         } else {
             &dto.occurred_at
         };
-        let icon_name = if dto.is_income {
-            icons::ICON_ARROW_DOWN
-        } else {
-            icons::ICON_CART_SHOPPING
-        };
+        let icon_name = category_icon(&dto.category, dto.is_income);
+
         Self {
             actor: dto.actor_name.clone().into(),
             title: dto.title.clone().into(),
             date: date_str.to_string().into(),
             amount: formatted_amount.into(),
-            amount_rwf: dto.amount_minor_units / 100,
+            amount_rwf: dto.amount_minor_units,
             is_income: dto.is_income,
-            is_loan: false,
+            is_loan,
             icon_name,
             category: dto.category.clone().into(),
             category_variant,
@@ -139,94 +149,26 @@ impl TransactionRow {
     }
 }
 
-pub static TRANSACTIONS: LazyLock<[TransactionRow; 6]> = LazyLock::new(|| {
-    [
-        TransactionRow {
-            actor: "Agnes · MTN MoMo".into(),
-            title: "Agnes Monthly Salary Contribution".into(),
-            date: "Today, 09:40".into(),
-            amount: "+450,000 RWF".into(),
-            amount_rwf: 450_000,
-            is_income: true,
-            is_loan: false,
-            icon_name: icons::ICON_COINS,
-            category: "Salary".into(),
-            category_variant: BadgeVariant::Success,
-            status: "Approved".into(),
-            status_variant: BadgeVariant::Success,
-        },
-        TransactionRow {
-            actor: "Bruno · MoMo Pay".into(),
-            title: "Kimironko Market & Groceries".into(),
-            date: "Yesterday".into(),
-            amount: "-65,000 RWF".into(),
-            amount_rwf: 65_000,
-            is_income: false,
-            is_loan: false,
-            icon_name: icons::ICON_CART_SHOPPING,
-            category: "Groceries".into(),
-            category_variant: BadgeVariant::Neutral,
-            status: "Approved".into(),
-            status_variant: BadgeVariant::Success,
-        },
-        TransactionRow {
-            actor: "Bruno · Bank Transfer".into(),
-            title: "Bruno Consulting & Tech Retainer".into(),
-            date: "Nov 12".into(),
-            amount: "+320,000 RWF".into(),
-            amount_rwf: 320_000,
-            is_income: true,
-            is_loan: false,
-            icon_name: icons::ICON_WALLET,
-            category: "Consulting".into(),
-            category_variant: BadgeVariant::Primary,
-            status: "Approved".into(),
-            status_variant: BadgeVariant::Success,
-        },
-        TransactionRow {
-            actor: "Cousin Jean-Paul · MoMo".into(),
-            title: "Jean-Paul Loan Repayment #2".into(),
-            date: "Nov 10".into(),
-            amount: "+40,000 RWF".into(),
-            amount_rwf: 40_000,
-            is_income: true,
-            is_loan: true,
-            icon_name: icons::ICON_HANDSHAKE,
-            category: "Loan Repayment".into(),
-            category_variant: BadgeVariant::Warning,
-            status: "Approved".into(),
-            status_variant: BadgeVariant::Success,
-        },
-        TransactionRow {
-            actor: "Agnes · I&M Bank".into(),
-            title: "Keza School Uniform & Books".into(),
-            date: "Nov 08".into(),
-            amount: "-115,000 RWF".into(),
-            amount_rwf: 115_000,
-            is_income: false,
-            is_loan: false,
-            icon_name: icons::ICON_GRADUATION_CAP,
-            category: "Education".into(),
-            category_variant: BadgeVariant::Info,
-            status: "Approved".into(),
-            status_variant: BadgeVariant::Success,
-        },
-        TransactionRow {
-            actor: "Papa · Airtel Money".into(),
-            title: "REG CashPower & WASAC Water".into(),
-            date: "Nov 04".into(),
-            amount: "-48,000 RWF".into(),
-            amount_rwf: 48_000,
-            is_income: false,
-            is_loan: false,
-            icon_name: icons::ICON_BOLT,
-            category: "Utilities".into(),
-            category_variant: BadgeVariant::Neutral,
-            status: "Approved".into(),
-            status_variant: BadgeVariant::Success,
-        },
-    ]
-});
+pub fn category_icon(category: &str, is_income: bool) -> &'static str {
+    let lower = category.to_lowercase();
+    if lower.contains("loan") {
+        icons::ICON_HANDSHAKE
+    } else if lower.contains("school") || lower.contains("educat") || lower.contains("tuition") {
+        icons::ICON_GRADUATION_CAP
+    } else if lower.contains("power") || lower.contains("water") || lower.contains("util") {
+        icons::ICON_BOLT
+    } else if lower.contains("farm") || lower.contains("garden") || lower.contains("ibimina") {
+        icons::ICON_SEEDLING
+    } else if lower.contains("project") || lower.contains("goal") {
+        icons::ICON_BULLSEYE
+    } else if lower.contains("house") || lower.contains("rent") {
+        icons::ICON_HOUSE
+    } else if is_income {
+        icons::ICON_COINS
+    } else {
+        icons::ICON_CART_SHOPPING
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProjectSummary {
@@ -249,7 +191,7 @@ pub struct ProjectSummary {
 impl ProjectSummary {
     pub fn from_dto(dto: &ProjectDto) -> Self {
         let pct = dto.progress_percentage.clamp(0, 100);
-        let is_completed = pct >= 100;
+        let is_completed = pct >= 100 || dto.status.eq_ignore_ascii_case("COMPLETED");
         let variant = if pct >= 70 {
             BadgeVariant::Success
         } else {
@@ -262,26 +204,48 @@ impl ProjectSummary {
         );
         let progress_str = format!("{pct}% funded");
         let contrib_str = format!("{} contributors", dto.contributors_count);
-        let deadline_str = if dto.target_date.len() >= 10 {
+        let deadline_str = if is_completed {
+            "Done".to_string()
+        } else if dto.target_date.len() >= 10 {
             dto.target_date[..10].to_string()
         } else {
             "Active".into()
         };
 
+        let (icon_name, fill_color) = match dto.category.to_uppercase().as_str() {
+            "HOUSE" => (icons::ICON_HOUSE, rgb(0x8CE0B8)),
+            "EDUCATION" => (icons::ICON_GRADUATION_CAP, rgb(0xF9D67A)),
+            "BUSINESS" => (icons::ICON_SEEDLING, rgb(0xFFA69E)),
+            "VEHICLE" => (icons::ICON_BOLT, rgb(0xA9C9FF)),
+            _ => {
+                if is_completed {
+                    (icons::ICON_CIRCLE_CHECK, rgb(0xA9C9FF))
+                } else {
+                    (icons::ICON_BULLSEYE, rgb(0x8CE0B8))
+                }
+            }
+        };
+
+        let lead = dto
+            .description
+            .as_deref()
+            .filter(|s| !s.trim().is_empty())
+            .unwrap_or(&dto.category);
+
         Self {
             id: dto.id.clone().into(),
             name: dto.name.clone().into(),
-            lead: "Family Circle".into(),
+            lead: lead.to_string().into(),
             target: target_str.into(),
             progress: progress_str.into(),
             contributors: contrib_str.into(),
             deadline: deadline_str.into(),
-            saved_rwf: dto.raised_amount_minor_units / 100,
-            target_rwf: dto.target_amount_minor_units / 100,
+            saved_rwf: dto.raised_amount_minor_units,
+            target_rwf: dto.target_amount_minor_units,
             pct,
             is_completed,
-            icon_name: icons::ICON_BULLSEYE,
-            fill_color: rgb(0x8CE0B8),
+            icon_name,
+            fill_color,
             variant,
         }
     }
@@ -293,132 +257,24 @@ impl ProjectSummary {
             self.pct = computed;
             self.is_completed = computed >= 100;
             self.progress = format!("{computed}% funded").into();
+            self.target = format!(
+                "Target: {} • Raised: {}",
+                format_rwf(self.target_rwf),
+                format_rwf(self.saved_rwf)
+            )
+            .into();
         }
     }
 }
 
-pub static PROJECTS: LazyLock<[ProjectSummary; 4]> = LazyLock::new(|| {
-    [
-        ProjectSummary {
-            id: "p1".into(),
-            name: "Gisenyi Solar Roof & Battery".into(),
-            lead: "Bruno & Papa".into(),
-            target: "Target: 1,500,000 RWF • Raised: 1,150,000 RWF".into(),
-            progress: "77% funded".into(),
-            contributors: "4 contributors".into(),
-            deadline: "Dec 2026".into(),
-            saved_rwf: 1_150_000,
-            target_rwf: 1_500_000,
-            pct: 77,
-            is_completed: false,
-            icon_name: icons::ICON_SUN,
-            fill_color: rgb(0x8CE0B8),
-            variant: BadgeVariant::Success,
-        },
-        ProjectSummary {
-            id: "p2".into(),
-            name: "Keza Term 1 Tuition Reserve".into(),
-            lead: "Agnes".into(),
-            target: "Target: 600,000 RWF • Raised: 540,000 RWF".into(),
-            progress: "90% funded".into(),
-            contributors: "4 contributors".into(),
-            deadline: "Jan 2027".into(),
-            saved_rwf: 540_000,
-            target_rwf: 600_000,
-            pct: 90,
-            is_completed: false,
-            icon_name: icons::ICON_GRADUATION_CAP,
-            fill_color: rgb(0xF9D67A),
-            variant: BadgeVariant::Success,
-        },
-        ProjectSummary {
-            id: "p3".into(),
-            name: "Musanze Grandma Garden Fence".into(),
-            lead: "Papa Jean".into(),
-            target: "Target: 450,000 RWF • Raised: 290,000 RWF".into(),
-            progress: "64% funded".into(),
-            contributors: "3 contributors".into(),
-            deadline: "Feb 2027".into(),
-            saved_rwf: 290_000,
-            target_rwf: 450_000,
-            pct: 64,
-            is_completed: false,
-            icon_name: icons::ICON_SEEDLING,
-            fill_color: rgb(0xFFA69E),
-            variant: BadgeVariant::Primary,
-        },
-        ProjectSummary {
-            id: "p4".into(),
-            name: "Home Water Tank 5,000L".into(),
-            lead: "Bruno".into(),
-            target: "Target: 380,000 RWF • Raised: 380,000 RWF".into(),
-            progress: "100% funded".into(),
-            contributors: "4 contributors".into(),
-            deadline: "Done".into(),
-            saved_rwf: 380_000,
-            target_rwf: 380_000,
-            pct: 100,
-            is_completed: true,
-            icon_name: icons::ICON_CIRCLE_CHECK,
-            fill_color: rgb(0xA9C9FF),
-            variant: BadgeVariant::Success,
-        },
-    ]
-});
-
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct MonthlyCashflowPoint {
-    pub month: &'static str,
+    pub month: SharedString,
     pub income_pct: u8,
     pub expense_pct: u8,
-    pub income_label: &'static str,
-    pub expense_label: &'static str,
+    pub income_label: SharedString,
+    pub expense_label: SharedString,
 }
-
-pub const MONTHLY_CASHFLOW: [MonthlyCashflowPoint; 6] = [
-    MonthlyCashflowPoint {
-        month: "Jun",
-        income_pct: 68,
-        expense_pct: 42,
-        income_label: "680k",
-        expense_label: "420k",
-    },
-    MonthlyCashflowPoint {
-        month: "Jul",
-        income_pct: 74,
-        expense_pct: 48,
-        income_label: "740k",
-        expense_label: "480k",
-    },
-    MonthlyCashflowPoint {
-        month: "Aug",
-        income_pct: 64,
-        expense_pct: 38,
-        income_label: "640k",
-        expense_label: "380k",
-    },
-    MonthlyCashflowPoint {
-        month: "Sep",
-        income_pct: 82,
-        expense_pct: 51,
-        income_label: "820k",
-        expense_label: "510k",
-    },
-    MonthlyCashflowPoint {
-        month: "Oct",
-        income_pct: 79,
-        expense_pct: 44,
-        income_label: "790k",
-        expense_label: "440k",
-    },
-    MonthlyCashflowPoint {
-        month: "Nov",
-        income_pct: 88,
-        expense_pct: 41,
-        income_label: "850k",
-        expense_label: "410k",
-    },
-];
 
 #[derive(Clone, Debug)]
 pub struct ExpenseCategoryRow {
@@ -431,47 +287,24 @@ pub struct ExpenseCategoryRow {
     pub emoji: &'static str,
 }
 
-pub static EXPENSE_CATEGORIES: LazyLock<[ExpenseCategoryRow; 4]> = LazyLock::new(|| {
-    [
-        ExpenseCategoryRow {
-            name: "Home & Groceries".into(),
-            amount_rwf: 164_000,
-            budget_rwf: 200_000,
-            pct: 40,
-            icon_name: icons::ICON_CART_SHOPPING,
-            color: rgb(0x8CE0B8),
-            emoji: "🥕",
-        },
-        ExpenseCategoryRow {
-            name: "School & Kids".into(),
-            amount_rwf: 115_000,
-            budget_rwf: 120_000,
-            pct: 28,
-            icon_name: icons::ICON_GRADUATION_CAP,
-            color: rgb(0xFFA69E),
-            emoji: "🎒",
-        },
-        ExpenseCategoryRow {
-            name: "Ibimina Savings".into(),
-            amount_rwf: 83_000,
-            budget_rwf: 100_000,
-            pct: 20,
-            icon_name: icons::ICON_SEEDLING,
-            color: rgb(0xB8A9FF),
-            emoji: "🐷",
-        },
-        ExpenseCategoryRow {
-            name: "Power & Water".into(),
-            amount_rwf: 48_000,
-            budget_rwf: 60_000,
-            pct: 12,
-            icon_name: icons::ICON_BOLT,
-            color: rgb(0xF9D67A),
-            emoji: "💡",
-        },
-    ]
-});
-
+pub fn category_emoji(category: &str) -> &'static str {
+    let lower = category.to_lowercase();
+    if lower.contains("grocer") || lower.contains("food") || lower.contains("market") {
+        "🥕"
+    } else if lower.contains("school") || lower.contains("educat") || lower.contains("kid") {
+        "🎒"
+    } else if lower.contains("save") || lower.contains("ibimina") || lower.contains("invest") {
+        "🐷"
+    } else if lower.contains("power") || lower.contains("water") || lower.contains("util") {
+        "💡"
+    } else if lower.contains("farm") || lower.contains("garden") {
+        "🌱"
+    } else if lower.contains("health") || lower.contains("med") {
+        "🩺"
+    } else {
+        "📦"
+    }
+}
 #[derive(Clone, Debug)]
 pub struct IncomeStreamRow {
     pub name: SharedString,
@@ -479,35 +312,6 @@ pub struct IncomeStreamRow {
     pub amount_rwf: i64,
     pub icon_name: &'static str,
 }
-
-pub static INCOME_STREAMS: LazyLock<[IncomeStreamRow; 4]> = LazyLock::new(|| {
-    [
-        IncomeStreamRow {
-            name: "Agnes Ingabire Salary".into(),
-            cadence: "Monthly · 1st".into(),
-            amount_rwf: 450_000,
-            icon_name: icons::ICON_BUILDING_COLUMNS,
-        },
-        IncomeStreamRow {
-            name: "Bruno Design & Tech".into(),
-            cadence: "Monthly · 10th".into(),
-            amount_rwf: 320_000,
-            icon_name: icons::ICON_WALLET,
-        },
-        IncomeStreamRow {
-            name: "Kicukiro Rental Plot".into(),
-            cadence: "Monthly · 15th".into(),
-            amount_rwf: 50_000,
-            icon_name: icons::ICON_HOUSE,
-        },
-        IncomeStreamRow {
-            name: "Umuryango Ibimina Yield".into(),
-            cadence: "Monthly Dividend".into(),
-            amount_rwf: 30_000,
-            icon_name: icons::ICON_SEEDLING,
-        },
-    ]
-});
 
 #[derive(Clone, Debug)]
 pub struct LoanItem {
@@ -521,6 +325,23 @@ pub struct LoanItem {
 }
 
 impl LoanItem {
+    pub fn from_dto(dto: &LoanDto) -> Self {
+        let due_str = if dto.due_date.len() >= 10 {
+            dto.due_date[..10].to_string()
+        } else {
+            dto.due_date.clone()
+        };
+        Self {
+            id: dto.id.clone().into(),
+            is_lent: dto.is_lent,
+            person: dto.counterparty_name.clone().into(),
+            reason: dto.title.clone().into(),
+            total_rwf: dto.total_amount_minor_units,
+            paid_rwf: dto.paid_amount_minor_units,
+            due: due_str.into(),
+        }
+    }
+
     pub fn remaining_rwf(&self) -> i64 {
         (self.total_rwf - self.paid_rwf).max(0)
     }
@@ -534,38 +355,6 @@ impl LoanItem {
     }
 }
 
-pub static LOANS: LazyLock<[LoanItem; 3]> = LazyLock::new(|| {
-    [
-        LoanItem {
-            id: "l1".into(),
-            is_lent: true,
-            person: "Cousin Jean-Paul".into(),
-            reason: "Motorcycle Repair Bridge".into(),
-            total_rwf: 200_000,
-            paid_rwf: 120_000,
-            due: "Dec 15, 2026".into(),
-        },
-        LoanItem {
-            id: "l2".into(),
-            is_lent: false,
-            person: "Kigali Family Ibimina".into(),
-            reason: "Solar Inverter Co-Op Advance".into(),
-            total_rwf: 300_000,
-            paid_rwf: 210_000,
-            due: "Jan 10, 2027".into(),
-        },
-        LoanItem {
-            id: "l3".into(),
-            is_lent: true,
-            person: "Auntie Clarisse".into(),
-            reason: "Boutique Fabric Stock".into(),
-            total_rwf: 150_000,
-            paid_rwf: 80_000,
-            due: "Dec 28, 2026".into(),
-        },
-    ]
-});
-
 #[derive(Clone, Debug)]
 pub struct ApprovalItem {
     pub id: SharedString,
@@ -575,27 +364,6 @@ pub struct ApprovalItem {
     pub amount_rwf: i64,
     pub votes: SharedString,
 }
-
-pub static APPROVALS: LazyLock<[ApprovalItem; 2]> = LazyLock::new(|| {
-    [
-        ApprovalItem {
-            id: "ap1".into(),
-            requester: "Papa Jean".into(),
-            title: "Musanze Farm Fertilizer & Seeds".into(),
-            category: "Projects · Garden".into(),
-            amount_rwf: 75_000,
-            votes: "1 of 2 Admins Approved".into(),
-        },
-        ApprovalItem {
-            id: "ap2".into(),
-            requester: "Keza".into(),
-            title: "Science Club Robotics Kit".into(),
-            category: "School & Kids".into(),
-            amount_rwf: 35_000,
-            votes: "1 of 2 Admins Approved".into(),
-        },
-    ]
-});
 
 #[derive(Clone, Debug)]
 pub struct MemberContributionRow {
@@ -609,6 +377,42 @@ pub struct MemberContributionRow {
 }
 
 impl MemberContributionRow {
+    pub fn from_dto(
+        dto: &FamilyMemberDto,
+        index: usize,
+        transactions: &[TransactionItemDto],
+    ) -> Self {
+        let contributed_rwf: i64 = transactions
+            .iter()
+            .filter(|t| {
+                t.is_income
+                    && t.status == "APPROVED"
+                    && t.actor_name.eq_ignore_ascii_case(&dto.full_name)
+            })
+            .map(|t| t.amount_minor_units)
+            .sum();
+
+        let (role_label, default_goal, status_label) = match dto.role.as_str() {
+            "HEAD" => ("Family Head · Co-Admin", 250_000, "Admin"),
+            "ADMIN" | "TREASURER" => ("Co-Admin · Treasury Keeper", 200_000, "Admin"),
+            "ELDER" => ("Elder Advisor", 100_000, "Active"),
+            _ => ("Family Member", 100_000, "Active"),
+        };
+        let monthly_goal_rwf = default_goal.max(contributed_rwf);
+        let swatches = [rgb(0x8CE0B8), rgb(0xFFA69E), rgb(0xF9D67A), rgb(0xA9C9FF)];
+        let accent_color = swatches[index % swatches.len()];
+
+        Self {
+            id: dto.id.clone().into(),
+            name: dto.full_name.clone().into(),
+            role: role_label.into(),
+            monthly_goal_rwf,
+            contributed_rwf,
+            status: status_label.into(),
+            accent_color,
+        }
+    }
+
     pub fn progress_pct(&self) -> u8 {
         if self.monthly_goal_rwf <= 0 {
             100
@@ -618,49 +422,151 @@ impl MemberContributionRow {
     }
 }
 
-pub static FAMILY_MEMBERS: LazyLock<[MemberContributionRow; 4]> = LazyLock::new(|| {
-    [
-        MemberContributionRow {
-            id: "m1".into(),
-            name: "Bruno N.".into(),
-            role: "Co-Admin · Family Planner".into(),
-            monthly_goal_rwf: 250_000,
-            contributed_rwf: 250_000,
-            status: "Online".into(),
-            accent_color: rgb(0x8CE0B8),
-        },
-        MemberContributionRow {
-            id: "m2".into(),
-            name: "Agnes Ingabire".into(),
-            role: "Co-Admin · Treasury Keeper".into(),
-            monthly_goal_rwf: 250_000,
-            contributed_rwf: 250_000,
-            status: "Online".into(),
-            accent_color: rgb(0xFFA69E),
-        },
-        MemberContributionRow {
-            id: "m3".into(),
-            name: "Papa Jean".into(),
-            role: "Elder Advisor · Musanze".into(),
-            monthly_goal_rwf: 100_000,
-            contributed_rwf: 85_000,
-            status: "Active".into(),
-            accent_color: rgb(0xF9D67A),
-        },
-        MemberContributionRow {
-            id: "m4".into(),
-            name: "Grandma Rose".into(),
-            role: "Family Blessing · Gisenyi".into(),
-            monthly_goal_rwf: 50_000,
-            contributed_rwf: 50_000,
-            status: "Blessed ♥".into(),
-            accent_color: rgb(0xA9C9FF),
-        },
-    ]
-});
+/// Derives active income streams dynamically from backend transactions.
+pub fn derive_income_streams(transactions: &[TransactionItemDto]) -> Vec<IncomeStreamRow> {
+    let mut grouped: BTreeMap<String, (String, i64)> = BTreeMap::new();
+    for tx in transactions
+        .iter()
+        .filter(|t| t.is_income && t.status == "APPROVED")
+    {
+        let key = format!("{} · {}", tx.actor_name, tx.category);
+        let entry = grouped
+            .entry(key)
+            .or_insert_with(|| (tx.category.clone(), 0));
+        entry.1 += tx.amount_minor_units;
+    }
+
+    grouped
+        .into_iter()
+        .map(|(name, (category, amount_rwf))| IncomeStreamRow {
+            name: name.into(),
+            cadence: format!("{category} · Recorded").into(),
+            amount_rwf,
+            icon_name: category_icon(&category, true),
+        })
+        .collect()
+}
+
+/// Derives expense category breakdown dynamically from backend transactions.
+pub fn derive_expense_categories(transactions: &[TransactionItemDto]) -> Vec<ExpenseCategoryRow> {
+    let mut grouped: BTreeMap<String, i64> = BTreeMap::new();
+    let mut total_expenses: i64 = 0;
+
+    for tx in transactions
+        .iter()
+        .filter(|t| !t.is_income && t.status == "APPROVED")
+    {
+        *grouped.entry(tx.category.clone()).or_insert(0) += tx.amount_minor_units;
+        total_expenses += tx.amount_minor_units;
+    }
+
+    let swatches = [rgb(0xFFA69E), rgb(0xF9D67A), rgb(0x8CE0B8), rgb(0xA9C9FF)];
+
+    grouped
+        .into_iter()
+        .enumerate()
+        .map(|(idx, (name, amount_rwf))| {
+            let pct = if total_expenses > 0 {
+                ((amount_rwf * 100) / total_expenses).clamp(1, 100) as u8
+            } else {
+                0
+            };
+            let budget_rwf = ((amount_rwf * 120) / 100).max(50_000);
+            let icon_name = category_icon(&name, false);
+            ExpenseCategoryRow {
+                name: name.clone().into(),
+                amount_rwf,
+                budget_rwf,
+                pct,
+                icon_name,
+                color: swatches[idx % swatches.len()],
+                emoji: category_emoji(&name),
+            }
+        })
+        .collect()
+}
+
+/// Derives monthly cashflow chart points dynamically from backend transactions.
+pub fn derive_monthly_cashflow(transactions: &[TransactionItemDto]) -> Vec<MonthlyCashflowPoint> {
+    let mut monthly: BTreeMap<String, (i64, i64)> = BTreeMap::new();
+
+    for tx in transactions.iter().filter(|t| t.status == "APPROVED") {
+        let ym = if tx.occurred_at.len() >= 7 {
+            tx.occurred_at[..7].to_string()
+        } else {
+            "Current".to_string()
+        };
+        let entry = monthly.entry(ym).or_insert((0, 0));
+        if tx.is_income {
+            entry.0 += tx.amount_minor_units;
+        } else {
+            entry.1 += tx.amount_minor_units;
+        }
+    }
+
+    if monthly.is_empty() {
+        return vec![MonthlyCashflowPoint {
+            month: "Now".into(),
+            income_pct: 15,
+            expense_pct: 12,
+            income_label: "0".into(),
+            expense_label: "0".into(),
+        }];
+    }
+
+    let max_val = monthly
+        .values()
+        .flat_map(|(inc, exp)| [*inc, *exp])
+        .max()
+        .unwrap_or(1)
+        .max(1);
+
+    monthly
+        .into_iter()
+        .rev()
+        .take(6)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .map(|(ym, (inc, exp))| {
+            let month_label = month_short_label(&ym);
+            let income_pct = ((inc * 92) / max_val).clamp(15, 96) as u8;
+            let expense_pct = ((exp * 92) / max_val).clamp(12, 96) as u8;
+            MonthlyCashflowPoint {
+                month: month_label.into(),
+                income_pct,
+                expense_pct,
+                income_label: format_compact_rwf(inc).into(),
+                expense_label: format_compact_rwf(exp).into(),
+            }
+        })
+        .collect()
+}
+
+fn month_short_label(ym: &str) -> String {
+    if ym.len() >= 7 {
+        match &ym[5..7] {
+            "01" => "Jan".into(),
+            "02" => "Feb".into(),
+            "03" => "Mar".into(),
+            "04" => "Apr".into(),
+            "05" => "May".into(),
+            "06" => "Jun".into(),
+            "07" => "Jul".into(),
+            "08" => "Aug".into(),
+            "09" => "Sep".into(),
+            "10" => "Oct".into(),
+            "11" => "Nov".into(),
+            "12" => "Dec".into(),
+            other => other.to_string(),
+        }
+    } else {
+        ym.to_string()
+    }
+}
 
 pub fn format_rwf(amount_rwf: i64) -> String {
-    format_money(amount_rwf * 100, "RWF")
+    format_money(amount_rwf, "RWF")
 }
 
 pub fn format_signed_rwf(amount_rwf: i64, positive: bool) -> String {
@@ -672,13 +578,45 @@ pub fn format_signed_rwf(amount_rwf: i64, positive: bool) -> String {
     }
 }
 
+pub fn format_compact_rwf(amount_rwf: i64) -> String {
+    let abs = amount_rwf.abs();
+    if abs >= 1_000 {
+        format!("{}k", abs / 1_000)
+    } else {
+        abs.to_string()
+    }
+}
+
+pub fn format_compact_signed_rwf(amount_rwf: i64, positive: bool) -> String {
+    let compact = format_compact_rwf(amount_rwf);
+    if positive {
+        format!("+{compact}")
+    } else {
+        format!("-{compact}")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn project_boost_updates_saved_and_percentage_with_integer_math() {
-        let mut proj = PROJECTS[0].clone();
+        let dto = ProjectDto {
+            id: "p1".into(),
+            family_id: "f1".into(),
+            name: "Gisenyi Solar Roof".into(),
+            category: "HOUSE".into(),
+            description: Some("Bruno & Papa".into()),
+            target_amount_minor_units: 1_500_000,
+            raised_amount_minor_units: 1_150_000,
+            currency: "RWF".into(),
+            progress_percentage: 77,
+            contributors_count: 4,
+            status: "ACTIVE".into(),
+            target_date: "2026-12-31".into(),
+        };
+        let mut proj = ProjectSummary::from_dto(&dto);
         assert_eq!(proj.saved_rwf, 1_150_000);
         assert_eq!(proj.target_rwf, 1_500_000);
         assert_eq!(proj.pct, 77);
@@ -696,11 +634,50 @@ mod tests {
 
     #[test]
     fn loan_and_member_progress_compute_integer_percentages() {
-        let loan = &LOANS[0];
+        let loan = LoanItem::from_dto(&LoanDto {
+            id: "l1".into(),
+            family_id: "f1".into(),
+            title: "Motorcycle Repair Bridge".into(),
+            counterparty_name: "Cousin Jean-Paul".into(),
+            is_lent: true,
+            total_amount_minor_units: 200_000,
+            paid_amount_minor_units: 120_000,
+            remaining_amount_minor_units: 80_000,
+            currency: "RWF".into(),
+            status: "ACTIVE".into(),
+            due_date: "2026-12-15".into(),
+        });
         assert_eq!(loan.remaining_rwf(), 80_000);
         assert_eq!(loan.progress_pct(), 60);
 
-        let member = &FAMILY_MEMBERS[2];
+        let txs = vec![TransactionItemDto {
+            id: "t1".into(),
+            family_id: "f1".into(),
+            actor_name: "Papa Jean".into(),
+            title: "Monthly Contribution".into(),
+            amount_minor_units: 85_000,
+            currency: "RWF".into(),
+            is_income: true,
+            category: "Contribution".into(),
+            status: "APPROVED".into(),
+            occurred_at: "2026-11-10".into(),
+            notes: None,
+        }];
+        let member = MemberContributionRow::from_dto(
+            &FamilyMemberDto {
+                id: "m3".into(),
+                user_id: "u3".into(),
+                full_name: "Papa Jean".into(),
+                phone_number: None,
+                email: None,
+                role: "ELDER".into(),
+                avatar_url: None,
+                joined_at: "2026-11-01".into(),
+            },
+            0,
+            &txs,
+        );
+        assert_eq!(member.contributed_rwf, 85_000);
         assert_eq!(member.progress_pct(), 85);
     }
 }

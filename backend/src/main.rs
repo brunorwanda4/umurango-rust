@@ -61,10 +61,15 @@ async fn main() -> std::io::Result<()> {
                             .service(handlers::transactions::create_transaction)
                             .service(handlers::transactions::get_treasury_summary)
                             .service(handlers::transactions::approve_transaction)
+                            .service(handlers::transactions::reject_transaction)
                             .service(handlers::projects::list_projects)
                             .service(handlers::projects::create_project)
                             .service(handlers::projects::contribute_project)
-                            .service(handlers::members::list_members),
+                            .service(handlers::members::list_members)
+                            .service(handlers::members::invite_member)
+                            .service(handlers::loans::list_loans)
+                            .service(handlers::loans::create_loan)
+                            .service(handlers::loans::repay_loan),
                     )
                     .service(
                         web::scope("/sync")

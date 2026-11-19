@@ -356,6 +356,57 @@ pub struct FamilyMemberDto {
     pub joined_at: String,
 }
 
+/// Request payload to invite or add a member to an existing family workspace.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+pub struct InviteFamilyMemberRequest {
+    pub phone: String,
+    #[serde(default)]
+    pub full_name: Option<String>,
+    #[serde(default)]
+    pub role: Option<String>,
+}
+
+/// Family loan (lent or borrowed) DTO.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+pub struct LoanDto {
+    pub id: String,
+    pub family_id: String,
+    pub title: String,
+    pub counterparty_name: String,
+    pub is_lent: bool,
+    pub total_amount_minor_units: Money,
+    pub paid_amount_minor_units: Money,
+    pub remaining_amount_minor_units: Money,
+    pub currency: String,
+    pub status: String,
+    pub due_date: String,
+}
+
+/// Request payload to create a new family loan or borrowed record.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+pub struct CreateLoanRequest {
+    pub title: String,
+    pub counterparty_name: String,
+    pub is_lent: bool,
+    pub total_amount_minor_units: Money,
+    #[serde(default)]
+    pub paid_amount_minor_units: Money,
+    #[serde(default)]
+    pub due_date: Option<String>,
+}
+
+/// Request payload to record a loan repayment installment.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
+pub struct LoanRepaymentRequest {
+    pub amount_minor_units: Money,
+    #[serde(default)]
+    pub note: Option<String>,
+}
+
 /// Deterministic financial amount formatter.
 /// Formats an integer minor unit into standard comma-separated representation (e.g. 3,450,000 RWF).
 pub fn format_money(amount: Money, currency: &str) -> String {

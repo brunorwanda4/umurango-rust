@@ -174,7 +174,7 @@ pub async fn contribute_to_project(
             "id", "familyId", "projectId", "memberId", "amountMinorUnits", "currency",
             "status", "note", "paidAt", "recordedById", "createdAt", "updatedAt"
         )
-        VALUES ($1, $2, $3, $4, $5, 'RWF', 'APPROVED', $6, NOW(), $7, NOW(), NOW());
+        VALUES ($1, $2, $3, $4, $5, 'RWF', 'VERIFIED', $6, NOW(), $7, NOW(), NOW());
         "#,
     )
     .bind(&contrib_id)
