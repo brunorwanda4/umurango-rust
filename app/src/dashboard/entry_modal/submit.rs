@@ -32,6 +32,11 @@ impl DashboardView {
         }
 
         let Some(fid) = crate::auth::client::get_current_family_id() else {
+            self.toast_error(
+                "Workspace Error",
+                Some("No active family workspace selected."),
+                cx,
+            );
             self.toast_notice = Some("No active family workspace selected.".to_string());
             self.active_entry_modal = None;
             cx.notify();
@@ -167,6 +172,11 @@ impl DashboardView {
                 sel.set_items(available, window, cx);
                 sel.set_selected_value(&name, window, cx);
             });
+            self.toast_success(
+                text(self.language, "modal.category_saved_toast"),
+                Some(format!("Added category: {name}")),
+                cx,
+            );
             self.toast_notice = Some(format!(
                 "{} ✓ {name}",
                 text(self.language, "modal.category_saved_toast")
@@ -174,6 +184,11 @@ impl DashboardView {
             cx.notify();
         } else {
             self.active_entry_modal = None;
+            self.toast_success(
+                text(self.language, "modal.category_saved_toast"),
+                Some(format!("Added category: {name}")),
+                cx,
+            );
             self.toast_notice = Some(format!(
                 "{} ✓ {name}",
                 text(self.language, "modal.category_saved_toast")
@@ -228,6 +243,27 @@ impl DashboardView {
 
         match crate::auth::client::api_create_transaction(fid, &req) {
             Ok(_) => {
+                if is_income {
+                    self.toast_success(
+                        "Income Recorded",
+                        Some(format!(
+                            "{} · {}",
+                            description,
+                            format_signed_rwf(amount, true)
+                        )),
+                        cx,
+                    );
+                } else {
+                    self.toast_expense(
+                        "Expense Recorded",
+                        Some(format!(
+                            "{} · {}",
+                            description,
+                            format_signed_rwf(amount, false)
+                        )),
+                        cx,
+                    );
+                }
                 self.toast_notice = Some(format!(
                     "{} ({})",
                     description,
@@ -245,6 +281,11 @@ impl DashboardView {
                     };
                     cx.emit(DashboardEvent::QueueOutboxMutation { command, payload });
                 }
+                self.toast_warning(
+                    "Queued Offline",
+                    Some(format!("{description} queued locally ({err})")),
+                    cx,
+                );
                 self.toast_notice = Some(format!("Queued offline ({err})"));
                 self.active_entry_modal = None;
                 cx.notify();
@@ -284,11 +325,17 @@ impl DashboardView {
         };
         match crate::auth::client::api_create_project(fid, &req) {
             Ok(_) => {
+                self.toast_success(
+                    "Project Created",
+                    Some(format!("{name} · Target {}", format_rwf(target))),
+                    cx,
+                );
                 self.toast_notice = Some(format!("Created project: {name}"));
                 self.active_entry_modal = None;
                 self.refresh_from_backend(cx);
             }
             Err(err) => {
+                self.toast_error("Failed to Create Project", Some(err.clone()), cx);
                 self.toast_notice = Some(err);
                 cx.notify();
             }
@@ -328,6 +375,16 @@ impl DashboardView {
         };
         match crate::auth::client::api_create_loan(fid, &req) {
             Ok(_) => {
+                let action_title = if self.entry_loan_is_lent {
+                    "Loan Issued"
+                } else {
+                    "Loan Borrowed"
+                };
+                self.toast_info(
+                    action_title,
+                    Some(format!("{counterparty_name} · {}", format_rwf(total))),
+                    cx,
+                );
                 self.toast_notice = Some(format!(
                     "{} · {counterparty_name} ({})",
                     text(self.language, "cozy.toast_new_loan"),
@@ -337,6 +394,7 @@ impl DashboardView {
                 self.refresh_from_backend(cx);
             }
             Err(err) => {
+                self.toast_error("Failed to Record Loan", Some(err.clone()), cx);
                 self.toast_notice = Some(err);
                 cx.notify();
             }
@@ -352,6 +410,11 @@ impl DashboardView {
         cx: &mut Context<Self>,
     ) {
         if secondary_str.is_empty() {
+            self.toast_warning(
+                "Phone Required",
+                Some("Phone number is required to invite a member."),
+                cx,
+            );
             self.toast_notice = Some("Phone number is required.".to_string());
             cx.notify();
             return;
@@ -371,6 +434,11 @@ impl DashboardView {
         };
         match crate::auth::client::api_invite_member(fid, &req) {
             Ok(member) => {
+                self.toast_success(
+                    "Member Invited",
+                    Some(format!("Invitation sent to {}", member.full_name)),
+                    cx,
+                );
                 self.toast_notice = Some(format!(
                     "{} ({})",
                     text(self.language, "cozy.toast_invited"),
@@ -380,6 +448,7 @@ impl DashboardView {
                 self.refresh_from_backend(cx);
             }
             Err(err) => {
+                self.toast_error("Failed to Invite Member", Some(err.clone()), cx);
                 self.toast_notice = Some(err);
                 cx.notify();
             }

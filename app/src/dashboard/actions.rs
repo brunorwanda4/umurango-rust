@@ -26,6 +26,11 @@ impl DashboardView {
                         idempotency_key: Some(uuid::Uuid::new_v4().to_string()),
                     };
                     let _ = crate::auth::client::api_create_transaction(&fid, &tx_req);
+                    self.toast_success(
+                        format!("Boosted {proj_name}!"),
+                        Some(format!("Contributed {}", format_rwf(amount_rwf))),
+                        cx,
+                    );
                     self.toast_notice = Some(format!(
                         "{} {proj_name}!",
                         text(self.language, "cozy.toast_boosted")
@@ -33,6 +38,7 @@ impl DashboardView {
                     self.refresh_from_backend(cx);
                 }
                 Err(err) => {
+                    self.toast_error("Project Boost Failed", Some(err.clone()), cx);
                     self.toast_notice = Some(err);
                     cx.notify();
                 }
@@ -51,6 +57,11 @@ impl DashboardView {
 
         let step = amount_rwf.min(remaining);
         if step <= 0 {
+            self.toast_info(
+                "Loan Already Settled",
+                Some(format!("{person} has no remaining balance")),
+                cx,
+            );
             self.toast_notice = Some(format!(
                 "{} {person}",
                 text(self.language, "cozy.toast_loan_settled")
@@ -66,6 +77,11 @@ impl DashboardView {
             };
             match crate::auth::client::api_repay_loan(&fid, &loan_id, &req) {
                 Ok(_) => {
+                    self.toast_success(
+                        format!("Loan Repaid · {person}"),
+                        Some(format!("Repaid {}", format_rwf(step))),
+                        cx,
+                    );
                     self.toast_notice = Some(format!(
                         "{} {person} ({})!",
                         text(self.language, "cozy.toast_loan_repaid"),
@@ -74,6 +90,7 @@ impl DashboardView {
                     self.refresh_from_backend(cx);
                 }
                 Err(err) => {
+                    self.toast_error("Loan Repayment Failed", Some(err.clone()), cx);
                     self.toast_notice = Some(err);
                     cx.notify();
                 }
@@ -96,6 +113,19 @@ impl DashboardView {
 
             match res {
                 Ok(_) => {
+                    if approve {
+                        self.toast_success(
+                            "Transaction Approved",
+                            Some(format!("{} · {}", item.title, format_rwf(item.amount_rwf))),
+                            cx,
+                        );
+                    } else {
+                        self.toast_warning(
+                            "Transaction Declined",
+                            Some(format!("Declined: {}", item.title)),
+                            cx,
+                        );
+                    }
                     self.toast_notice = if approve {
                         Some(format!(
                             "{} {} ({})",
@@ -113,6 +143,7 @@ impl DashboardView {
                     self.refresh_from_backend(cx);
                 }
                 Err(err) => {
+                    self.toast_error("Approval Action Failed", Some(err.clone()), cx);
                     self.toast_notice = Some(err);
                     cx.notify();
                 }
@@ -141,6 +172,11 @@ impl DashboardView {
             };
             match crate::auth::client::api_create_transaction(&fid, &req) {
                 Ok(_) => {
+                    self.toast_success(
+                        "Pledge Recorded",
+                        Some(format!("Recorded {} for {name}", format_rwf(amount_rwf))),
+                        cx,
+                    );
                     self.toast_notice = Some(format!(
                         "{} {name}!",
                         text(self.language, "cozy.toast_member_contrib")
@@ -148,6 +184,7 @@ impl DashboardView {
                     self.refresh_from_backend(cx);
                 }
                 Err(err) => {
+                    self.toast_error("Failed to Record Pledge", Some(err.clone()), cx);
                     self.toast_notice = Some(err);
                     cx.notify();
                 }

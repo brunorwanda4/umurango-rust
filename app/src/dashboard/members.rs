@@ -89,6 +89,11 @@ impl DashboardView {
                         move |_e, _w, cx| {
                             let target_name = member_name.clone();
                             view_remind.update(cx, |this, cx| {
+                                this.toast_info(
+                                    text(this.language, "cozy.toast_reminded"),
+                                    Some(format!("Reminder sent to {target_name}!")),
+                                    cx,
+                                );
                                 this.toast_notice = Some(format!(
                                     "{} {target_name}!",
                                     text(this.language, "cozy.toast_reminded")

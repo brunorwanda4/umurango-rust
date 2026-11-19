@@ -13,6 +13,7 @@ pub mod progress;
 pub mod segmented;
 pub mod select;
 pub mod stat_card;
+pub mod toast;
 pub mod toggle;
 
 pub use alert::*;
@@ -28,4 +29,5 @@ pub use progress::*;
 pub use segmented::*;
 pub use select::*;
 pub use stat_card::*;
+pub use toast::*;
 pub use toggle::*;

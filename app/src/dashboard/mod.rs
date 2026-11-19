@@ -20,9 +20,11 @@ pub struct CustomCategoryItem {
     pub color: String,
     pub description: String,
 }
+use gpui_kit::base::{ToastManager, ToastMotion, ToastOptions, ToastStackState};
 pub(super) use gpui_kit::prelude::FluentBuilder;
 pub(super) use gpui_kit::*;
 use std::rc::Rc;
+use std::time::{Duration, Instant};
 
 mod actions;
 mod entry_modal;
@@ -97,6 +99,10 @@ pub struct DashboardView {
     pub rule_sunday_digest: bool,
     pub rule_auto_roundup_momo: bool,
     pub toast_notice: Option<String>,
+    pub(super) toast_manager: ToastManager<u64, ToastItem>,
+    pub(super) toast_stack_state: ToastStackState,
+    pub(super) next_toast_id: u64,
+    pub(super) toast_clock_running: bool,
     pub storage_sync_status: String,
 }
 
@@ -228,6 +234,10 @@ impl DashboardView {
             rule_sunday_digest: true,
             rule_auto_roundup_momo: false,
             toast_notice: None,
+            toast_manager: ToastManager::new(ToastMotion::sonner()),
+            toast_stack_state: ToastStackState::default(),
+            next_toast_id: 0,
+            toast_clock_running: false,
             storage_sync_status: text(language, "dashboard.storage_health_desc").to_string(),
         }
     }
@@ -284,6 +294,15 @@ impl DashboardView {
     pub fn set_mood(&mut self, mood: CozyMood, cx: &mut Context<Self>) {
         self.mood = mood;
         set_cozy_mood(mood, cx);
+        self.toast_info(
+            "Mood Updated",
+            Some(format!(
+                "{} {}",
+                text(self.language, "cozy.toast_mood_switched"),
+                mood.label()
+            )),
+            cx,
+        );
         self.toast_notice = Some(format!(
             "{} {}",
             text(self.language, "cozy.toast_mood_switched"),
@@ -318,6 +337,124 @@ impl DashboardView {
             self.family_name = name;
             cx.notify();
         }
+    }
+
+    pub fn push_toast(&mut self, item: ToastItem, cx: &mut Context<Self>) {
+        let id = item.id;
+        let duration = item.duration;
+        self.toast_manager.push(
+            id,
+            item,
+            ToastOptions {
+                timeout: Some(duration),
+            },
+            Instant::now(),
+        );
+        self.start_toast_clock(cx);
+        cx.notify();
+    }
+
+    pub fn dismiss_toast(&mut self, id: u64, cx: &mut Context<Self>) {
+        self.toast_manager.dismiss(&id, Instant::now());
+        self.start_toast_clock(cx);
+        cx.notify();
+    }
+
+    pub fn toast_success(
+        &mut self,
+        title: impl Into<SharedString>,
+        message: Option<impl Into<SharedString>>,
+        cx: &mut Context<Self>,
+    ) {
+        self.next_toast_id += 1;
+        let mut item = ToastItem::success(self.next_toast_id, title);
+        if let Some(msg) = message {
+            item = item.with_message(msg);
+        }
+        self.push_toast(item, cx);
+    }
+
+    pub fn toast_expense(
+        &mut self,
+        title: impl Into<SharedString>,
+        message: Option<impl Into<SharedString>>,
+        cx: &mut Context<Self>,
+    ) {
+        self.next_toast_id += 1;
+        let mut item = ToastItem::expense(self.next_toast_id, title);
+        if let Some(msg) = message {
+            item = item.with_message(msg);
+        }
+        self.push_toast(item, cx);
+    }
+
+    pub fn toast_info(
+        &mut self,
+        title: impl Into<SharedString>,
+        message: Option<impl Into<SharedString>>,
+        cx: &mut Context<Self>,
+    ) {
+        self.next_toast_id += 1;
+        let mut item = ToastItem::info(self.next_toast_id, title);
+        if let Some(msg) = message {
+            item = item.with_message(msg);
+        }
+        self.push_toast(item, cx);
+    }
+
+    pub fn toast_warning(
+        &mut self,
+        title: impl Into<SharedString>,
+        message: Option<impl Into<SharedString>>,
+        cx: &mut Context<Self>,
+    ) {
+        self.next_toast_id += 1;
+        let mut item = ToastItem::warning(self.next_toast_id, title);
+        if let Some(msg) = message {
+            item = item.with_message(msg);
+        }
+        self.push_toast(item, cx);
+    }
+
+    pub fn toast_error(
+        &mut self,
+        title: impl Into<SharedString>,
+        message: Option<impl Into<SharedString>>,
+        cx: &mut Context<Self>,
+    ) {
+        self.next_toast_id += 1;
+        let mut item = ToastItem::error(self.next_toast_id, title);
+        if let Some(msg) = message {
+            item = item.with_message(msg);
+        }
+        self.push_toast(item, cx);
+    }
+
+    fn start_toast_clock(&mut self, cx: &mut Context<Self>) {
+        if self.toast_clock_running {
+            return;
+        }
+        self.toast_clock_running = true;
+        cx.spawn(async move |this, cx| loop {
+            cx.background_executor()
+                .timer(Duration::from_millis(50))
+                .await;
+            let keep_running = this.update(cx, |view, cx| {
+                let now = Instant::now();
+                let paused = view.toast_stack_state.is_expanded();
+                let advance = view.toast_manager.advance(now, paused);
+                if advance.changed {
+                    cx.notify();
+                }
+                let running = !view.toast_manager.is_empty();
+                view.toast_clock_running = running;
+                running
+            });
+            if !matches!(keep_running, Ok(true)) {
+                break;
+            }
+        })
+        .detach();
     }
 }
 
@@ -416,22 +553,6 @@ impl Render for DashboardView {
             }
         };
 
-        let toast_banner = self.toast_notice.as_ref().map(|msg| {
-            let view_dismiss = view_entity.clone();
-            dismissible_alert(
-                "cozy-toast-banner",
-                AlertVariant::Success,
-                msg.clone(),
-                palette,
-                move |_e, _w, cx| {
-                    view_dismiss.update(cx, |this, cx| {
-                        this.toast_notice = None;
-                        cx.notify();
-                    });
-                },
-            )
-        });
-
         let entry_modal = self.render_entry_modal(palette, view_entity.clone(), cx);
 
         let screen_body: AnyElement = match self.active_section {
@@ -446,6 +567,35 @@ impl Render for DashboardView {
             }
         };
 
+        let toast_stack = if !self.toast_manager.is_empty() {
+            let view_dismiss = view_entity.clone();
+            let visible_toasts = self.toast_manager.visible(4).collect::<Vec<_>>();
+            let is_stacked = stacked;
+            Some(
+                div()
+                    .absolute()
+                    .when(is_stacked, |this| {
+                        this.bottom(px(72.0)).right(px(16.0)).left(px(16.0))
+                    })
+                    .when(!is_stacked, |this| {
+                        this.bottom(px(24.0)).right(px(24.0)).w(px(360.0))
+                    })
+                    .child(render_toast_stack(
+                        "dashboard-toasts",
+                        self.toast_stack_state.clone(),
+                        visible_toasts,
+                        &palette,
+                        move |id, _window, cx| {
+                            view_dismiss.update(cx, |this, cx| {
+                                this.dismiss_toast(id, cx);
+                            });
+                        },
+                    )),
+            )
+        } else {
+            None
+        };
+
         let active_projects_count = self.projects.iter().filter(|p| !p.is_completed).count();
 
         let page_container = div()
@@ -454,17 +604,11 @@ impl Render for DashboardView {
             .bg(palette.bg_canvas)
             .text_color(palette.text_primary)
             .child(
-                touch_scrollable_fill("dashboard-main-scroll").child(
-                    div()
-                        .flex()
-                        .flex_col()
-                        .gap_4()
-                        .p_5()
-                        .when_some(toast_banner, |this, banner| this.child(banner))
-                        .child(screen_body),
-                ),
+                touch_scrollable_fill("dashboard-main-scroll")
+                    .child(div().flex().flex_col().gap_4().p_5().child(screen_body)),
             )
-            .when_some(entry_modal, |this, modal| this.child(modal));
+            .when_some(entry_modal, |this, modal| this.child(modal))
+            .when_some(toast_stack, |this, stack| this.child(stack));
 
         app_layout(
             AppLayoutProps {
