@@ -9,6 +9,8 @@ pub(super) use crate::i18n::{text, Language};
 pub(super) use crate::icons;
 use crate::theme::{active_mood, set_cozy_mood};
 pub(super) use gpui_kit::component::input::{InputState, TextareaState};
+pub(super) use gpui_kit::component::select::{SelectEvent, SelectState};
+pub(super) use gpui_kit::component::IndexPath;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CustomCategoryItem {
@@ -58,6 +60,7 @@ pub struct DashboardView {
     entry_title_input: Entity<InputState>,
     entry_secondary_input: Entity<InputState>,
     entry_amount_input: Entity<InputState>,
+    pub(super) entry_category_select: Entity<SelectState<Vec<String>>>,
     entry_loan_is_lent: bool,
     pub(super) entry_category_is_income: bool,
     pub(super) entry_category_return_modal: Option<EntryModalKind>,
@@ -119,6 +122,33 @@ impl DashboardView {
         let entry_title_input = cx.new(|cx| InputState::new(window, cx));
         let entry_secondary_input = cx.new(|cx| InputState::new(window, cx));
         let entry_amount_input = cx.new(|cx| InputState::new(window, cx));
+        let entry_category_select = cx.new(|cx| {
+            SelectState::new(
+                vec![
+                    "Contribution".to_string(),
+                    "Business".to_string(),
+                    "Farming".to_string(),
+                    "Salary".to_string(),
+                ],
+                Some(IndexPath::default()),
+                window,
+                cx,
+            )
+        });
+        cx.subscribe_in(
+            &entry_category_select,
+            window,
+            |this, _state, event: &SelectEvent<Vec<String>>, window, cx| {
+                if let SelectEvent::Confirm(Some(cat)) = event {
+                    let cat_val = cat.clone();
+                    this.entry_secondary_input.update(cx, |input, cx| {
+                        input.set_value(cat_val, window, cx);
+                    });
+                    cx.notify();
+                }
+            },
+        )
+        .detach();
         let entry_category_desc_input = cx.new(|cx| TextareaState::new(window, cx));
         let entry_category_icon_input = cx.new(|cx| InputState::new(window, cx));
         cx.observe(&entry_category_icon_input, |_this, _input, cx| {
@@ -161,6 +191,7 @@ impl DashboardView {
             entry_title_input,
             entry_secondary_input,
             entry_amount_input,
+            entry_category_select,
             entry_loan_is_lent: true,
             entry_category_is_income: false,
             entry_category_return_modal: None,

@@ -255,8 +255,31 @@ impl DashboardView {
         });
         self.entry_secondary_input.update(cx, |state, cx| {
             state.set_placeholder(sec_ph, window, cx);
-            state.set_value(sec_val, window, cx);
+            state.set_value(sec_val.clone(), window, cx);
         });
+
+        if kind == EntryModalKind::Income || kind == EntryModalKind::Expense {
+            let is_inc = kind == EntryModalKind::Income;
+            let avail = self.get_available_categories(is_inc);
+            let selected_val = if !sec_val.is_empty() && avail.contains(&sec_val) {
+                sec_val
+            } else if is_inc {
+                "Contribution".to_string()
+            } else {
+                avail
+                    .first()
+                    .cloned()
+                    .unwrap_or_else(|| "General".to_string())
+            };
+            self.entry_category_select.update(cx, |sel, cx| {
+                sel.set_items(avail, window, cx);
+                sel.set_selected_value(&selected_val, window, cx);
+            });
+            self.entry_secondary_input.update(cx, |state, cx| {
+                state.set_value(selected_val, window, cx);
+            });
+        }
+
         if kind != EntryModalKind::Category {
             self.entry_amount_input.update(cx, |state, cx| {
                 state.set_placeholder(amt_ph, window, cx);

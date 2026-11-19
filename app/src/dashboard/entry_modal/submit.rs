@@ -161,6 +161,12 @@ impl DashboardView {
                 state.set_placeholder(a_ph, window, cx);
                 state.set_value(amt, window, cx);
             });
+            let is_income = return_kind == EntryModalKind::Income;
+            let available = self.get_available_categories(is_income);
+            self.entry_category_select.update(cx, |sel, cx| {
+                sel.set_items(available, window, cx);
+                sel.set_selected_value(&name, window, cx);
+            });
             self.toast_notice = Some(format!(
                 "{} ✓ {name}",
                 text(self.language, "modal.category_saved_toast")
@@ -199,14 +205,16 @@ impl DashboardView {
         } else {
             title_str
         };
-        let category = if secondary_str.is_empty() {
-            if is_income {
-                "Contribution".to_string()
-            } else {
-                "General".to_string()
-            }
-        } else {
-            secondary_str
+        let selected_cat = self
+            .entry_category_select
+            .read(cx)
+            .selected_value()
+            .cloned();
+        let category = match selected_cat {
+            Some(cat) if !cat.trim().is_empty() => cat,
+            _ if !secondary_str.is_empty() => secondary_str,
+            _ if is_income => "Contribution".to_string(),
+            _ => "General".to_string(),
         };
 
         let req = umuryango_shared::CreateTransactionRequest {
