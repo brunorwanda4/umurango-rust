@@ -1,4 +1,4 @@
-use crate::brand::{colors, StyleTokens, ThemeMode};
+use crate::brand::{brand_logo, colors, StyleTokens, ThemeMode};
 use crate::i18n::{text, Language};
 use crate::icons;
 use crate::theme::UiStyle;
@@ -99,7 +99,7 @@ fn window_control_button(
 
 pub fn app_window_titlebar(
     theme: ThemeMode,
-    language: Language,
+    _language: Language,
     is_maximized: bool,
 ) -> impl IntoElement {
     let palette = colors(theme);
@@ -154,11 +154,7 @@ pub fn app_window_titlebar(
                         .flex()
                         .items_center()
                         .justify_center()
-                        .child(
-                            icons::icon(icons::ICON_HOUSE)
-                                .size(px(13.0))
-                                .text_color(palette.accent_primary),
-                        ),
+                        .child(brand_logo(theme, px(16.0))),
                 )
                 .child(
                     div()
