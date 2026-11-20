@@ -4,7 +4,7 @@ use crate::auth::layout::{auth_footer_prompt, auth_layout_with_mood, auth_submit
 use crate::brand::{apply_style_and_mood, CozyMood, StyleTokens, ThemeMode, UiStyle};
 use crate::components::ui::{checkbox, input_field, password_field};
 use crate::i18n::{text, Language};
-use crate::theme::active_mood;
+use crate::theme::{active_mood, active_style};
 use gpui_kit::component::input::InputState;
 use gpui_kit::*;
 
@@ -43,8 +43,8 @@ impl LoginView {
         language: Language,
         cx: &mut Context<Self>,
     ) -> Self {
-        let style = UiStyle::CozyKawaii;
-        let mood = CozyMood::Matcha;
+        let style = active_style();
+        let mood = active_mood();
         apply_style_and_mood(style, theme, mood, cx);
 
         let email_input = cx.new(|cx| {
@@ -118,9 +118,15 @@ impl LoginView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        let global_style = active_style();
+        if self.style != global_style {
+            self.style = global_style;
+            apply_style_and_mood(self.style, self.theme, self.mood, cx);
+        }
         let global_mood = active_mood();
         if self.mood != global_mood {
             self.mood = global_mood;
+            apply_style_and_mood(self.style, self.theme, self.mood, cx);
         }
         if self.theme != theme {
             self.set_theme(theme, cx);

@@ -2,7 +2,7 @@ use crate::brand::{colors, CozyMood, StyleTokens, ThemeColors, ThemeMode};
 use crate::components::ui::{card, primary_button_with_state};
 use crate::i18n::Language;
 use crate::icons;
-use crate::theme::{active_mood, set_cozy_mood};
+use crate::theme::{active_mood, active_style, set_cozy_mood, set_ui_style};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use std::rc::Rc;
@@ -10,14 +10,15 @@ use std::sync::Arc;
 
 type LanguageChangeHandler = Rc<dyn Fn(Language, &mut Window, &mut App)>;
 type ThemeChangeHandler = Rc<dyn Fn(ThemeMode, &mut App)>;
+#[allow(dead_code)]
 type MoodChangeHandler = Rc<dyn Fn(CozyMood, &mut App)>;
 
 pub fn cozy_header_switcher<T, M>(
     theme: ThemeMode,
-    mood: CozyMood,
+    _mood: CozyMood,
     palette: StyleTokens,
     on_theme_change: T,
-    on_mood_change: M,
+    _on_mood_change: M,
 ) -> impl IntoElement
 where
     T: Fn(ThemeMode, &mut App) + 'static,
@@ -25,41 +26,79 @@ where
 {
     let on_theme: ThemeChangeHandler = Rc::new(on_theme_change);
 
-    div().flex().items_center().gap_2().child({
-        let on_theme = on_theme.clone();
-        let icon_name = if theme == ThemeMode::Dark {
-            icons::ICON_SUN
-        } else {
-            icons::ICON_MOON
-        };
-        div()
-            .id("auth-theme-toggle")
-            .cursor_pointer()
-            .flex()
-            .items_center()
-            .gap_1p5()
-            .px_3()
-            .py_1p5()
-            .rounded_full()
-            .bg(palette.bg_input)
-            .border(palette.border_width_input)
-            .border_color(palette.border_color)
-            .shadow(palette.checkbox_shadows())
-            .text_xs()
-            .font_weight(FontWeight::BOLD)
-            .text_color(palette.text_primary)
-            .hover(|s| {
-                s.bg(palette.bg_input_focus)
-                    .border_color(palette.accent_primary)
-            })
-            .child(
-                icons::icon(icon_name)
-                    .size(px(13.0))
-                    .text_color(palette.accent_primary),
-            )
-            .child(theme.short_label())
-            .on_click(move |_event, _window, cx| on_theme(theme.toggle(), cx))
-    })
+    div()
+        .flex()
+        .items_center()
+        .gap_2()
+        .child({
+            let on_theme = on_theme.clone();
+            let next_style = palette.style.toggle();
+            div()
+                .id("auth-style-toggle")
+                .cursor_pointer()
+                .flex()
+                .items_center()
+                .gap_1p5()
+                .px_3()
+                .py_1p5()
+                .rounded_full()
+                .bg(palette.bg_input)
+                .border(palette.border_width_input)
+                .border_color(palette.border_color)
+                .shadow(palette.checkbox_shadows())
+                .text_xs()
+                .font_weight(FontWeight::BOLD)
+                .text_color(palette.text_primary)
+                .hover(|s| {
+                    s.bg(palette.bg_input_focus)
+                        .border_color(palette.accent_primary)
+                })
+                .child(
+                    icons::icon(icons::ICON_SLIDERS)
+                        .size(px(12.0))
+                        .text_color(palette.accent_primary),
+                )
+                .child(palette.style.short_label())
+                .on_click(move |_event, _window, cx| {
+                    set_ui_style(next_style, cx);
+                    on_theme(theme, cx);
+                })
+        })
+        .child({
+            let on_theme = on_theme.clone();
+            let icon_name = if theme == ThemeMode::Dark {
+                icons::ICON_SUN
+            } else {
+                icons::ICON_MOON
+            };
+            div()
+                .id("auth-theme-toggle")
+                .cursor_pointer()
+                .flex()
+                .items_center()
+                .gap_1p5()
+                .px_3()
+                .py_1p5()
+                .rounded_full()
+                .bg(palette.bg_input)
+                .border(palette.border_width_input)
+                .border_color(palette.border_color)
+                .shadow(palette.checkbox_shadows())
+                .text_xs()
+                .font_weight(FontWeight::BOLD)
+                .text_color(palette.text_primary)
+                .hover(|s| {
+                    s.bg(palette.bg_input_focus)
+                        .border_color(palette.accent_primary)
+                })
+                .child(
+                    icons::icon(icon_name)
+                        .size(px(13.0))
+                        .text_color(palette.accent_primary),
+                )
+                .child(theme.short_label())
+                .on_click(move |_event, _window, cx| on_theme(theme.toggle(), cx))
+        })
 }
 
 pub fn auth_layout<L, T, C>(
@@ -111,7 +150,7 @@ where
     M: Fn(CozyMood, &mut App) + 'static,
     C: IntoElement,
 {
-    let palette = StyleTokens::cozy_kawaii(theme, mood);
+    let palette = StyleTokens::new(active_style(), theme, mood);
 
     div()
         .flex()
@@ -246,7 +285,11 @@ pub fn auth_submit_section(
         .flex_col()
         .gap_3()
         .mt_4()
-        .pb(px(8.0))
+        .pb(if palette.is_minimalist() {
+            px(0.0)
+        } else {
+            px(8.0)
+        })
         .when_some(error_message, |this, error| {
             this.child(
                 div()

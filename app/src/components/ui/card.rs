@@ -18,12 +18,17 @@ pub fn card(palette: ThemeColors) -> Div {
 }
 
 pub fn card_surface(palette: ThemeColors) -> Div {
+    let radius = if palette.is_minimalist() {
+        palette.radius_card
+    } else {
+        px(28.0)
+    };
     div()
         .flex()
         .flex_col()
         .w_full()
         .p_5()
-        .rounded(px(28.0))
+        .rounded(radius)
         .bg(palette.bg_card)
         .border(palette.border_width_input)
         .border_color(palette.border_color)
@@ -32,14 +37,19 @@ pub fn card_surface(palette: ThemeColors) -> Div {
 }
 
 pub fn card_elevated(palette: ThemeColors) -> Div {
+    let (radius, border_w) = if palette.is_minimalist() {
+        (palette.radius_input, palette.border_width_input)
+    } else {
+        (px(18.0), px(2.0))
+    };
     div()
         .flex()
         .flex_col()
         .w_full()
         .p_3()
-        .rounded(px(18.0))
+        .rounded(radius)
         .bg(palette.bg_elevated)
-        .border(px(2.0))
+        .border(border_w)
         .border_color(palette.border_color)
         .text_color(palette.text_primary)
 }
@@ -74,6 +84,16 @@ pub fn interactive_card(
     palette: ThemeColors,
     on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
 ) -> Stateful<Div> {
+    let radius = if palette.is_minimalist() {
+        palette.radius_card
+    } else {
+        px(26.0)
+    };
+    let (hover_offset, active_offset) = if palette.is_minimalist() {
+        (px(0.0), px(0.0))
+    } else {
+        (px(-2.0), px(3.0))
+    };
     div()
         .id(id)
         .relative()
@@ -81,19 +101,23 @@ pub fn interactive_card(
         .flex_col()
         .w_full()
         .p_4()
-        .rounded(px(26.0))
+        .rounded(radius)
         .bg(palette.bg_card)
         .border(palette.border_width_input)
         .border_color(palette.border_color)
         .shadow(palette.button_shadows())
         .cursor_pointer()
-        .hover(|style| {
+        .hover(move |style| {
             style
-                .top(px(-2.0))
+                .top(hover_offset)
                 .border_color(palette.accent_primary)
                 .bg(palette.bg_input_focus)
         })
-        .active(|style| style.top(px(3.0)).shadow(palette.button_active_shadows()))
+        .active(move |style| {
+            style
+                .top(active_offset)
+                .shadow(palette.button_active_shadows())
+        })
         .on_click(on_click)
 }
 
@@ -205,69 +229,69 @@ impl RenderOnce for OptionCard {
                         .bg(if active {
                             palette.bg_input_focus
                         } else {
-                            palette.bg_input
+                            palette.bg_card
                         })
                         .child(
                             div()
-                                .flex_1()
-                                .min_w_0()
                                 .flex()
                                 .items_center()
                                 .gap_3()
                                 .child(
                                     div()
-                                        .w(px(38.))
-                                        .h(px(38.))
-                                        .flex_shrink_0()
+                                        .w(px(40.0))
+                                        .h(px(40.0))
+                                        .rounded_full()
+                                        .bg(if active {
+                                            palette.accent_primary.opacity(0.18)
+                                        } else {
+                                            palette.bg_badge
+                                        })
+                                        .border(px(1.5))
+                                        .border_color(icon_border_color)
                                         .flex()
                                         .items_center()
                                         .justify_center()
-                                        .rounded(palette.radius_checkbox)
-                                        .bg(palette.bg_card)
-                                        .border(palette.border_width_input)
-                                        .border_color(icon_border_color)
-                                        .child(
-                                            icons::icon(icon_name)
-                                                .size(px(16.))
-                                                .text_color(palette.accent_primary),
-                                        ),
+                                        .child(icons::icon(icon_name).size(px(16.0)).text_color(
+                                            if active {
+                                                palette.accent_primary
+                                            } else {
+                                                palette.text_secondary
+                                            },
+                                        )),
                                 )
                                 .child(
                                     div()
-                                        .flex_1()
-                                        .min_w_0()
-                                        .overflow_hidden()
                                         .flex()
                                         .flex_col()
-                                        .gap_1()
+                                        .gap_0p5()
                                         .child(
                                             div()
-                                                .w_full()
                                                 .text_sm()
-                                                .whitespace_normal()
                                                 .font_weight(FontWeight::BOLD)
                                                 .text_color(palette.text_primary)
-                                                .child(title.clone()),
+                                                .child(title),
                                         )
                                         .child(
                                             div()
-                                                .w_full()
                                                 .text_xs()
-                                                .whitespace_normal()
                                                 .text_color(palette.text_secondary)
-                                                .child(description.clone()),
+                                                .child(description),
                                         ),
                                 ),
                         )
                         .child(
                             div()
-                                .flex_shrink_0()
-                                .pl(arrow_offset_left)
-                                .pr(arrow_offset_right)
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .w(px(24.0))
+                                .h(px(24.0))
                                 .child(
                                     icons::icon(icons::ICON_ARROW_RIGHT)
-                                        .size(px(14.))
-                                        .text_color(arrow_color),
+                                        .size(px(14.0))
+                                        .text_color(arrow_color)
+                                        .pl(arrow_offset_left)
+                                        .pr(arrow_offset_right),
                                 ),
                         )
                 },
@@ -293,4 +317,39 @@ pub fn option_card(
         selected,
         on_click: Box::new(on_click),
     }
+}
+
+pub fn clickable_card_row(
+    id: impl Into<ElementId>,
+    palette: ThemeColors,
+    on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+) -> Stateful<Div> {
+    let (hover_offset, active_offset) = if palette.is_minimalist() {
+        (px(0.0), px(0.0))
+    } else {
+        (px(-1.0), px(2.0))
+    };
+    div()
+        .id(id)
+        .relative()
+        .w_full()
+        .p_3()
+        .rounded(palette.radius_input)
+        .bg(palette.bg_card)
+        .border(palette.border_width_input)
+        .border_color(palette.border_color)
+        .shadow(palette.button_shadows())
+        .cursor_pointer()
+        .hover(move |style| {
+            style
+                .top(hover_offset)
+                .border_color(palette.accent_primary)
+                .bg(palette.bg_input_focus)
+        })
+        .active(move |style| {
+            style
+                .top(active_offset)
+                .shadow(palette.button_active_shadows())
+        })
+        .on_click(on_click)
 }

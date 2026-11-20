@@ -23,6 +23,35 @@ pub fn primary_button_with_state(
 ) -> impl IntoElement {
     let is_inactive = loading || disabled;
 
+    if palette.is_minimalist() {
+        return div()
+            .id(id)
+            .relative()
+            .w_full()
+            .flex()
+            .items_center()
+            .justify_center()
+            .gap_2()
+            .px_4()
+            .py_2()
+            .rounded(palette.radius_button)
+            .bg(palette.accent_primary)
+            .border(palette.border_width_input)
+            .border_color(palette.border_color)
+            .shadow(palette.button_shadows())
+            .text_sm()
+            .font_weight(FontWeight::BOLD)
+            .text_color(palette.text_on_accent)
+            .when(is_inactive, |this| this.opacity(0.5).cursor_default())
+            .when(!is_inactive, |this| {
+                this.cursor_pointer()
+                    .hover(|style| style.bg(palette.accent_secondary))
+                    .active(|style| style.bg(palette.accent_rim).shadow(vec![]))
+                    .on_click(on_click)
+            })
+            .child(label.into());
+    }
+
     let rim_color = if palette.income_border == rgb(0x489974) {
         rgb(0x489974)
     } else {
@@ -117,6 +146,11 @@ pub fn secondary_button(
     palette: ThemeColors,
     on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
 ) -> impl IntoElement {
+    let (hover_offset, active_offset) = if palette.is_minimalist() {
+        (px(0.0), px(0.0))
+    } else {
+        (px(-1.5), px(4.0))
+    };
     div()
         .id(id)
         .relative()
@@ -134,13 +168,17 @@ pub fn secondary_button(
         .font_weight(FontWeight::BOLD)
         .text_color(palette.text_primary)
         .cursor_pointer()
-        .hover(|style| {
+        .hover(move |style| {
             style
-                .top(px(-1.5))
+                .top(hover_offset)
                 .border_color(palette.accent_primary)
                 .bg(palette.bg_input_focus)
         })
-        .active(|style| style.top(px(4.0)).shadow(palette.button_active_shadows()))
+        .active(move |style| {
+            style
+                .top(active_offset)
+                .shadow(palette.button_active_shadows())
+        })
         .child(label.into())
         .on_click(on_click)
 }
@@ -151,6 +189,11 @@ pub fn destructive_button(
     palette: ThemeColors,
     on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
 ) -> impl IntoElement {
+    let (hover_offset, active_offset) = if palette.is_minimalist() {
+        (px(0.0), px(0.0))
+    } else {
+        (px(-1.5), px(4.0))
+    };
     div()
         .id(id)
         .relative()
@@ -168,8 +211,12 @@ pub fn destructive_button(
         .font_weight(FontWeight::BOLD)
         .text_color(palette.error)
         .cursor_pointer()
-        .hover(|style| style.top(px(-1.5)).bg(palette.error.opacity(0.26)))
-        .active(|style| style.top(px(4.0)).shadow(palette.button_active_shadows()))
+        .hover(move |style| style.top(hover_offset).bg(palette.error.opacity(0.26)))
+        .active(move |style| {
+            style
+                .top(active_offset)
+                .shadow(palette.button_active_shadows())
+        })
         .child(label.into())
         .on_click(on_click)
 }
@@ -180,6 +227,31 @@ pub fn compact_primary_button(
     palette: ThemeColors,
     on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
 ) -> impl IntoElement {
+    if palette.is_minimalist() {
+        return div()
+            .id(id)
+            .relative()
+            .flex()
+            .items_center()
+            .justify_center()
+            .gap_1p5()
+            .px_3()
+            .py_1p5()
+            .rounded(palette.radius_button)
+            .bg(palette.accent_primary)
+            .border(palette.border_width_input)
+            .border_color(palette.border_color)
+            .shadow(palette.button_shadows())
+            .text_xs()
+            .font_weight(FontWeight::SEMIBOLD)
+            .text_color(palette.text_on_accent)
+            .cursor_pointer()
+            .hover(|style| style.bg(palette.accent_secondary))
+            .active(|style| style.bg(palette.accent_rim).shadow(vec![]))
+            .child(label.into())
+            .on_click(on_click);
+    }
+
     let rim_color = if palette.income_border == rgb(0x489974) {
         rgb(0x489974)
     } else {
@@ -259,6 +331,21 @@ pub fn pill_button_colored(
     palette: ThemeColors,
     on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
 ) -> impl IntoElement {
+    let radius = if palette.is_minimalist() {
+        palette.radius_button
+    } else {
+        px(15.0)
+    };
+    let border_w = if palette.is_minimalist() {
+        palette.border_width_input
+    } else {
+        px(2.0)
+    };
+    let (hover_offset, active_offset) = if palette.is_minimalist() {
+        (px(0.0), px(0.0))
+    } else {
+        (px(-1.0), px(2.0))
+    };
     div()
         .id(id)
         .relative()
@@ -268,22 +355,26 @@ pub fn pill_button_colored(
         .gap_1p5()
         .px_3()
         .py_2()
-        .rounded(px(15.0))
+        .rounded(radius)
         .bg(palette.bg_badge)
-        .border(px(2.0))
+        .border(border_w)
         .border_color(palette.border_color)
         .shadow(palette.checkbox_shadows())
         .text_xs()
         .font_weight(FontWeight::EXTRA_BOLD)
         .text_color(text_color)
         .cursor_pointer()
-        .hover(|style| {
+        .hover(move |style| {
             style
-                .top(px(-1.0))
+                .top(hover_offset)
                 .border_color(palette.accent_primary)
                 .bg(palette.bg_elevated)
         })
-        .active(|style| style.top(px(2.0)).shadow(palette.button_active_shadows()))
+        .active(move |style| {
+            style
+                .top(active_offset)
+                .shadow(palette.button_active_shadows())
+        })
         .child(label.into())
         .on_click(on_click)
 }
@@ -295,6 +386,21 @@ pub fn ghost_icon_button(
     palette: ThemeColors,
     on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
 ) -> impl IntoElement {
+    let radius = if palette.is_minimalist() {
+        palette.radius_button
+    } else {
+        px(13.0)
+    };
+    let border_w = if palette.is_minimalist() {
+        palette.border_width_input
+    } else {
+        px(2.0)
+    };
+    let (hover_offset, active_offset) = if palette.is_minimalist() {
+        (px(0.0), px(0.0))
+    } else {
+        (px(-1.0), px(2.0))
+    };
     div()
         .id(id)
         .relative()
@@ -304,20 +410,20 @@ pub fn ghost_icon_button(
         .flex()
         .items_center()
         .justify_center()
-        .rounded(px(13.0))
+        .rounded(radius)
         .bg(palette.bg_badge)
-        .border(px(2.0))
+        .border(border_w)
         .border_color(palette.border_color)
         .shadow(palette.checkbox_shadows())
         .when(!enabled, |this| this.opacity(0.38).cursor_default())
         .when(enabled, |this| {
             this.cursor_pointer()
-                .hover(|s| {
-                    s.top(px(-1.0))
+                .hover(move |s| {
+                    s.top(hover_offset)
                         .border_color(palette.accent_primary)
                         .bg(palette.bg_elevated)
                 })
-                .active(|s| s.top(px(2.0)))
+                .active(move |s| s.top(active_offset))
                 .on_click(on_click)
         })
         .child(

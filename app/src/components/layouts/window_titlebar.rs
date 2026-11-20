@@ -11,6 +11,7 @@ pub const WINDOW_TITLEBAR_HEIGHT: Pixels = px(44.0);
 pub fn window_control_radius(style: UiStyle) -> Pixels {
     match style {
         UiStyle::CozyKawaii => px(10.0),
+        UiStyle::Minimalist => px(6.0),
         UiStyle::NeoBrutalism => px(4.0),
         UiStyle::Claymorphism3D => px(12.0),
     }
@@ -54,9 +55,16 @@ fn window_control_button(
         )
     };
 
+    let chrome_border = if palette.is_minimalist() {
+        px(1.0)
+    } else {
+        px(2.0)
+    };
+
     let active_offset = match palette.style {
         UiStyle::CozyKawaii | UiStyle::NeoBrutalism => px(1.5),
         UiStyle::Claymorphism3D => px(1.0),
+        UiStyle::Minimalist => px(0.0),
     };
 
     div()
@@ -71,7 +79,7 @@ fn window_control_button(
         .justify_center()
         .rounded(radius)
         .bg(base_bg)
-        .border(px(2.0))
+        .border(chrome_border)
         .border_color(base_border)
         .shadow(palette.checkbox_shadows())
         .text_color(base_text)
@@ -105,6 +113,7 @@ pub fn app_window_titlebar(
     let palette = colors(theme);
     let badge_radius = match palette.style {
         UiStyle::CozyKawaii => px(999.0),
+        UiStyle::Minimalist => px(6.0),
         UiStyle::NeoBrutalism => px(4.0),
         UiStyle::Claymorphism3D => px(12.0),
     };
@@ -121,7 +130,11 @@ pub fn app_window_titlebar(
         .justify_between()
         .px_3p5()
         .bg(palette.bg_nav)
-        .border_b(px(2.5))
+        .border_b(if palette.is_minimalist() {
+            px(1.0)
+        } else {
+            px(2.5)
+        })
         .border_color(palette.border_color)
         .font_family(palette.font_family)
         .on_double_click(|_, window, _| {
@@ -148,7 +161,11 @@ pub fn app_window_titlebar(
                         .h(px(28.0))
                         .rounded(icon_box_radius)
                         .bg(palette.bg_card)
-                        .border(px(2.0))
+                        .border(if palette.is_minimalist() {
+                            px(1.0)
+                        } else {
+                            px(2.0)
+                        })
                         .border_color(palette.border_color)
                         .shadow(palette.checkbox_shadows())
                         .flex()
@@ -163,19 +180,30 @@ pub fn app_window_titlebar(
                         .text_color(palette.text_primary)
                         .child("Umuryango"),
                 )
-                .child(
+                .child({
+                    let next_style = palette.style.toggle();
                     div()
+                        .id("window-titlebar-style-badge")
+                        .cursor_pointer()
                         .px_2()
                         .py(px(2.0))
                         .rounded(badge_radius)
                         .bg(palette.bg_card)
-                        .border(px(1.5))
+                        .border(px(1.0))
                         .border_color(palette.border_color)
                         .text_size(px(9.0))
                         .font_weight(FontWeight::BOLD)
                         .text_color(palette.text_secondary)
-                        .child(palette.style.label()),
-                ),
+                        .hover(|s| {
+                            s.border_color(palette.accent_primary)
+                                .text_color(palette.text_primary)
+                        })
+                        .child(palette.style.label())
+                        .on_click(move |_e, _window, cx| {
+                            crate::theme::set_ui_style(next_style, cx);
+                            cx.refresh_windows();
+                        })
+                }),
         )
         .child(
             div()
@@ -223,6 +251,7 @@ mod tests {
     #[core::prelude::v1::test]
     fn window_control_geometry_and_icons_follow_style_and_maximize_state() {
         assert_eq!(window_control_radius(UiStyle::CozyKawaii), px(10.0));
+        assert_eq!(window_control_radius(UiStyle::Minimalist), px(6.0));
         assert_eq!(window_control_radius(UiStyle::NeoBrutalism), px(4.0));
         assert_eq!(window_control_radius(UiStyle::Claymorphism3D), px(12.0));
 

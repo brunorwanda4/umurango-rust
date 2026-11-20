@@ -8,18 +8,30 @@ use std::ops::Deref;
 use std::sync::{Once, OnceLock, RwLock};
 
 pub const COZY_KAWAII_FONT_FAMILY: &str = "Fredoka";
+pub const MINIMALIST_FONT_FAMILY: &str = "Inter";
 pub const DEFAULT_UI_FONT_FAMILY: &str = ".SystemUIFont";
 
 static FREDOKA_FONT_TTF: &[u8] = include_bytes!("../../../assets/fonts/Fredoka.ttf");
+static INTER_REGULAR_TTF: &[u8] = include_bytes!("../../../assets/fonts/inter/Inter-Regular.ttf");
+static INTER_MEDIUM_TTF: &[u8] = include_bytes!("../../../assets/fonts/inter/Inter-Medium.ttf");
+static INTER_SEMIBOLD_TTF: &[u8] = include_bytes!("../../../assets/fonts/inter/Inter-SemiBold.ttf");
+static INTER_BOLD_TTF: &[u8] = include_bytes!("../../../assets/fonts/inter/Inter-Bold.ttf");
+static INTER_EXTRA_BOLD_TTF: &[u8] =
+    include_bytes!("../../../assets/fonts/inter/Inter-ExtraBold.ttf");
 
 pub fn ensure_fonts_registered(cx: &App) {
     static REGISTER_FONTS: Once = Once::new();
     REGISTER_FONTS.call_once(|| {
-        if let Err(err) = cx
-            .text_system()
-            .add_fonts(vec![Cow::Borrowed(FREDOKA_FONT_TTF)])
-        {
-            eprintln!("failed to register Fredoka font: {err}");
+        let fonts = vec![
+            Cow::Borrowed(FREDOKA_FONT_TTF),
+            Cow::Borrowed(INTER_REGULAR_TTF),
+            Cow::Borrowed(INTER_MEDIUM_TTF),
+            Cow::Borrowed(INTER_SEMIBOLD_TTF),
+            Cow::Borrowed(INTER_BOLD_TTF),
+            Cow::Borrowed(INTER_EXTRA_BOLD_TTF),
+        ];
+        if let Err(err) = cx.text_system().add_fonts(fonts) {
+            eprintln!("failed to register fonts: {err}");
         }
     });
 }
@@ -28,19 +40,56 @@ pub fn ensure_fonts_registered(cx: &App) {
 pub enum UiStyle {
     #[default]
     CozyKawaii,
+    /// gpui-kit's stock "Default Light / Default Dark" (shadcn neutral) look with Inter font.
+    Minimalist,
     NeoBrutalism,
     Claymorphism3D,
 }
 
 impl UiStyle {
-    pub const ALL: [Self; 3] = [Self::CozyKawaii, Self::NeoBrutalism, Self::Claymorphism3D];
+    pub const ALL: [Self; 4] = [
+        Self::CozyKawaii,
+        Self::Minimalist,
+        Self::NeoBrutalism,
+        Self::Claymorphism3D,
+    ];
+
+    /// Styles exposed in the user-facing style switchers.
+    pub const SELECTABLE: [Self; 2] = [Self::CozyKawaii, Self::Minimalist];
 
     pub fn label(self) -> &'static str {
         match self {
             Self::CozyKawaii => "Cozy Kawaii",
+            Self::Minimalist => "Minimalist",
             Self::NeoBrutalism => "Neo-Brutalism",
             Self::Claymorphism3D => "3D Claymorphism",
         }
+    }
+
+    pub fn short_label(self) -> &'static str {
+        match self {
+            Self::CozyKawaii => "Cozy",
+            Self::Minimalist => "Minimal",
+            Self::NeoBrutalism => "Brutal",
+            Self::Claymorphism3D => "Clay",
+        }
+    }
+
+    /// Next style in the user-facing switcher cycle.
+    pub fn toggle(self) -> Self {
+        match self {
+            Self::Minimalist => Self::CozyKawaii,
+            _ => Self::Minimalist,
+        }
+    }
+
+    pub fn is_minimalist(self) -> bool {
+        self == Self::Minimalist
+    }
+
+    /// Whether the accent mood (Matcha / Peach / Berry) affects this style.
+    pub fn uses_mood(self) -> bool {
+        !self.is_minimalist()
     }
 }
 
@@ -302,6 +351,7 @@ impl StyleTokens {
     pub fn new(style: UiStyle, mode: ThemeMode, mood: CozyMood) -> Self {
         match style {
             UiStyle::CozyKawaii => Self::cozy_kawaii(mode, mood),
+            UiStyle::Minimalist => Self::minimalist(mode, mood),
             UiStyle::NeoBrutalism => Self::neo_brutalism(mode, mood),
             UiStyle::Claymorphism3D => Self::claymorphism_3d(mode, mood),
         }
@@ -505,6 +555,187 @@ impl StyleTokens {
         }
     }
 
+    /// Mirrors gpui-kit's built-in "Default Light" / "Default Dark" theme
+    /// (shadcn/ui neutral palette) with the Inter font family: neutral surfaces,
+    /// 6px / 8px radii, hairline borders and soft drop shadows. The cozy mood is ignored.
+    pub fn minimalist(mode: ThemeMode, mood: CozyMood) -> Self {
+        let (
+            bg_canvas,
+            bg_card,
+            bg_elevated,
+            bg_nav,
+            bg_input,
+            bg_input_focus,
+            bg_badge,
+            border_color,
+            shadow_rim,
+            accent_primary,
+            accent_rim,
+            accent_secondary,
+            text_on_accent,
+            text_primary,
+            text_secondary,
+            text_muted,
+            error,
+            success,
+            accent_gold,
+            accent_blue,
+            income_text,
+            income_border,
+            expense_text,
+            expense_border,
+            loan_text,
+            loan_border,
+        ) = match mode {
+            ThemeMode::Dark => (
+                rgb(0x0A0A0A),    // background: neutral-950
+                rgb(0x171717),    // card: neutral-900
+                rgb(0x262626),    // elevated: neutral-800
+                rgb(0x0A0A0A),    // sidebar
+                rgb(0x0A0A0A),    // input
+                rgb(0x171717),    // input focus
+                rgb(0x262626),    // badge / muted
+                rgb(0x262626),    // border: neutral-800
+                rgba(0x00000066), // shadow
+                rgb(0xFAFAFA),    // primary: neutral-50
+                rgb(0xE5E5E5),    // primary active: neutral-200
+                rgb(0xF5F5F5),    // primary hover: neutral-100
+                rgb(0x171717),    // primary foreground: neutral-900
+                rgb(0xFAFAFA),    // foreground: neutral-50
+                rgb(0xD4D4D4),    // neutral-300
+                rgb(0xA3A3A3),    // muted foreground: neutral-400
+                rgb(0xF87171),    // red-400
+                rgb(0x4ADE80),    // green-400
+                rgb(0xFACC15),    // yellow-400
+                rgb(0x60A5FA),    // blue-400
+                rgb(0x4ADE80),    // green-400
+                rgb(0x16A34A),    // green-600
+                rgb(0xF87171),    // red-400
+                rgb(0xDC2626),    // red-600
+                rgb(0xFACC15),    // yellow-400
+                rgb(0xCA8A04),    // yellow-600
+            ),
+            ThemeMode::Light => (
+                rgb(0xFFFFFF),    // background: white
+                rgb(0xFFFFFF),    // card
+                rgb(0xFAFAFA),    // elevated: neutral-50
+                rgb(0xFAFAFA),    // sidebar
+                rgb(0xFFFFFF),    // input
+                rgb(0xFFFFFF),    // input focus
+                rgb(0xF5F5F5),    // badge / muted: neutral-100
+                rgb(0xE5E5E5),    // border: neutral-200
+                rgba(0x0000001A), // shadow
+                rgb(0x171717),    // primary: neutral-900
+                rgb(0x0A0A0A),    // primary active: neutral-950
+                rgb(0x262626),    // primary hover: neutral-800
+                rgb(0xFAFAFA),    // primary foreground: neutral-50
+                rgb(0x0A0A0A),    // foreground: neutral-950
+                rgb(0x404040),    // neutral-700
+                rgb(0x737373),    // muted foreground: neutral-500
+                rgb(0xEF4444),    // red-500
+                rgb(0x16A34A),    // green-600
+                rgb(0xCA8A04),    // yellow-600
+                rgb(0x2563EB),    // blue-600
+                rgb(0x16A34A),    // green-600
+                rgb(0x22C55E),    // green-500
+                rgb(0xDC2626),    // red-600
+                rgb(0xEF4444),    // red-500
+                rgb(0xA16207),    // yellow-700
+                rgb(0xEAB308),    // yellow-500
+            ),
+        };
+
+        let tint = if mode == ThemeMode::Dark { 0.12 } else { 0.10 };
+        let income_bg = income_text.opacity(tint);
+        let expense_bg = expense_text.opacity(tint);
+        let loan_bg = loan_text.opacity(tint);
+
+        let shadow_hsla: Hsla = shadow_rim.into();
+        let soft = |y: f32, blur: f32| StickerShadow {
+            color: shadow_hsla,
+            offset: point(px(0.0), px(y)),
+            blur_radius: px(blur),
+            spread_radius: px(0.0),
+            inset: false,
+        };
+        let none = StickerShadow {
+            color: rgba(0x00000000).into(),
+            offset: point(px(0.0), px(0.0)),
+            blur_radius: px(0.0),
+            spread_radius: px(0.0),
+            inset: false,
+        };
+
+        let legacy = ThemeColors {
+            bg: bg_canvas,
+            surface: bg_input,
+            card: bg_card,
+            border: border_color,
+            border_hover: text_muted,
+            primary: accent_primary,
+            primary_light: accent_primary,
+            primary_hover: accent_secondary,
+            accent_gold,
+            accent_blue,
+            text_primary,
+            text_body: text_secondary,
+            text_muted,
+            text_dim: text_muted,
+            error,
+            success,
+        };
+
+        Self {
+            style: UiStyle::Minimalist,
+            mode,
+            mood,
+            font_family: MINIMALIST_FONT_FAMILY,
+            bg_canvas,
+            bg_card,
+            bg_elevated,
+            bg_nav,
+            bg_input,
+            bg_input_focus,
+            bg_badge,
+            accent_primary,
+            accent_rim,
+            accent_secondary,
+            accent_link: text_primary,
+            accent_gold,
+            text_on_accent,
+            text_primary,
+            text_secondary,
+            text_muted,
+            income_bg,
+            income_text,
+            income_border,
+            expense_bg,
+            expense_text,
+            expense_border,
+            loan_bg,
+            loan_text,
+            loan_border,
+            border_color,
+            border_width: px(1.0),
+            border_width_input: px(1.0),
+            radius_card: px(8.0),
+            radius_input: px(6.0),
+            radius_button: px(6.0),
+            radius_checkbox: px(4.0),
+            shadow_rim,
+            shadow_card: soft(1.0, 3.0),
+            shadow_button: soft(1.0, 2.0),
+            shadow_button_active: none,
+            shadow_input: soft(1.0, 2.0),
+            shadow_input_inset: StickerShadow {
+                inset: true,
+                ..none
+            },
+            shadow_checkbox: soft(1.0, 2.0),
+            legacy,
+        }
+    }
+
     pub fn neo_brutalism(mode: ThemeMode, mood: CozyMood) -> Self {
         let mut tokens = Self::cozy_kawaii(mode, mood);
         tokens.style = UiStyle::NeoBrutalism;
@@ -525,6 +756,10 @@ impl StyleTokens {
         tokens
     }
 
+    pub fn is_minimalist(&self) -> bool {
+        self.style.is_minimalist()
+    }
+
     pub fn card_shadows(&self) -> Vec<BoxShadow> {
         vec![self.shadow_card.into()]
     }
@@ -542,8 +777,14 @@ impl StyleTokens {
     }
 
     pub fn input_focus_shadows(&self) -> Vec<BoxShadow> {
+        // Minimalist follows shadcn's `ring-ring/50 ring-[3px]` focus ring.
+        let ring_color = if self.is_minimalist() {
+            self.text_muted.opacity(0.5)
+        } else {
+            self.accent_primary.opacity(0.32)
+        };
         let glow = BoxShadow {
-            color: self.accent_primary.opacity(0.32).into(),
+            color: ring_color.into(),
             offset: point(px(0.0), px(0.0)),
             blur_radius: px(0.0),
             spread_radius: px(3.0),
@@ -567,7 +808,20 @@ pub fn sync_kit_themes(tokens: &StyleTokens, cx: &mut App) {
         ThemeMode::Dark => ComponentThemeMode::Dark,
         ThemeMode::Light => ComponentThemeMode::Light,
     };
+    // `Theme::change` reloads the registered default theme for the mode, which
+    // resets every color back to gpui-kit's stock palette.
     Theme::change(component_mode, None, cx);
+
+    if tokens.is_minimalist() {
+        // Keep gpui-kit's stock colors; only pin font and radii to the defaults.
+        Theme::update(cx, |theme| {
+            theme.font_family = tokens.font_family.into();
+            theme.radius = tokens.radius_input;
+            theme.radius_lg = tokens.radius_card;
+        });
+        return;
+    }
+
     Theme::update(cx, |theme| {
         theme.font_family = tokens.font_family.into();
         theme.colors.caret = tokens.accent_primary.into();
@@ -688,5 +942,35 @@ mod tests {
         let clay = StyleTokens::new(UiStyle::Claymorphism3D, ThemeMode::Dark, CozyMood::Matcha);
         assert_eq!(clay.style, UiStyle::Claymorphism3D);
         assert_eq!(clay.font_family, DEFAULT_UI_FONT_FAMILY);
+    }
+
+    #[test]
+    fn minimalist_matches_gpui_kit_default_theme() {
+        let dark = StyleTokens::new(UiStyle::Minimalist, ThemeMode::Dark, CozyMood::Matcha);
+        assert_eq!(dark.style, UiStyle::Minimalist);
+        assert_eq!(dark.font_family, MINIMALIST_FONT_FAMILY);
+        assert_eq!(dark.font_family, "Inter");
+        assert!(!INTER_REGULAR_TTF.is_empty());
+        assert!(!INTER_BOLD_TTF.is_empty());
+        assert_eq!(dark.bg_canvas, rgb(0x0A0A0A));
+        assert_eq!(dark.border_color, rgb(0x262626));
+        assert_eq!(dark.accent_primary, rgb(0xFAFAFA));
+        assert_eq!(dark.text_on_accent, rgb(0x171717));
+        assert_eq!(dark.radius_input, px(6.0));
+        assert_eq!(dark.radius_card, px(8.0));
+        assert_eq!(dark.border_width, px(1.0));
+
+        let light = StyleTokens::new(UiStyle::Minimalist, ThemeMode::Light, CozyMood::Berry);
+        assert_eq!(light.bg_canvas, rgb(0xFFFFFF));
+        assert_eq!(light.border_color, rgb(0xE5E5E5));
+        assert_eq!(light.accent_primary, rgb(0x171717));
+        assert_eq!(light.text_primary, rgb(0x0A0A0A));
+
+        // Mood does not tint the minimalist palette.
+        let peach = StyleTokens::new(UiStyle::Minimalist, ThemeMode::Light, CozyMood::Peach);
+        assert_eq!(peach.accent_primary, light.accent_primary);
+        assert!(!UiStyle::Minimalist.uses_mood());
+        assert_eq!(UiStyle::CozyKawaii.toggle(), UiStyle::Minimalist);
+        assert_eq!(UiStyle::Minimalist.toggle(), UiStyle::CozyKawaii);
     }
 }

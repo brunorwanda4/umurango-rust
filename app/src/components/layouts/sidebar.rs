@@ -4,6 +4,7 @@ use super::AppLayoutProps;
 use crate::brand::ThemeColors;
 use crate::components::dashboard::MoneySubTab;
 use crate::components::scroll::touch_scrollable_fill;
+use crate::components::ui::{avatar_initials, extract_initials, AvatarSize};
 use crate::i18n::{text, Language};
 use crate::icons;
 use gpui_kit::prelude::FluentBuilder;
@@ -61,6 +62,7 @@ pub fn app_sidebar(
                             div().flex().flex_col().gap_2().children(
                                 AppSection::ALL
                                     .into_iter()
+                                    .filter(|&section| section != AppSection::Profile)
                                     .enumerate()
                                     .map(|(idx, section)| {
                                         let is_active = section == active_section;
@@ -100,6 +102,140 @@ pub fn app_sidebar(
                 ),
             ),
         )
+        .child(sidebar_user_profile(props, palette, on_select.clone()))
+}
+
+fn sidebar_user_profile(
+    props: &AppLayoutProps<'_>,
+    palette: ThemeColors,
+    on_select: SectionSelectHandler,
+) -> impl IntoElement {
+    let language = props.language;
+    let is_active = props.active_section == AppSection::Profile;
+    let member_name = if props.member_name.trim().is_empty() {
+        "User".to_string()
+    } else {
+        props.member_name.to_string()
+    };
+    let family_name = if props.family_name.trim().is_empty() {
+        text(language, "cozy.family_workspace_heading").to_string()
+    } else {
+        props.family_name.to_string()
+    };
+    let initials = extract_initials(&member_name);
+
+    div()
+        .p_3()
+        .border_t(palette.border_width)
+        .border_color(palette.border_color)
+        .bg(palette.bg_nav)
+        .child(
+            div()
+                .id("sidebar-user-card")
+                .w_full()
+                .flex()
+                .items_center()
+                .justify_between()
+                .gap_2p5()
+                .p_2()
+                .rounded(if palette.is_minimalist() {
+                    palette.radius_card
+                } else {
+                    px(16.0)
+                })
+                .border(palette.border_width_input)
+                .cursor_pointer()
+                .when(is_active, |this| {
+                    this.bg(palette.accent_primary)
+                        .border_color(palette.border_color)
+                        .shadow(palette.checkbox_shadows())
+                })
+                .when(!is_active, |this| {
+                    this.bg(palette.bg_elevated)
+                        .border_color(palette.border_color)
+                        .shadow(palette.checkbox_shadows())
+                        .hover(|mut s| {
+                            if !palette.is_minimalist() {
+                                s = s.top(px(-1.0));
+                            }
+                            s.border_color(palette.accent_primary)
+                                .bg(palette.bg_input_focus)
+                        })
+                })
+                .when(!palette.is_minimalist(), |this| {
+                    this.active(|s| s.top(px(2.0)))
+                })
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_2p5()
+                        .min_w_0()
+                        .flex_1()
+                        .child(if is_active {
+                            div()
+                                .w(px(28.0))
+                                .h(px(28.0))
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .rounded_full()
+                                .bg(palette.bg_canvas)
+                                .border(palette.border_width_input)
+                                .border_color(palette.border_color)
+                                .text_size(px(11.0))
+                                .font_weight(FontWeight::BOLD)
+                                .text_color(palette.accent_primary)
+                                .child(initials)
+                                .into_any_element()
+                        } else {
+                            avatar_initials(initials, AvatarSize::Sm, palette).into_any_element()
+                        })
+                        .child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .min_w_0()
+                                .flex_1()
+                                .child(
+                                    div()
+                                        .text_xs()
+                                        .font_weight(FontWeight::EXTRA_BOLD)
+                                        .text_color(if is_active {
+                                            palette.text_on_accent
+                                        } else {
+                                            palette.text_primary
+                                        })
+                                        .truncate()
+                                        .child(member_name),
+                                )
+                                .child(
+                                    div()
+                                        .text_size(px(10.0))
+                                        .font_weight(FontWeight::MEDIUM)
+                                        .text_color(if is_active {
+                                            palette.text_on_accent.opacity(0.8)
+                                        } else {
+                                            palette.text_muted
+                                        })
+                                        .truncate()
+                                        .child(family_name),
+                                ),
+                        ),
+                )
+                .child(
+                    icons::icon(icons::ICON_GEAR)
+                        .size(px(14.0))
+                        .text_color(if is_active {
+                            palette.text_on_accent
+                        } else {
+                            palette.text_muted
+                        }),
+                )
+                .on_click(move |_event, window, cx| {
+                    on_select(AppSection::Profile, window, cx);
+                }),
+        )
 }
 
 fn sidebar_nav_item(
@@ -122,7 +258,11 @@ fn sidebar_nav_item(
         .justify_between()
         .px_3()
         .py_2p5()
-        .rounded(px(18.0))
+        .rounded(if palette.is_minimalist() {
+            palette.radius_button
+        } else {
+            px(18.0)
+        })
         .border(palette.border_width_input)
         .cursor_pointer()
         .when(active, |this| {
@@ -134,13 +274,17 @@ fn sidebar_nav_item(
             this.bg(palette.bg_elevated)
                 .border_color(palette.border_color)
                 .shadow(palette.checkbox_shadows())
-                .hover(|s| {
-                    s.top(px(-1.0))
-                        .border_color(palette.accent_primary)
+                .hover(|mut s| {
+                    if !palette.is_minimalist() {
+                        s = s.top(px(-1.0));
+                    }
+                    s.border_color(palette.accent_primary)
                         .bg(palette.bg_input_focus)
                 })
         })
-        .active(|s| s.top(px(2.0)))
+        .when(!palette.is_minimalist(), |this| {
+            this.active(|s| s.top(px(2.0)))
+        })
         .child(
             div()
                 .flex()
@@ -248,8 +392,12 @@ fn sidebar_money_sub_nav(
                 .justify_between()
                 .px_2p5()
                 .py_1p5()
-                .rounded(px(12.0))
-                .border(px(1.5))
+                .rounded(if palette.is_minimalist() {
+                    palette.radius_button
+                } else {
+                    px(12.0)
+                })
+                .border(palette.border_width_input)
                 .text_xs()
                 .font_weight(FontWeight::EXTRA_BOLD)
                 .cursor_pointer()
