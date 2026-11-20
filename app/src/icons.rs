@@ -42,6 +42,8 @@ pub const ICON_HOUSE_CHIMNEY_USER: &str = "house-chimney-user";
 pub const ICON_SUN: &str = "sun";
 pub const ICON_MOON: &str = "moon";
 pub const ICON_CHEVRON_LEFT: &str = "chevron-left";
+pub const ICON_CHEVRON_RIGHT: &str = "chevron-right";
+pub const ICON_CHEVRON_DOWN: &str = "chevron-down";
 pub const ICON_ARROW_LEFT: &str = "arrow-left";
 pub const ICON_COINS: &str = "coins";
 pub const ICON_HANDSHAKE: &str = "handshake";
@@ -66,6 +68,9 @@ pub const ICON_WINDOW_RESTORE: &str = "window-restore";
 pub const ICON_EXPAND: &str = "expand";
 pub const ICON_COMPRESS: &str = "compress";
 pub const ICON_TAG: &str = "tag";
+pub const ICON_FOLDER: &str = "folder";
+pub const ICON_FILE_LINES: &str = "file-lines";
+pub const ICON_ADDRESS_CARD: &str = "address-card";
 
 pub fn has_icon(name: &str) -> bool {
     let clean = name.trim();

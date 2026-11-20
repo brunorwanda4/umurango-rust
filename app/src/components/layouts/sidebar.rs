@@ -1,7 +1,7 @@
 use super::nav::{AppSection, SectionSelectHandler};
 use super::responsive::SIDEBAR_WIDTH_PX;
 use super::AppLayoutProps;
-use crate::brand::ThemeColors;
+use crate::brand::{ThemeColors, ThemeMode};
 use crate::components::dashboard::MoneySubTab;
 use crate::components::scroll::touch_scrollable_fill;
 use crate::components::ui::{avatar_initials, extract_initials, AvatarSize};
@@ -11,6 +11,371 @@ use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
 pub fn app_sidebar(
+    props: &AppLayoutProps<'_>,
+    palette: ThemeColors,
+    on_select: SectionSelectHandler,
+) -> impl IntoElement {
+    if palette.is_minimalist() {
+        app_sidebar_minimalist(props, palette, on_select).into_any_element()
+    } else {
+        app_sidebar_cozy(props, palette, on_select).into_any_element()
+    }
+}
+
+/// Sleek shadcn-style minimalist sidebar with "Family" and "Management" sections.
+fn app_sidebar_minimalist(
+    props: &AppLayoutProps<'_>,
+    palette: ThemeColors,
+    on_select: SectionSelectHandler,
+) -> impl IntoElement {
+    let language = props.language;
+    let active_section = props.active_section;
+    let money_sub_tab = props.money_sub_tab;
+    let money_tab_handler = props.on_select_money_tab.clone();
+    let select_money_parent = on_select.clone();
+
+    let (active_bg, hover_bg, text_active, text_inactive, text_muted_col) =
+        if palette.mode == ThemeMode::Dark {
+            (
+                rgb(0x18181b),
+                rgb(0x18181b),
+                rgb(0xffffff),
+                rgb(0xd4d4d8),
+                rgb(0x71717a),
+            )
+        } else {
+            (
+                rgb(0xf4f4f5),
+                rgb(0xf4f4f5),
+                rgb(0x09090b),
+                rgb(0x3f3f46),
+                rgb(0xa1a1aa),
+            )
+        };
+
+    let render_item =
+        |id: &'static str,
+         icon_name: &'static str,
+         label: String,
+         is_active: bool,
+         has_chevron: bool,
+         on_click_fn: Box<dyn Fn(&ClickEvent, &mut Window, &mut App)>| {
+            div()
+                .id(id)
+                .w_full()
+                .flex()
+                .items_center()
+                .justify_between()
+                .px_3()
+                .py(px(7.0))
+                .rounded(px(8.0))
+                .cursor_pointer()
+                .when(is_active, |this| this.bg(active_bg).text_color(text_active))
+                .when(!is_active, |this| {
+                    this.text_color(text_inactive)
+                        .hover(move |s| s.bg(hover_bg).text_color(text_active))
+                })
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_3()
+                        .child(
+                            icons::icon(icon_name)
+                                .size(px(16.0))
+                                .text_color(if is_active {
+                                    text_active
+                                } else {
+                                    text_inactive
+                                }),
+                        )
+                        .child(
+                            div()
+                                .text_sm()
+                                .font_weight(if is_active {
+                                    FontWeight::SEMIBOLD
+                                } else {
+                                    FontWeight::NORMAL
+                                })
+                                .text_color(if is_active {
+                                    text_active
+                                } else {
+                                    text_inactive
+                                })
+                                .child(label),
+                        ),
+                )
+                .when(has_chevron, |this| {
+                    this.child(
+                        icons::icon(icons::ICON_CHEVRON_RIGHT)
+                            .size(px(11.0))
+                            .text_color(text_muted_col),
+                    )
+                })
+                .on_click(move |ev, window, cx| on_click_fn(ev, window, cx))
+        };
+
+    let on_sel_home = on_select.clone();
+    let on_sel_money = on_select.clone();
+    let on_sel_proj = on_select.clone();
+    let on_sel_reports = on_select.clone();
+    let on_sel_notif = on_select.clone();
+    let on_sel_events = on_select.clone();
+    let on_sel_contacts = on_select.clone();
+    let on_sel_members = on_select.clone();
+    let on_sel_settings = on_select.clone();
+
+    let in_money = active_section == AppSection::Money;
+
+    div()
+        .id("app-sidebar")
+        .w(px(SIDEBAR_WIDTH_PX))
+        .h_full()
+        .flex_none()
+        .flex()
+        .flex_col()
+        .justify_between()
+        .bg(palette.bg_nav)
+        .border_r(px(1.0))
+        .border_color(palette.border_color)
+        .child(
+            div().flex_1().min_h_0().overflow_hidden().child(
+                touch_scrollable_fill("sidebar-scroll").child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .px_2()
+                        .py_3()
+                        .gap_1()
+                        // 1. Family Section
+                        .child(
+                            div()
+                                .text_size(px(12.0))
+                                .font_weight(FontWeight::BOLD)
+                                .text_color(text_muted_col)
+                                .px_3()
+                                .py_1p5()
+                                .child(text(language, "sidebar.family")),
+                        )
+                        .child(render_item(
+                            "min-nav-dashboard",
+                            icons::ICON_HOUSE,
+                            text(language, "sidebar.dashboard"),
+                            active_section == AppSection::Home,
+                            false,
+                            Box::new(move |_e, window, cx| {
+                                on_sel_home(AppSection::Home, window, cx)
+                            }),
+                        ))
+                        .child(render_item(
+                            "min-nav-money",
+                            icons::ICON_WALLET,
+                            text(language, "nav.money"),
+                            in_money,
+                            true,
+                            Box::new(move |_e, window, cx| {
+                                on_sel_money(AppSection::Money, window, cx)
+                            }),
+                        ))
+                        .when(in_money, |this| {
+                            this.child(sidebar_minimalist_money_sub_nav(
+                                money_sub_tab,
+                                language,
+                                palette,
+                                active_bg,
+                                hover_bg,
+                                text_active,
+                                text_inactive,
+                                money_tab_handler.clone(),
+                                select_money_parent.clone(),
+                            ))
+                        })
+                        .child(render_item(
+                            "min-nav-projects",
+                            icons::ICON_FOLDER,
+                            text(language, "nav.projects"),
+                            active_section == AppSection::Projects,
+                            false,
+                            Box::new(move |_e, window, cx| {
+                                on_sel_proj(AppSection::Projects, window, cx)
+                            }),
+                        ))
+                        .child(render_item(
+                            "min-nav-reports",
+                            icons::ICON_FILE_LINES,
+                            text(language, "sidebar.reports"),
+                            false,
+                            false,
+                            Box::new(move |_e, window, cx| {
+                                on_sel_reports(AppSection::Money, window, cx)
+                            }),
+                        ))
+                        .child(render_item(
+                            "min-nav-notifications",
+                            icons::ICON_BELL,
+                            text(language, "sidebar.notifications"),
+                            false,
+                            false,
+                            Box::new(move |_e, window, cx| {
+                                on_sel_notif(AppSection::Home, window, cx)
+                            }),
+                        ))
+                        // 2. Management Section
+                        .child(
+                            div()
+                                .text_size(px(12.0))
+                                .font_weight(FontWeight::BOLD)
+                                .text_color(text_muted_col)
+                                .px_3()
+                                .pt_5()
+                                .pb_1p5()
+                                .child(text(language, "sidebar.management")),
+                        )
+                        .child(render_item(
+                            "min-nav-events",
+                            icons::ICON_CALENDAR,
+                            text(language, "sidebar.events"),
+                            false,
+                            false,
+                            Box::new(move |_e, window, cx| {
+                                on_sel_events(AppSection::Home, window, cx)
+                            }),
+                        ))
+                        .child(render_item(
+                            "min-nav-contacts",
+                            icons::ICON_ADDRESS_CARD,
+                            text(language, "sidebar.contacts"),
+                            false,
+                            false,
+                            Box::new(move |_e, window, cx| {
+                                on_sel_contacts(AppSection::Members, window, cx)
+                            }),
+                        ))
+                        .child(render_item(
+                            "min-nav-members",
+                            icons::ICON_USERS,
+                            text(language, "nav.members"),
+                            active_section == AppSection::Members,
+                            false,
+                            Box::new(move |_e, window, cx| {
+                                on_sel_members(AppSection::Members, window, cx)
+                            }),
+                        ))
+                        .child(render_item(
+                            "min-nav-settings",
+                            icons::ICON_GEAR,
+                            text(language, "sidebar.settings"),
+                            active_section == AppSection::Profile,
+                            true,
+                            Box::new(move |_e, window, cx| {
+                                on_sel_settings(AppSection::Profile, window, cx)
+                            }),
+                        )),
+                ),
+            ),
+        )
+}
+
+fn sidebar_minimalist_money_sub_nav(
+    active_sub_tab: MoneySubTab,
+    language: Language,
+    palette: ThemeColors,
+    active_bg: Rgba,
+    hover_bg: Rgba,
+    text_active: Rgba,
+    text_inactive: Rgba,
+    on_select_sub: Option<super::app_layout::MoneyTabSelectHandler>,
+    on_select_section: SectionSelectHandler,
+) -> impl IntoElement {
+    let sub_items: [(
+        &'static str,
+        MoneySubTab,
+        String,
+        Option<(&'static str, Rgba)>,
+    ); 4] = [
+        (
+            "min-sub-overview",
+            MoneySubTab::Overview,
+            text(language, "cozy.tab_overview"),
+            None,
+        ),
+        (
+            "min-sub-income",
+            MoneySubTab::Income,
+            text(language, "cozy.tab_income"),
+            Some(("+850k", palette.income_text)),
+        ),
+        (
+            "min-sub-expenses",
+            MoneySubTab::Expenses,
+            text(language, "cozy.tab_expenses"),
+            Some(("-410k", palette.expense_text)),
+        ),
+        (
+            "min-sub-loans",
+            MoneySubTab::Loans,
+            text(language, "cozy.tab_loans"),
+            None,
+        ),
+    ];
+
+    div()
+        .pl(px(28.0))
+        .pr_1()
+        .py_1()
+        .flex()
+        .flex_col()
+        .gap_0p5()
+        .children(sub_items.into_iter().map(|(id, tab, label, metric)| {
+            let is_active = active_sub_tab == tab;
+            let sub_handler = on_select_sub.clone();
+            let sec_handler = on_select_section.clone();
+
+            div()
+                .id(id)
+                .flex()
+                .items_center()
+                .justify_between()
+                .px_2p5()
+                .py(px(5.0))
+                .rounded(px(6.0))
+                .cursor_pointer()
+                .when(is_active, |this| this.bg(active_bg).text_color(text_active))
+                .when(!is_active, |this| {
+                    this.text_color(text_inactive)
+                        .hover(move |s| s.bg(hover_bg).text_color(text_active))
+                })
+                .child(
+                    div()
+                        .text_size(px(13.0))
+                        .font_weight(if is_active {
+                            FontWeight::SEMIBOLD
+                        } else {
+                            FontWeight::NORMAL
+                        })
+                        .child(label),
+                )
+                .when_some(metric, |this, (txt, col)| {
+                    this.child(
+                        div()
+                            .text_size(px(10.0))
+                            .font_weight(FontWeight::BOLD)
+                            .text_color(col)
+                            .child(txt),
+                    )
+                })
+                .on_click(move |_event, window, cx| {
+                    if let Some(ref handler) = sub_handler {
+                        handler(tab, window, cx);
+                    } else {
+                        sec_handler(AppSection::Money, window, cx);
+                    }
+                })
+        }))
+}
+
+/// Tactile pill card sidebar for Cozy Kawaii mode.
+fn app_sidebar_cozy(
     props: &AppLayoutProps<'_>,
     palette: ThemeColors,
     on_select: SectionSelectHandler,
@@ -138,11 +503,7 @@ fn sidebar_user_profile(
                 .justify_between()
                 .gap_2p5()
                 .p_2()
-                .rounded(if palette.is_minimalist() {
-                    palette.radius_card
-                } else {
-                    px(16.0)
-                })
+                .rounded(px(16.0))
                 .border(palette.border_width_input)
                 .cursor_pointer()
                 .when(is_active, |this| {
@@ -155,16 +516,12 @@ fn sidebar_user_profile(
                         .border_color(palette.border_color)
                         .shadow(palette.checkbox_shadows())
                         .hover(|mut s| {
-                            if !palette.is_minimalist() {
-                                s = s.top(px(-1.0));
-                            }
+                            s = s.top(px(-1.0));
                             s.border_color(palette.accent_primary)
                                 .bg(palette.bg_input_focus)
                         })
                 })
-                .when(!palette.is_minimalist(), |this| {
-                    this.active(|s| s.top(px(2.0)))
-                })
+                .active(|s| s.top(px(2.0)))
                 .child(
                     div()
                         .flex()
@@ -258,11 +615,7 @@ fn sidebar_nav_item(
         .justify_between()
         .px_3()
         .py_2p5()
-        .rounded(if palette.is_minimalist() {
-            palette.radius_button
-        } else {
-            px(18.0)
-        })
+        .rounded(px(18.0))
         .border(palette.border_width_input)
         .cursor_pointer()
         .when(active, |this| {
@@ -275,16 +628,12 @@ fn sidebar_nav_item(
                 .border_color(palette.border_color)
                 .shadow(palette.checkbox_shadows())
                 .hover(|mut s| {
-                    if !palette.is_minimalist() {
-                        s = s.top(px(-1.0));
-                    }
+                    s = s.top(px(-1.0));
                     s.border_color(palette.accent_primary)
                         .bg(palette.bg_input_focus)
                 })
         })
-        .when(!palette.is_minimalist(), |this| {
-            this.active(|s| s.top(px(2.0)))
-        })
+        .active(|s| s.top(px(2.0)))
         .child(
             div()
                 .flex()
@@ -392,11 +741,7 @@ fn sidebar_money_sub_nav(
                 .justify_between()
                 .px_2p5()
                 .py_1p5()
-                .rounded(if palette.is_minimalist() {
-                    palette.radius_button
-                } else {
-                    px(12.0)
-                })
+                .rounded(px(12.0))
                 .border(palette.border_width_input)
                 .text_xs()
                 .font_weight(FontWeight::EXTRA_BOLD)

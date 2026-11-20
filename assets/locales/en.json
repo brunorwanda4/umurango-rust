@@ -330,5 +330,13 @@
   "modal.category_saved_toast": "Category saved",
   "modal.category_icon": "Icon",
   "modal.category_color": "Color",
-  "modal.icon_search_ph": "FontAwesome name"
+  "modal.icon_search_ph": "FontAwesome name",
+  "sidebar.family": "Family",
+  "sidebar.management": "Management",
+  "sidebar.dashboard": "Dashboard",
+  "sidebar.reports": "Reports",
+  "sidebar.notifications": "Notifications",
+  "sidebar.events": "Events",
+  "sidebar.contacts": "Contacts",
+  "sidebar.settings": "Settings"
 }

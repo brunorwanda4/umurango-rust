@@ -330,5 +330,13 @@
   "modal.category_saved_toast": "Icyiciro cyabitswe",
   "modal.category_icon": "Ikimenyetso",
   "modal.category_color": "Ibara",
-  "modal.icon_search_ph": "Izina"
+  "modal.icon_search_ph": "Izina",
+  "sidebar.family": "Umuryango",
+  "sidebar.management": "Ubuyobozi",
+  "sidebar.dashboard": "Ahabanza",
+  "sidebar.reports": "Raporo",
+  "sidebar.notifications": "Imenyekanisha",
+  "sidebar.events": "Ibikorwa",
+  "sidebar.contacts": "Abo Mwishyura",
+  "sidebar.settings": "Igenamiterere"
 }
