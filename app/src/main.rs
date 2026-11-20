@@ -6,6 +6,7 @@ mod dashboard;
 mod i18n;
 mod icons;
 mod navigation;
+mod preferences;
 mod theme;
 mod window;
 
@@ -20,6 +21,8 @@ fn main() {
 
     application().run(move |cx| {
         init(cx);
+        let prefs = preferences::load(&connection);
+        theme::set_style_tokens(prefs.style, prefs.theme, prefs.mood, cx);
         open_window(window_options(cx), cx, move |window, cx| {
             cx.new(|cx| UmuryangoApp::new(connection, window, cx))
         })

@@ -288,12 +288,14 @@ impl DashboardView {
     pub fn set_theme(&mut self, theme: ThemeMode, cx: &mut Context<Self>) {
         self.theme = theme;
         apply_theme(theme, cx);
+        cx.emit(DashboardEvent::ThemeChanged(theme));
         cx.notify();
     }
 
     pub fn set_mood(&mut self, mood: CozyMood, cx: &mut Context<Self>) {
         self.mood = mood;
         set_cozy_mood(mood, cx);
+        cx.emit(DashboardEvent::ThemeChanged(self.theme));
         self.toast_info(
             "Mood Updated",
             Some(format!(

@@ -38,8 +38,9 @@ pub struct UmuryangoApp {
 
 impl UmuryangoApp {
     pub fn new(connection: Connection, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let theme = ThemeMode::Dark;
-        let language = Language::default();
+        let saved_prefs = crate::preferences::load(&connection);
+        let theme = saved_prefs.theme;
+        let language = saved_prefs.language;
         crate::auth::client::set_current_language(language.locale_code());
 
         let saved = navigation::load(&connection);
@@ -77,11 +78,13 @@ impl UmuryangoApp {
             |this, _view, event: &LoginEvent, cx| match event {
                 LoginEvent::ThemeChanged(theme) => {
                     this.theme = *theme;
+                    this.save_preferences();
                     cx.notify();
                 }
                 LoginEvent::LanguageChanged(language) => {
                     this.language = *language;
                     crate::auth::client::set_current_language(language.locale_code());
+                    this.save_preferences();
                     cx.notify();
                 }
                 LoginEvent::RegisterRequested => this.set_screen(AuthScreen::Register, cx),
@@ -102,11 +105,13 @@ impl UmuryangoApp {
             |this, _view, event: &RegisterEvent, cx| match event {
                 RegisterEvent::ThemeChanged(theme) => {
                     this.theme = *theme;
+                    this.save_preferences();
                     cx.notify();
                 }
                 RegisterEvent::LanguageChanged(language) => {
                     this.language = *language;
                     crate::auth::client::set_current_language(language.locale_code());
+                    this.save_preferences();
                     cx.notify();
                 }
                 RegisterEvent::LoginRequested => this.set_screen(AuthScreen::Login, cx),
@@ -127,11 +132,13 @@ impl UmuryangoApp {
             |this, _view, event: &TermsEvent, cx| match event {
                 TermsEvent::ThemeChanged(theme) => {
                     this.theme = *theme;
+                    this.save_preferences();
                     cx.notify();
                 }
                 TermsEvent::LanguageChanged(language) => {
                     this.language = *language;
                     crate::auth::client::set_current_language(language.locale_code());
+                    this.save_preferences();
                     cx.notify();
                 }
                 TermsEvent::Accepted => {
@@ -149,11 +156,13 @@ impl UmuryangoApp {
             |this, _view, event: &FamilySetupEvent, cx| match event {
                 FamilySetupEvent::ThemeChanged(theme) => {
                     this.theme = *theme;
+                    this.save_preferences();
                     cx.notify();
                 }
                 FamilySetupEvent::LanguageChanged(language) => {
                     this.language = *language;
                     crate::auth::client::set_current_language(language.locale_code());
+                    this.save_preferences();
                     cx.notify();
                 }
                 FamilySetupEvent::CreateFamilyRequested => {
@@ -180,11 +189,13 @@ impl UmuryangoApp {
             |this, _view, event: &CreateFamilyEvent, cx| match event {
                 CreateFamilyEvent::ThemeChanged(theme) => {
                     this.theme = *theme;
+                    this.save_preferences();
                     cx.notify();
                 }
                 CreateFamilyEvent::LanguageChanged(language) => {
                     this.language = *language;
                     crate::auth::client::set_current_language(language.locale_code());
+                    this.save_preferences();
                     cx.notify();
                 }
                 CreateFamilyEvent::BackRequested => this.set_screen(AuthScreen::FamilySetup, cx),
@@ -202,11 +213,13 @@ impl UmuryangoApp {
             |this, _view, event: &JoinFamilyEvent, cx| match event {
                 JoinFamilyEvent::ThemeChanged(theme) => {
                     this.theme = *theme;
+                    this.save_preferences();
                     cx.notify();
                 }
                 JoinFamilyEvent::LanguageChanged(language) => {
                     this.language = *language;
                     crate::auth::client::set_current_language(language.locale_code());
+                    this.save_preferences();
                     cx.notify();
                 }
                 JoinFamilyEvent::BackRequested => this.set_screen(AuthScreen::FamilySetup, cx),
@@ -224,11 +237,13 @@ impl UmuryangoApp {
             |this, _view, event: &DashboardEvent, cx| match event {
                 DashboardEvent::ThemeChanged(theme) => {
                     this.theme = *theme;
+                    this.save_preferences();
                     cx.notify();
                 }
                 DashboardEvent::LanguageChanged(language) => {
                     this.language = *language;
                     crate::auth::client::set_current_language(language.locale_code());
+                    this.save_preferences();
                     cx.notify();
                 }
                 DashboardEvent::SignOutRequested => {
@@ -257,34 +272,52 @@ impl UmuryangoApp {
                 DashboardEvent::SyncRequested => {
                     let family_id = crate::auth::client::get_current_family_id();
                     if let Some(fid) = family_id {
-                        if let Ok(pending_mutations) = crate::db::get_pending_outbox_mutations(&this.connection) {
+                        if let Ok(pending_mutations) =
+                            crate::db::get_pending_outbox_mutations(&this.connection)
+                        {
                             if !pending_mutations.is_empty() {
-                                let sync_mutations: Vec<umuryango_shared::SyncMutation> = pending_mutations
-                                    .iter()
-                                    .filter_map(|(idempotency_str, command_str, payload_str)| {
-                                        let idempotency_key = uuid::Uuid::parse_str(idempotency_str).ok()?;
-                                        let fam_uuid = uuid::Uuid::parse_str(&fid).ok()?;
-                                        let command = match command_str.as_str() {
-                                            "CREATE_EXPENSE" => umuryango_shared::CommandType::CreateExpense,
-                                            "RECORD_PAYMENT" => umuryango_shared::CommandType::RecordPayment,
-                                            "CREATE_CONTRIBUTION" => umuryango_shared::CommandType::CreateContribution,
-                                            _ => umuryango_shared::CommandType::CreateContribution,
-                                        };
-                                        let payload = serde_json::from_str(payload_str).unwrap_or(serde_json::Value::Null);
-                                        Some(umuryango_shared::SyncMutation {
-                                            idempotency_key,
-                                            family_id: fam_uuid,
-                                            command,
-                                            payload,
+                                let sync_mutations: Vec<umuryango_shared::SyncMutation> =
+                                    pending_mutations
+                                        .iter()
+                                        .filter_map(|(idempotency_str, command_str, payload_str)| {
+                                            let idempotency_key =
+                                                uuid::Uuid::parse_str(idempotency_str).ok()?;
+                                            let fam_uuid = uuid::Uuid::parse_str(&fid).ok()?;
+                                            let command = match command_str.as_str() {
+                                                "CREATE_EXPENSE" => {
+                                                    umuryango_shared::CommandType::CreateExpense
+                                                }
+                                                "RECORD_PAYMENT" => {
+                                                    umuryango_shared::CommandType::RecordPayment
+                                                }
+                                                "CREATE_CONTRIBUTION" => {
+                                                    umuryango_shared::CommandType::CreateContribution
+                                                }
+                                                _ => {
+                                                    umuryango_shared::CommandType::CreateContribution
+                                                }
+                                            };
+                                            let payload = serde_json::from_str(payload_str)
+                                                .unwrap_or(serde_json::Value::Null);
+                                            Some(umuryango_shared::SyncMutation {
+                                                idempotency_key,
+                                                family_id: fam_uuid,
+                                                command,
+                                                payload,
+                                            })
                                         })
-                                    })
-                                    .collect();
+                                        .collect();
 
                                 if !sync_mutations.is_empty() {
-                                    if let Ok(resp) = crate::auth::client::api_sync_push(sync_mutations) {
+                                    if let Ok(resp) =
+                                        crate::auth::client::api_sync_push(sync_mutations)
+                                    {
                                         for res in resp.results {
                                             if res.status == umuryango_shared::SyncStatus::Synced {
-                                                let _ = crate::db::delete_outbox_mutation(&this.connection, &res.idempotency_key.to_string());
+                                                let _ = crate::db::delete_outbox_mutation(
+                                                    &this.connection,
+                                                    &res.idempotency_key.to_string(),
+                                                );
                                             }
                                         }
                                     }
@@ -294,7 +327,10 @@ impl UmuryangoApp {
 
                         let _ = crate::auth::client::api_sync_pull(&fid, None);
                         this.dashboard_view.update(cx, |view, cx| {
-                            view.set_storage_status("Storage synchronized: 0 pending mutations".to_string(), cx);
+                            view.set_storage_status(
+                                "Storage synchronized: 0 pending mutations".to_string(),
+                                cx,
+                            );
                             view.refresh_from_backend(cx);
                         });
                     }
@@ -323,6 +359,19 @@ impl UmuryangoApp {
             _create_family_subscription: create_family_subscription,
             _join_family_subscription: join_family_subscription,
             _dashboard_subscription: dashboard_subscription,
+        }
+    }
+
+    /// Persists the active theme, style, mood, and language to SQLite.
+    fn save_preferences(&self) {
+        let prefs = crate::preferences::AppPreferences {
+            theme: self.theme,
+            style: crate::theme::active_style(),
+            mood: crate::theme::active_mood(),
+            language: self.language,
+        };
+        if let Err(err) = crate::preferences::save(&self.connection, &prefs) {
+            eprintln!("failed to save preferences: {err}");
         }
     }
 

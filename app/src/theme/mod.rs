@@ -328,6 +328,7 @@ pub fn set_style_tokens(
     let tokens = StyleTokens::new(style, mode, mood);
     cx.set_global(tokens);
     sync_kit_themes(&tokens, cx);
+    crate::preferences::save_theme_to_db(style, mode, mood);
     tokens
 }
 
