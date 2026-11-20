@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cargo-agents hook antigravity pre-tool-use",
+            "command": "symposium hook antigravity pre-tool-use",
             "timeout": 30
           }
         ]
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cargo-agents hook antigravity post-tool-use",
+            "command": "symposium hook antigravity post-tool-use",
             "timeout": 30
           }
         ]
@@ -27,21 +27,21 @@
     "PreInvocation": [
       {
         "type": "command",
-        "command": "cargo-agents hook antigravity user-prompt-submit",
+        "command": "symposium hook antigravity user-prompt-submit",
         "timeout": 30
       }
     ],
     "SessionStart": [
       {
         "type": "command",
-        "command": "cargo-agents hook antigravity session-start",
+        "command": "symposium hook antigravity session-start",
         "timeout": 30
       }
     ],
     "Stop": [
       {
         "type": "command",
-        "command": "cargo-agents hook antigravity stop",
+        "command": "symposium hook antigravity stop",
         "timeout": 30
       }
     ]

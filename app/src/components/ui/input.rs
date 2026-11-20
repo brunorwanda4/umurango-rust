@@ -2,10 +2,18 @@ use crate::brand::ThemeColors;
 use crate::icons;
 use gpui_kit::component::{
     button::{Button, ButtonVariants},
-    input::{Input, InputState, Textarea, TextareaState},
+    input::{
+        Input, InputEvent, InputGroup, InputGroupAddon, InputGroupAddonAlignment, InputGroupText,
+        InputState, Textarea, TextareaState,
+    },
 };
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
+
+pub use umuryango_shared::{
+    currency_fraction_digits, format_minor_units, format_money, format_money_text, group_digits,
+    is_valid_money_input, parse_money_text_to_minor_units, sanitize_money_text, Money,
+};
 
 pub fn text_input(state: &Entity<InputState>, palette: ThemeColors) -> Input {
     Input::new(state)
@@ -297,4 +305,162 @@ pub fn password_field(
                 on_toggle,
             ),
         ))
+}
+
+/// Creates an `InputState` initialized and validated for money entry.
+pub fn create_money_input_state(
+    window: &mut Window,
+    cx: &mut App,
+    currency: &str,
+    initial_minor_units: Option<Money>,
+    placeholder: Option<SharedString>,
+) -> Entity<InputState> {
+    let fraction_digits = currency_fraction_digits(currency);
+    let initial_text = format_minor_units(initial_minor_units, fraction_digits);
+
+    cx.new(|cx| {
+        let mut state = InputState::new(window, cx)
+            .default_value(initial_text)
+            .validate(move |text, _| is_valid_money_input(text, fraction_digits));
+        if let Some(placeholder) = placeholder {
+            state = state.placeholder(placeholder);
+        }
+        state
+    })
+}
+
+/// Updates an existing money `InputState` with an amount in minor units.
+pub fn set_money_input_value(
+    state: &Entity<InputState>,
+    window: &mut Window,
+    cx: &mut App,
+    currency: &str,
+    minor_units: Option<Money>,
+) {
+    let fraction_digits = currency_fraction_digits(currency);
+    let formatted = format_minor_units(minor_units, fraction_digits);
+    state.update(cx, |s, cx| {
+        s.set_value(formatted, window, cx);
+    });
+}
+
+/// Reads the current amount in minor units from a money `InputState`.
+pub fn read_money_input_value(state: &Entity<InputState>, cx: &App, currency: &str) -> Money {
+    let fraction_digits = currency_fraction_digits(currency);
+    let text = state.read(cx).value();
+    parse_money_text_to_minor_units(&text, fraction_digits)
+}
+
+/// Formats the money text on blur (e.g. adding missing decimals or grouping commas).
+pub fn format_money_input_on_blur(
+    state: &Entity<InputState>,
+    window: &mut Window,
+    cx: &mut App,
+    currency: &str,
+) {
+    let fraction_digits = currency_fraction_digits(currency);
+    let text = state.read(cx).value();
+    let minor_units = parse_money_text_to_minor_units(&text, fraction_digits);
+    let formatted = if minor_units == 0 && (text.trim().is_empty() || text.trim() == "0") {
+        String::new()
+    } else {
+        format_minor_units(Some(minor_units), fraction_digits)
+    };
+    state.update(cx, |s, cx| {
+        s.set_value(formatted, window, cx);
+    });
+}
+
+/// Money input component using GPUI Kit's `InputGroup`.
+///
+/// Features:
+/// - Currency addon prefix positioned at `InlineStart` via `InputGroupAddon` & `InputGroupText`.
+/// - Automatic styling consistent with `ThemeColors` and active theme.
+/// - Supports disabled, invalid, and custom size/styling through `InputGroup`.
+pub fn money_input(
+    id: impl Into<ElementId>,
+    state: &Entity<InputState>,
+    currency: impl Into<SharedString>,
+    palette: ThemeColors,
+) -> InputGroup {
+    let currency_label = currency.into();
+
+    InputGroup::new(id)
+        .addon(
+            InputGroupAddon::new("currency-addon")
+                .align(InputGroupAddonAlignment::InlineStart)
+                .child(
+                    InputGroupText::new()
+                        .text_color(palette.text_secondary)
+                        .font_weight(FontWeight::BOLD)
+                        .child(currency_label),
+                ),
+        )
+        .input(text_input(state, palette))
+        .rounded(palette.radius_input)
+        .border(palette.border_width_input)
+        .border_color(palette.border_color)
+        .bg(palette.bg_input)
+        .shadow(palette.input_shadows())
+}
+
+/// Full money input field with a label above it.
+pub fn money_field(
+    id: impl Into<ElementId>,
+    palette: ThemeColors,
+    label: impl Into<SharedString>,
+    currency: impl Into<SharedString>,
+    state: &Entity<InputState>,
+) -> impl IntoElement {
+    div()
+        .flex()
+        .flex_col()
+        .gap_2()
+        .child(
+            div()
+                .text_xs()
+                .font_weight(FontWeight::BOLD)
+                .text_color(palette.text_secondary)
+                .child(label.into()),
+        )
+        .child(money_input(id, state, currency, palette))
+}
+
+/// Full money input field with a label, validation error display, and invalid frame highlighting.
+pub fn money_field_with_error(
+    id: impl Into<ElementId>,
+    palette: ThemeColors,
+    label: impl Into<SharedString>,
+    currency: impl Into<SharedString>,
+    error: Option<impl Into<SharedString>>,
+    state: &Entity<InputState>,
+) -> impl IntoElement {
+    let has_error = error.is_some();
+    div()
+        .flex()
+        .flex_col()
+        .gap_2()
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .child(
+                    div()
+                        .text_xs()
+                        .font_weight(FontWeight::BOLD)
+                        .text_color(palette.text_secondary)
+                        .child(label.into()),
+                )
+                .when_some(error, |this, err| {
+                    this.child(
+                        div()
+                            .text_xs()
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .text_color(palette.error)
+                            .child(err.into()),
+                    )
+                }),
+        )
+        .child(money_input(id, state, currency, palette).invalid(has_error))
 }

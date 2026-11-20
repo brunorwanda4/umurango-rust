@@ -7,6 +7,7 @@ use crate::brand::{colors, ThemeMode};
 use crate::components::dashboard::MoneySubTab;
 use crate::i18n::Language;
 use crate::theme::CozyMood;
+use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use std::rc::Rc;
 
@@ -14,6 +15,9 @@ pub type MoneyTabSelectHandler = Rc<dyn Fn(MoneySubTab, &mut Window, &mut App)>;
 pub type QuickActionHandler = Rc<dyn Fn(&mut Window, &mut App)>;
 pub type BackNavHandler = Rc<dyn Fn(&mut Window, &mut App)>;
 pub type MoodSelectHandler = Rc<dyn Fn(CozyMood, &mut App)>;
+pub type UserMenuToggleHandler = Rc<dyn Fn(&mut Window, &mut App)>;
+pub type UserMenuCloseHandler = Rc<dyn Fn(&mut Window, &mut App)>;
+pub type SignOutHandler = Rc<dyn Fn(&mut Window, &mut App)>;
 
 pub struct AppLayoutProps<'a> {
     pub viewport_width: Pixels,
@@ -24,6 +28,8 @@ pub struct AppLayoutProps<'a> {
     pub money_sub_tab: MoneySubTab,
     pub can_go_back: bool,
     pub member_name: &'a str,
+    pub member_contact: &'a str,
+    pub member_phone: &'a str,
     pub family_name: &'a str,
     pub total_treasury: &'a str,
     pub money_badge_count: usize,
@@ -34,14 +40,18 @@ pub struct AppLayoutProps<'a> {
     pub on_quick_entry: Option<QuickActionHandler>,
     pub on_back: Option<BackNavHandler>,
     pub on_mood_change: Option<MoodSelectHandler>,
+    pub user_dropdown_open: bool,
+    pub on_toggle_user_dropdown: Option<UserMenuToggleHandler>,
+    pub on_close_user_dropdown: Option<UserMenuCloseHandler>,
+    pub on_sign_out: Option<SignOutHandler>,
 }
 
 pub fn app_layout<N, T, L, S, C>(
-    props: AppLayoutProps<'_>,
+    mut props: AppLayoutProps<'_>,
     on_select_section: N,
     _on_theme_change: T,
     _on_language_change: L,
-    _on_sign_out: S,
+    on_sign_out: S,
     content: C,
 ) -> impl IntoElement
 where
@@ -53,9 +63,14 @@ where
 {
     let palette = colors(props.theme);
     let on_select: SectionSelectHandler = Rc::new(on_select_section);
+    let sign_out_handler: SignOutHandler = Rc::new(on_sign_out);
+    if props.on_sign_out.is_none() {
+        props.on_sign_out = Some(sign_out_handler);
+    }
 
     if is_large_screen(props.viewport_width) {
         let on_select_header = on_select.clone();
+        let on_close_dropdown = props.on_close_user_dropdown.clone();
 
         div()
             .size_full()
@@ -74,6 +89,16 @@ where
                     .flex()
                     .flex_col()
                     .overflow_hidden()
+                    .when(props.user_dropdown_open, |this| {
+                        if let Some(ref close) = on_close_dropdown {
+                            let close = close.clone();
+                            this.on_mouse_down(MouseButton::Left, move |_ev, window, cx| {
+                                close(window, cx);
+                            })
+                        } else {
+                            this
+                        }
+                    })
                     .child(app_mobile_header(&props, palette, on_select_header))
                     .child(
                         div()

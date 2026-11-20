@@ -71,6 +71,10 @@ pub const ICON_TAG: &str = "tag";
 pub const ICON_FOLDER: &str = "folder";
 pub const ICON_FILE_LINES: &str = "file-lines";
 pub const ICON_ADDRESS_CARD: &str = "address-card";
+pub const ICON_SORT: &str = "sort";
+pub const ICON_INBOX: &str = "inbox";
+pub const ICON_CLIPBOARD_LIST: &str = "clipboard-list";
+pub const ICON_MONEY_BILL_TRANSFER: &str = "money-bill-transfer";
 
 pub fn has_icon(name: &str) -> bool {
     let clean = name.trim();

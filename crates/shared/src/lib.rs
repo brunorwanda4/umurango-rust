@@ -407,20 +407,194 @@ pub struct LoanRepaymentRequest {
     pub note: Option<String>,
 }
 
-/// Deterministic financial amount formatter.
-/// Formats an integer minor unit into standard comma-separated representation (e.g. 3,450,000 RWF).
-pub fn format_money(amount: Money, currency: &str) -> String {
-    let is_negative = amount < 0;
-    let abs_val = amount.unsigned_abs();
-    let s = abs_val.to_string();
-    let mut formatted = String::new();
-    let len = s.len();
-    for (i, c) in s.chars().enumerate() {
+/// Returns the standard fraction digits (number of decimal places) for a given currency code.
+/// Follows ISO 4217 specifications (e.g. 0 for RWF/JPY, 3 for BHD/KWD, 2 for USD/EUR).
+pub fn currency_fraction_digits(currency: &str) -> usize {
+    match currency.trim().to_ascii_uppercase().as_str() {
+        "BIF" | "CLP" | "DJF" | "GNF" | "ISK" | "JPY" | "KMF" | "KRW" | "PYG" | "RWF" | "FRW"
+        | "UGX" | "UYI" | "VND" | "VUV" | "XAF" | "XOF" | "XPF" => 0,
+        "BHD" | "IQD" | "JOD" | "KWD" | "LYD" | "OMR" | "TND" => 3,
+        _ => 2,
+    }
+}
+
+/// Groups integer digits with commas every 3 places from the right.
+pub fn group_digits(value: &str) -> String {
+    if value.is_empty() {
+        return String::new();
+    }
+    let is_negative = value.starts_with('-');
+    let digits = if is_negative { &value[1..] } else { value };
+    let len = digits.len();
+    if len <= 3 {
+        return value.to_string();
+    }
+
+    let mut formatted = String::with_capacity(value.len() + (len / 3));
+    if is_negative {
+        formatted.push('-');
+    }
+    for (i, c) in digits.chars().enumerate() {
         if i > 0 && (len - i) % 3 == 0 {
             formatted.push(',');
         }
         formatted.push(c);
     }
+    formatted
+}
+
+/// Sanitizes money text according to allowed fraction digits.
+/// Strips all characters except digits and (if fraction_digits > 0) at most one decimal point.
+pub fn sanitize_money_text(value: &str, fraction_digits: usize) -> String {
+    let normalized: String = value
+        .chars()
+        .filter(|c| c.is_ascii_digit() || *c == '.')
+        .collect();
+
+    if fraction_digits == 0 {
+        return normalized.chars().filter(|c| c.is_ascii_digit()).collect();
+    }
+
+    let mut parts = normalized.split('.');
+    let whole = parts.next().unwrap_or("");
+    let remaining_parts: Vec<&str> = parts.collect();
+
+    if remaining_parts.is_empty() {
+        whole.to_string()
+    } else {
+        let joined_fraction: String = remaining_parts
+            .concat()
+            .chars()
+            .filter(|c| c.is_ascii_digit())
+            .take(fraction_digits)
+            .collect();
+        format!("{whole}.{joined_fraction}")
+    }
+}
+
+/// Formats raw money input text with comma digit grouping and fractional parts.
+pub fn format_money_text(value: &str, fraction_digits: usize) -> String {
+    if value.is_empty() {
+        return String::new();
+    }
+
+    if fraction_digits == 0 {
+        return group_digits(value);
+    }
+
+    if let Some((whole, fraction)) = value.split_once('.') {
+        let grouped_whole = group_digits(whole);
+        if !fraction.is_empty() {
+            format!("{grouped_whole}.{fraction}")
+        } else if value.contains('.') {
+            format!("{grouped_whole}.")
+        } else {
+            grouped_whole
+        }
+    } else {
+        group_digits(value)
+    }
+}
+
+/// Formats integer minor units into human-readable money text (e.g. 5050 with 2 digits -> "50.50").
+/// Returns empty string if value is None or Some(0), matching form input conventions.
+pub fn format_minor_units(value: Option<Money>, fraction_digits: usize) -> String {
+    let Some(val) = value else {
+        return String::new();
+    };
+    if val == 0 {
+        return String::new();
+    }
+
+    let is_negative = val < 0;
+    let abs_val = val.unsigned_abs();
+
+    if fraction_digits == 0 {
+        let grouped = group_digits(&abs_val.to_string());
+        if is_negative {
+            format!("-{grouped}")
+        } else {
+            grouped
+        }
+    } else {
+        let scale = 10u64.pow(fraction_digits as u32);
+        let whole = abs_val / scale;
+        let fraction = abs_val % scale;
+        let grouped_whole = group_digits(&whole.to_string());
+        let fraction_str = format!("{:0>width$}", fraction, width = fraction_digits);
+        if is_negative {
+            format!("-{grouped_whole}.{fraction_str}")
+        } else {
+            format!("{grouped_whole}.{fraction_str}")
+        }
+    }
+}
+
+/// Parses money text into integer minor units (e.g. "50.50" with 2 digits -> 5050).
+pub fn parse_money_text_to_minor_units(value: &str, fraction_digits: usize) -> Money {
+    let sanitized = sanitize_money_text(value, fraction_digits);
+    if sanitized.is_empty() || sanitized == "." {
+        return 0;
+    }
+
+    if fraction_digits == 0 {
+        sanitized.parse::<i64>().unwrap_or(0)
+    } else {
+        let (whole_str, fraction_str) = sanitized.split_once('.').unwrap_or((&sanitized, ""));
+        let whole_units = whole_str.parse::<i64>().unwrap_or(0);
+        let scale = 10i64.pow(fraction_digits as u32);
+
+        let mut padded_fraction = fraction_str.to_string();
+        while padded_fraction.len() < fraction_digits {
+            padded_fraction.push('0');
+        }
+        if padded_fraction.len() > fraction_digits {
+            padded_fraction.truncate(fraction_digits);
+        }
+
+        let fraction_units = padded_fraction.parse::<i64>().unwrap_or(0);
+        if whole_units < 0 {
+            whole_units * scale - fraction_units
+        } else {
+            whole_units * scale + fraction_units
+        }
+    }
+}
+
+/// Validates whether a text string contains only valid financial input characters
+/// (digits, commas, and at most one dot if fraction_digits > 0).
+pub fn is_valid_money_input(text: &str, fraction_digits: usize) -> bool {
+    if text.is_empty() {
+        return true;
+    }
+    let mut dot_seen = false;
+    let mut fraction_count = 0;
+    for c in text.chars() {
+        if c.is_ascii_digit() || c == ',' {
+            if dot_seen {
+                fraction_count += 1;
+                if fraction_count > fraction_digits {
+                    return false;
+                }
+            }
+        } else if c == '.' {
+            if fraction_digits == 0 || dot_seen {
+                return false;
+            }
+            dot_seen = true;
+        } else {
+            return false;
+        }
+    }
+    true
+}
+
+/// Deterministic financial amount formatter.
+/// Formats an integer minor unit into standard comma-separated representation (e.g. 3,450,000 RWF).
+pub fn format_money(amount: Money, currency: &str) -> String {
+    let is_negative = amount < 0;
+    let abs_val = amount.unsigned_abs();
+    let formatted = group_digits(&abs_val.to_string());
     if is_negative {
         format!("-{formatted} {currency}")
     } else {
@@ -490,6 +664,83 @@ mod tests {
         assert_eq!(format_money(-85000, "RWF"), "-85,000 RWF");
         assert_eq!(format_money(0, "RWF"), "0 RWF");
         assert_eq!(format_money(500, "RWF"), "500 RWF");
+    }
+
+    #[test]
+    fn test_currency_fraction_digits() {
+        assert_eq!(currency_fraction_digits("RWF"), 0);
+        assert_eq!(currency_fraction_digits("rwf"), 0);
+        assert_eq!(currency_fraction_digits("FRW"), 0);
+        assert_eq!(currency_fraction_digits("JPY"), 0);
+        assert_eq!(currency_fraction_digits("USD"), 2);
+        assert_eq!(currency_fraction_digits("EUR"), 2);
+        assert_eq!(currency_fraction_digits("BHD"), 3);
+    }
+
+    #[test]
+    fn test_group_digits() {
+        assert_eq!(group_digits(""), "");
+        assert_eq!(group_digits("0"), "0");
+        assert_eq!(group_digits("99"), "99");
+        assert_eq!(group_digits("100"), "100");
+        assert_eq!(group_digits("1000"), "1,000");
+        assert_eq!(group_digits("1234567"), "1,234,567");
+        assert_eq!(group_digits("-1234567"), "-1,234,567");
+    }
+
+    #[test]
+    fn test_sanitize_money_text() {
+        assert_eq!(sanitize_money_text("1,234.56", 0), "123456");
+        assert_eq!(sanitize_money_text("1,234.56", 2), "1234.56");
+        assert_eq!(sanitize_money_text("1234.5678", 2), "1234.56");
+        assert_eq!(sanitize_money_text("1234.", 2), "1234.");
+        assert_eq!(sanitize_money_text(".5", 2), ".5");
+        assert_eq!(sanitize_money_text("abc10$20", 0), "1020");
+    }
+
+    #[test]
+    fn test_format_money_text() {
+        assert_eq!(format_money_text("", 0), "");
+        assert_eq!(format_money_text("1234", 0), "1,234");
+        assert_eq!(format_money_text("1234.5", 2), "1,234.5");
+        assert_eq!(format_money_text("1234.", 2), "1,234.");
+        assert_eq!(format_money_text("1234.56", 2), "1,234.56");
+    }
+
+    #[test]
+    fn test_format_minor_units() {
+        assert_eq!(format_minor_units(None, 0), "");
+        assert_eq!(format_minor_units(Some(0), 0), "");
+        assert_eq!(format_minor_units(Some(5000), 0), "5,000");
+        assert_eq!(format_minor_units(Some(-5000), 0), "-5,000");
+        assert_eq!(format_minor_units(Some(5050), 2), "50.50");
+        assert_eq!(format_minor_units(Some(5), 2), "0.05");
+        assert_eq!(format_minor_units(Some(100000000), 2), "1,000,000.00");
+    }
+
+    #[test]
+    fn test_parse_money_text_to_minor_units() {
+        assert_eq!(parse_money_text_to_minor_units("", 0), 0);
+        assert_eq!(parse_money_text_to_minor_units(".", 2), 0);
+        assert_eq!(parse_money_text_to_minor_units("5,000", 0), 5000);
+        assert_eq!(parse_money_text_to_minor_units("50.5", 2), 5050);
+        assert_eq!(parse_money_text_to_minor_units("50.05", 2), 5005);
+        assert_eq!(parse_money_text_to_minor_units("0.05", 2), 5);
+        assert_eq!(parse_money_text_to_minor_units("1,234.56", 2), 123456);
+    }
+
+    #[test]
+    fn test_is_valid_money_input() {
+        assert!(is_valid_money_input("", 0));
+        assert!(is_valid_money_input("123", 0));
+        assert!(is_valid_money_input("1,234", 0));
+        assert!(!is_valid_money_input("123.4", 0));
+        assert!(!is_valid_money_input("12a", 0));
+
+        assert!(is_valid_money_input("123.45", 2));
+        assert!(is_valid_money_input("123.", 2));
+        assert!(!is_valid_money_input("123.456", 2));
+        assert!(!is_valid_money_input("123.4.5", 2));
     }
 
     #[test]

@@ -1,5 +1,7 @@
 #!/usr/bin/env bun
-import { spawn } from "bun";
+import { spawn as nodeSpawn } from "node:child_process";
+import { watch as fsWatch, existsSync } from "node:fs";
+import path from "node:path";
 
 const args = process.argv.slice(2);
 
@@ -14,6 +16,18 @@ const colors = {
   red: "\x1b[31m",
 };
 
+// ---- Watch configuration ----
+// Folder names are relative to the repo root. Adjust them to match your layout.
+// Put shared code (models, protocol, etc.) in both lists, so a change there restarts both.
+const WATCH_PATHS = {
+  backend: ["backend", "shared"],
+  native: ["native", "shared"],
+  frontend: [], // Next.js hot-reloads on its own, so the runner never restarts it
+};
+const DEBOUNCE_MS = 400;
+const KILL_TIMEOUT_MS = 5000;
+const IGNORED_DIRS = new Set(["target", "node_modules", ".next", ".git", "dist", "out"]);
+
 const bunExe = process.execPath;
 
 const SERVICE_DEFINITIONS = {
@@ -21,19 +35,22 @@ const SERVICE_DEFINITIONS = {
     name: "backend",
     color: colors.cyan,
     cmd: [bunExe, "run", "scripts/dev-backend.js"],
-    desc: "Actix-web API (watch mode, http://127.0.0.1:4433)",
+    desc: "Actix-web API (http://127.0.0.1:4433)",
+    watch: WATCH_PATHS.backend,
   },
   frontend: {
     name: "frontend",
     color: colors.green,
     cmd: [bunExe, "run", "--cwd", "web", "dev"],
     desc: "Next.js Web Portal (http://localhost:3000)",
+    watch: WATCH_PATHS.frontend,
   },
   native: {
     name: "native",
     color: colors.magenta,
     cmd: [bunExe, "run", "scripts/dev-native.js"],
-    desc: "GPUI Native Client (watch mode)",
+    desc: "GPUI Native Client",
+    watch: WATCH_PATHS.native,
   },
 };
 
@@ -50,6 +67,7 @@ Usage:
   bun run dev:all --all          Run backend, web frontend, and native app concurrently
   bun run dev:all --only <list>  Run only specified services (e.g. --only app,backend)
   bun run dev:all --raw          Run without prefixed log output
+  bun run dev:all --no-watch     Start services without restarting them on file changes
 
 Service names / aliases:
   - backend (or: api, server)
@@ -65,7 +83,12 @@ Options:
   --no-backend        Exclude backend API
   --only <services>   Run only specified comma-separated services
   --raw               Inherit stdout/stderr directly (no prefixing)
+  --no-watch          Disable automatic restarts on file changes
   -h, --help          Show this help message
+
+Watching:
+  A change in a service's folders restarts only that service.
+  The frontend is never restarted by the runner (Next.js hot-reloads).
 `);
 }
 
@@ -83,6 +106,7 @@ const explicitlyIncluded = new Set();
 let runAll = false;
 let rawOutput = false;
 let onlyMode = false;
+let watchEnabled = true;
 
 for (let i = 0; i < args.length; i++) {
   const arg = args[i].trim();
@@ -95,6 +119,11 @@ for (let i = 0; i < args.length; i++) {
 
   if (arg === "--raw") {
     rawOutput = true;
+    continue;
+  }
+
+  if (arg === "--no-watch") {
+    watchEnabled = false;
     continue;
   }
 
@@ -199,7 +228,6 @@ if (onlyMode) {
   activeServices = new Set(["backend", "frontend"]);
 }
 
-// Remove any explicitly excluded services
 for (const exc of excluded) {
   activeServices.delete(exc);
 }
@@ -222,106 +250,176 @@ console.log(`${colors.bold}  Umuryango Concurrent Development Runner${colors.res
 for (const svc of servicesToStart) {
   console.log(`  - ${svc.color}${svc.name.padEnd(10)}${colors.reset}: ${svc.desc}`);
 }
+console.log(
+  `  Watch: ${watchEnabled ? "on (only the changed service restarts)" : "off (--no-watch)"}`,
+);
 console.log(`  Press ${colors.yellow}Ctrl+C${colors.reset} to stop all services.`);
 console.log(
   `${colors.bold}============================================================\n${colors.reset}`,
 );
 
-const runningChildren = [];
+// ---- Process management ----
+
+const stateByService = new Map(); // name -> { child, chain }
 let stopping = false;
 
-async function streamLines(readable, prefix, color, isError = false) {
-  if (!readable) return;
-  const reader = readable.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-
+function signalTree(child, signal) {
+  if (!child || child.pid == null) return;
+  if (process.platform === "win32") {
+    // taskkill /T kills the whole tree (bun -> cargo -> built binary)
+    nodeSpawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { stdio: "ignore" });
+    return;
+  }
   try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
-      for (const rawLine of lines) {
-        const line = rawLine.endsWith("\r") ? rawLine.slice(0, -1) : rawLine;
-        const formatted = `${color}[${prefix}]${colors.reset} ${line}`;
-        if (isError) {
-          console.error(formatted);
-        } else {
-          console.log(formatted);
-        }
-      }
-    }
-    if (buffer.length > 0) {
-      const line = buffer.endsWith("\r") ? buffer.slice(0, -1) : buffer;
-      const formatted = `${color}[${prefix}]${colors.reset} ${line}`;
-      if (isError) {
-        console.error(formatted);
-      } else {
-        console.log(formatted);
-      }
-    }
+    process.kill(-child.pid, signal); // child runs in its own process group
   } catch {
-    // Stream closed when process killed
+    try {
+      child.kill(signal);
+    } catch {}
   }
 }
 
-for (const svc of servicesToStart) {
-  const child = spawn(svc.cmd, {
-    stdin: "inherit",
-    stdout: rawOutput ? "inherit" : "pipe",
-    stderr: rawOutput ? "inherit" : "pipe",
-    env: {
-      ...process.env,
-      FORCE_COLOR: "1",
-    },
-  });
+async function stopChild(child) {
+  if (!child) return;
+  child.intentionalStop = true;
 
-  runningChildren.push({ ...svc, process: child });
+  if (child.exitCode === null && child.signalCode === null) {
+    signalTree(child, "SIGINT");
+    await Promise.race([
+      new Promise((resolve) => child.once("exit", resolve)),
+      new Promise((resolve) => setTimeout(resolve, KILL_TIMEOUT_MS)),
+    ]);
+  }
+
+  // Kill leftovers (e.g. the compiled API server still holding port 4433)
+  signalTree(child, "SIGKILL");
+}
+
+function prefixStream(readable, svc, isError) {
+  if (!readable) return;
+  let buffer = "";
+  const emit = (line) => {
+    const formatted = `${svc.color}[${svc.name}]${colors.reset} ${line}`;
+    if (isError) console.error(formatted);
+    else console.log(formatted);
+  };
+  readable.setEncoding("utf8");
+  readable.on("data", (chunk) => {
+    buffer += chunk;
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const raw of lines) {
+      emit(raw.endsWith("\r") ? raw.slice(0, -1) : raw);
+    }
+  });
+  readable.on("end", () => {
+    if (buffer.length > 0) {
+      emit(buffer.endsWith("\r") ? buffer.slice(0, -1) : buffer);
+      buffer = "";
+    }
+  });
+}
+
+function launch(svc) {
+  const [command, ...cmdArgs] = svc.cmd;
+  const child = nodeSpawn(command, cmdArgs, {
+    stdio: rawOutput ? "inherit" : ["inherit", "pipe", "pipe"],
+    env: { ...process.env, FORCE_COLOR: "1" },
+    detached: process.platform !== "win32", // own process group, so we can kill the whole tree
+  });
+  child.intentionalStop = false;
 
   if (!rawOutput) {
-    void streamLines(child.stdout, svc.name, svc.color, false);
-    void streamLines(child.stderr, svc.name, svc.color, true);
+    prefixStream(child.stdout, svc, false);
+    prefixStream(child.stderr, svc, true);
   }
 
-  void child.exited.then((code) => {
-    if (!stopping) {
-      if (code !== 0) {
-        console.error(
-          `${svc.color}[${svc.name}]${colors.reset} ${colors.red}Process exited with code ${code}${colors.reset}`,
-        );
-      } else {
-        console.log(`${svc.color}[${svc.name}]${colors.reset} Process exited successfully`);
-      }
-    }
+  child.on("exit", (code, signal) => {
+    if (stopping || child.intentionalStop) return;
+    const reason = code !== null ? `code ${code}` : `signal ${signal}`;
+    const hint = watchEnabled ? " (save a file to restart it)" : "";
+    console.error(
+      `${svc.color}[${svc.name}]${colors.reset} ${colors.red}Process exited with ${reason}${hint}${colors.reset}`,
+    );
+  });
+
+  stateByService.get(svc.name).child = child;
+  return child;
+}
+
+// Restarts are queued so two quick changes never run two restarts at once.
+function scheduleRestart(svc, changedFile) {
+  const state = stateByService.get(svc.name);
+  if (!state || stopping) return;
+
+  state.chain = state.chain.then(async () => {
+    if (stopping) return;
+    console.log(
+      `${svc.color}[${svc.name}]${colors.reset} ${colors.yellow}change in ${changedFile}, restarting...${colors.reset}`,
+    );
+    await stopChild(state.child);
+    if (!stopping) launch(svc);
   });
 }
+
+// ---- File watching ----
+
+function isIgnored(filename) {
+  const segments = filename.split(/[\\/]/);
+  if (segments.some((seg) => IGNORED_DIRS.has(seg))) return true;
+  // Editor temp/backup files
+  return /(~|\.swp|\.tmp)$/i.test(filename);
+}
+
+function startWatchers(svc) {
+  if (!watchEnabled || svc.watch.length === 0) return [];
+
+  const roots = svc.watch
+    .map((p) => path.resolve(process.cwd(), p))
+    .filter((p) => {
+      if (existsSync(p)) return true;
+      console.warn(
+        `${svc.color}[${svc.name}]${colors.reset} ${colors.dim}watch path not found, skipping: ${p}${colors.reset}`,
+      );
+      return false;
+    });
+
+  let timer = null;
+  let lastFile = "";
+
+  return roots.map((root) =>
+    fsWatch(root, { recursive: true }, (_eventType, filename) => {
+      if (!filename || isIgnored(filename)) return;
+      lastFile = filename;
+      clearTimeout(timer);
+      timer = setTimeout(() => scheduleRestart(svc, lastFile), DEBOUNCE_MS);
+    }),
+  );
+}
+
+// ---- Startup ----
+
+for (const svc of servicesToStart) {
+  stateByService.set(svc.name, { child: null, chain: Promise.resolve() });
+  launch(svc);
+}
+
+const watchers = servicesToStart.flatMap((svc) => startWatchers(svc));
+
+// ---- Shutdown ----
 
 async function shutdown() {
   if (stopping) return;
   stopping = true;
   console.log(`\n${colors.yellow}[system] Shutting down development services...${colors.reset}`);
 
-  for (const svc of runningChildren) {
+  for (const w of watchers) {
     try {
-      svc.process.kill("SIGINT");
-    } catch {
-      // Ignore if already dead
-    }
+      w.close();
+    } catch {}
   }
 
-  const forceTimeout = setTimeout(() => {
-    for (const svc of runningChildren) {
-      try {
-        svc.process.kill("SIGKILL");
-      } catch {}
-    }
-    process.exit(0);
-  }, 3000);
-
-  await Promise.all(runningChildren.map((svc) => svc.process.exited.catch(() => {})));
-  clearTimeout(forceTimeout);
+  await Promise.all([...stateByService.values()].map((state) => stopChild(state.child)));
   process.exit(0);
 }
 

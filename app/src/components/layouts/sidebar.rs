@@ -10,6 +10,22 @@ use crate::icons;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
+type SidebarClickHandler = Box<dyn Fn(&ClickEvent, &mut Window, &mut App)>;
+type SubNavItem = (
+    &'static str,
+    MoneySubTab,
+    String,
+    Option<(&'static str, Rgba)>,
+);
+
+#[derive(Clone, Copy)]
+struct DropdownColors {
+    hover_bg: Rgba,
+    text_active: Rgba,
+    text_inactive: Rgba,
+    danger_col: Rgba,
+}
+
 pub fn app_sidebar(
     props: &AppLayoutProps<'_>,
     palette: ThemeColors,
@@ -53,75 +69,72 @@ fn app_sidebar_minimalist(
             )
         };
 
-    let render_item =
-        |id: &'static str,
-         icon_name: &'static str,
-         label: String,
-         is_active: bool,
-         has_chevron: bool,
-         on_click_fn: Box<dyn Fn(&ClickEvent, &mut Window, &mut App)>| {
-            div()
-                .id(id)
-                .w_full()
-                .flex()
-                .items_center()
-                .justify_between()
-                .px_3()
-                .py(px(7.0))
-                .rounded(px(8.0))
-                .cursor_pointer()
-                .when(is_active, |this| this.bg(active_bg).text_color(text_active))
-                .when(!is_active, |this| {
-                    this.text_color(text_inactive)
-                        .hover(move |s| s.bg(hover_bg).text_color(text_active))
-                })
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap_3()
-                        .child(
-                            icons::icon(icon_name)
-                                .size(px(16.0))
-                                .text_color(if is_active {
-                                    text_active
-                                } else {
-                                    text_inactive
-                                }),
-                        )
-                        .child(
-                            div()
-                                .text_sm()
-                                .font_weight(if is_active {
-                                    FontWeight::SEMIBOLD
-                                } else {
-                                    FontWeight::NORMAL
-                                })
-                                .text_color(if is_active {
-                                    text_active
-                                } else {
-                                    text_inactive
-                                })
-                                .child(label),
-                        ),
-                )
-                .when(has_chevron, |this| {
-                    this.child(
-                        icons::icon(icons::ICON_CHEVRON_RIGHT)
-                            .size(px(11.0))
-                            .text_color(text_muted_col),
+    let render_item = |id: &'static str,
+                       icon_name: &'static str,
+                       label: String,
+                       is_active: bool,
+                       has_chevron: bool,
+                       on_click_fn: SidebarClickHandler| {
+        div()
+            .id(id)
+            .w_full()
+            .flex()
+            .items_center()
+            .justify_between()
+            .px_3()
+            .py(px(7.0))
+            .rounded(px(8.0))
+            .cursor_pointer()
+            .when(is_active, |this| this.bg(active_bg).text_color(text_active))
+            .when(!is_active, |this| {
+                this.text_color(text_inactive)
+                    .hover(move |s| s.bg(hover_bg).text_color(text_active))
+            })
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_3()
+                    .child(
+                        icons::icon(icon_name)
+                            .size(px(16.0))
+                            .text_color(if is_active {
+                                text_active
+                            } else {
+                                text_inactive
+                            }),
                     )
-                })
-                .on_click(move |ev, window, cx| on_click_fn(ev, window, cx))
-        };
+                    .child(
+                        div()
+                            .text_sm()
+                            .font_weight(if is_active {
+                                FontWeight::SEMIBOLD
+                            } else {
+                                FontWeight::NORMAL
+                            })
+                            .text_color(if is_active {
+                                text_active
+                            } else {
+                                text_inactive
+                            })
+                            .child(label),
+                    ),
+            )
+            .when(has_chevron, |this| {
+                this.child(
+                    icons::icon(icons::ICON_CHEVRON_RIGHT)
+                        .size(px(11.0))
+                        .text_color(text_muted_col),
+                )
+            })
+            .on_click(move |ev, window, cx| on_click_fn(ev, window, cx))
+    };
 
     let on_sel_home = on_select.clone();
     let on_sel_money = on_select.clone();
     let on_sel_proj = on_select.clone();
     let on_sel_reports = on_select.clone();
     let on_sel_notif = on_select.clone();
-    let on_sel_events = on_select.clone();
-    let on_sel_contacts = on_select.clone();
     let on_sel_members = on_select.clone();
     let on_sel_settings = on_select.clone();
 
@@ -232,26 +245,6 @@ fn app_sidebar_minimalist(
                                 .child(text(language, "sidebar.management")),
                         )
                         .child(render_item(
-                            "min-nav-events",
-                            icons::ICON_CALENDAR,
-                            text(language, "sidebar.events"),
-                            false,
-                            false,
-                            Box::new(move |_e, window, cx| {
-                                on_sel_events(AppSection::Home, window, cx)
-                            }),
-                        ))
-                        .child(render_item(
-                            "min-nav-contacts",
-                            icons::ICON_ADDRESS_CARD,
-                            text(language, "sidebar.contacts"),
-                            false,
-                            false,
-                            Box::new(move |_e, window, cx| {
-                                on_sel_contacts(AppSection::Members, window, cx)
-                            }),
-                        ))
-                        .child(render_item(
                             "min-nav-members",
                             icons::ICON_USERS,
                             text(language, "nav.members"),
@@ -274,8 +267,346 @@ fn app_sidebar_minimalist(
                 ),
             ),
         )
+        .child(sidebar_minimalist_footer(props, palette, on_select.clone()))
 }
 
+fn sidebar_dropdown_item(
+    id: &'static str,
+    icon: Svg,
+    label: String,
+    is_danger: bool,
+    colors: DropdownColors,
+    on_click_fn: SidebarClickHandler,
+) -> impl IntoElement {
+    let text_col = if is_danger {
+        colors.danger_col
+    } else {
+        colors.text_active
+    };
+    let icon_col = if is_danger {
+        colors.danger_col
+    } else {
+        colors.text_inactive
+    };
+
+    div()
+        .id(id)
+        .w_full()
+        .flex()
+        .items_center()
+        .gap_2p5()
+        .px_2()
+        .py(px(6.0))
+        .rounded(px(6.0))
+        .cursor_pointer()
+        .hover(move |s| s.bg(colors.hover_bg))
+        .child(icon.size(px(14.0)).flex_none().text_color(icon_col))
+        .child(
+            div()
+                .text_size(px(13.0))
+                .font_weight(FontWeight::NORMAL)
+                .text_color(text_col)
+                .truncate()
+                .child(label),
+        )
+        .on_click(move |ev, window, cx| on_click_fn(ev, window, cx))
+}
+
+fn sidebar_minimalist_footer(
+    props: &AppLayoutProps<'_>,
+    palette: ThemeColors,
+    on_select: SectionSelectHandler,
+) -> impl IntoElement {
+    let (hover_bg, dropdown_bg, text_active, text_inactive, text_muted_col, danger_col) =
+        if palette.mode == ThemeMode::Dark {
+            (
+                rgb(0x18181b),
+                rgb(0x121214),
+                rgb(0xffffff),
+                rgb(0xd4d4d8),
+                rgb(0x71717a),
+                rgb(0xf87171),
+            )
+        } else {
+            (
+                rgb(0xf4f4f5),
+                rgb(0xffffff),
+                rgb(0x09090b),
+                rgb(0x3f3f46),
+                rgb(0xa1a1aa),
+                rgb(0xef4444),
+            )
+        };
+
+    let colors = DropdownColors {
+        hover_bg,
+        text_active,
+        text_inactive,
+        danger_col,
+    };
+
+    let member_name = if props.member_name.trim().is_empty() {
+        "Rwanda Bruno".to_string()
+    } else {
+        props.member_name.to_string()
+    };
+
+    let member_subtitle = if !props.member_phone.trim().is_empty() {
+        props.member_phone.to_string()
+    } else if !props.member_contact.trim().is_empty() {
+        props.member_contact.to_string()
+    } else {
+        "brunorwanda4@gmail.com".to_string()
+    };
+
+    let family_name = if props.family_name.trim().is_empty() {
+        "Ingabire Family".to_string()
+    } else {
+        props.family_name.to_string()
+    };
+
+    let initials = extract_initials(&member_name);
+    let is_open = props.user_dropdown_open;
+    let on_toggle = props.on_toggle_user_dropdown.clone();
+    let on_close = props.on_close_user_dropdown.clone();
+    let on_sign_out = props.on_sign_out.clone();
+
+    div()
+        .id("sidebar-footer-container")
+        .relative()
+        .w_full()
+        .border_t(px(1.0))
+        .border_color(palette.border_color)
+        .p_2()
+        .when(is_open, |this| {
+            let on_sel_family = on_select.clone();
+            let on_sel_overview = on_select.clone();
+            let on_sel_fams = on_select.clone();
+            let on_sel_recent = on_select.clone();
+            let on_sel_manage = on_select.clone();
+            let on_sel_create = on_select.clone();
+            let close_1 = on_close.clone();
+            let close_2 = on_close.clone();
+            let close_3 = on_close.clone();
+            let close_4 = on_close.clone();
+            let close_5 = on_close.clone();
+            let close_6 = on_close.clone();
+            let close_7 = on_close.clone();
+            let sign_out_cb = on_sign_out.clone();
+            let fam_label_1 = family_name.clone();
+            let fam_label_2 = family_name.clone();
+
+            this.child(
+                div()
+                    .id("sidebar-user-dropdown-popover")
+                    .absolute()
+                    .bottom(px(56.0))
+                    .left(px(8.0))
+                    .right(px(8.0))
+                    .bg(dropdown_bg)
+                    .border(px(1.0))
+                    .border_color(palette.border_color)
+                    .rounded(px(12.0))
+                    .p_1p5()
+                    .shadow(palette.card_shadows())
+                    .flex()
+                    .flex_col()
+                    .gap_0p5()
+                    .child(
+                        div()
+                            .text_size(px(11.0))
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .text_color(text_muted_col)
+                            .px_2()
+                            .pt_1()
+                            .pb_0p5()
+                            .child("Workspaces"),
+                    )
+                    .child(sidebar_dropdown_item(
+                        "drop-item-workspace-family",
+                        icons::icon(icons::ICON_USERS),
+                        fam_label_1,
+                        false,
+                        colors,
+                        Box::new(move |_e, window, cx| {
+                            if let Some(ref close) = close_1 {
+                                close(window, cx);
+                            }
+                            on_sel_family(AppSection::Home, window, cx);
+                        }),
+                    ))
+                    .child(sidebar_dropdown_item(
+                        "drop-item-overview",
+                        icons::icon(icons::ICON_INBOX),
+                        "Overview".to_string(),
+                        false,
+                        colors,
+                        Box::new(move |_e, window, cx| {
+                            if let Some(ref close) = close_2 {
+                                close(window, cx);
+                            }
+                            on_sel_overview(AppSection::Home, window, cx);
+                        }),
+                    ))
+                    .child(sidebar_dropdown_item(
+                        "drop-item-families",
+                        icons::icon(icons::ICON_USERS),
+                        "Families".to_string(),
+                        false,
+                        colors,
+                        Box::new(move |_e, window, cx| {
+                            if let Some(ref close) = close_3 {
+                                close(window, cx);
+                            }
+                            on_sel_fams(AppSection::Members, window, cx);
+                        }),
+                    ))
+                    .child(
+                        div()
+                            .text_size(px(11.0))
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .text_color(text_muted_col)
+                            .px_2()
+                            .pt_2()
+                            .pb_0p5()
+                            .child("Recent families"),
+                    )
+                    .child(sidebar_dropdown_item(
+                        "drop-item-recent-family",
+                        icons::icon(icons::ICON_USERS),
+                        fam_label_2,
+                        false,
+                        colors,
+                        Box::new(move |_e, window, cx| {
+                            if let Some(ref close) = close_4 {
+                                close(window, cx);
+                            }
+                            on_sel_recent(AppSection::Home, window, cx);
+                        }),
+                    ))
+                    .child(sidebar_dropdown_item(
+                        "drop-item-manage-access",
+                        icons::icon(icons::ICON_CLIPBOARD_LIST),
+                        "Manage family access".to_string(),
+                        false,
+                        colors,
+                        Box::new(move |_e, window, cx| {
+                            if let Some(ref close) = close_5 {
+                                close(window, cx);
+                            }
+                            on_sel_manage(AppSection::Members, window, cx);
+                        }),
+                    ))
+                    .child(sidebar_dropdown_item(
+                        "drop-item-create-family",
+                        icons::icon(icons::ICON_MONEY_BILL_TRANSFER),
+                        "Create family".to_string(),
+                        false,
+                        colors,
+                        Box::new(move |_e, window, cx| {
+                            if let Some(ref close) = close_6 {
+                                close(window, cx);
+                            }
+                            on_sel_create(AppSection::Members, window, cx);
+                        }),
+                    ))
+                    .child(div().h(px(1.0)).w_full().bg(palette.border_color).my_1())
+                    .child(sidebar_dropdown_item(
+                        "drop-item-logout",
+                        icons::icon(icons::ICON_RIGHT_FROM_BRACKET),
+                        "Log out".to_string(),
+                        true,
+                        colors,
+                        Box::new(move |_e, window, cx| {
+                            if let Some(ref close) = close_7 {
+                                close(window, cx);
+                            }
+                            if let Some(ref sign_out) = sign_out_cb {
+                                sign_out(window, cx);
+                            }
+                        }),
+                    )),
+            )
+        })
+        .child(
+            div()
+                .id("sidebar-footer-user-btn")
+                .w_full()
+                .flex()
+                .items_center()
+                .justify_between()
+                .gap_2p5()
+                .px_2p5()
+                .py(px(6.0))
+                .rounded(px(8.0))
+                .cursor_pointer()
+                .hover(move |s| s.bg(hover_bg))
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_2p5()
+                        .min_w_0()
+                        .flex_1()
+                        .child(
+                            div()
+                                .w(px(32.0))
+                                .h(px(32.0))
+                                .flex_none()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .rounded_full()
+                                .bg(if palette.mode == ThemeMode::Dark {
+                                    rgb(0x27272a)
+                                } else {
+                                    rgb(0xe4e4e7)
+                                })
+                                .border(px(1.0))
+                                .border_color(palette.border_color)
+                                .text_size(px(11.0))
+                                .font_weight(FontWeight::BOLD)
+                                .text_color(text_active)
+                                .child(initials),
+                        )
+                        .child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .min_w_0()
+                                .flex_1()
+                                .child(
+                                    div()
+                                        .text_size(px(13.0))
+                                        .font_weight(FontWeight::SEMIBOLD)
+                                        .text_color(text_active)
+                                        .truncate()
+                                        .child(member_name),
+                                )
+                                .child(
+                                    div()
+                                        .text_size(px(11.0))
+                                        .font_weight(FontWeight::NORMAL)
+                                        .text_color(text_muted_col)
+                                        .truncate()
+                                        .child(member_subtitle),
+                                ),
+                        ),
+                )
+                .child(
+                    icons::icon(icons::ICON_SORT)
+                        .size(px(12.0))
+                        .text_color(text_muted_col),
+                )
+                .on_click(move |_ev, window, cx| {
+                    if let Some(ref toggle) = on_toggle {
+                        toggle(window, cx);
+                    }
+                }),
+        )
+}
+
+#[allow(clippy::too_many_arguments)]
 fn sidebar_minimalist_money_sub_nav(
     active_sub_tab: MoneySubTab,
     language: Language,
@@ -287,12 +618,7 @@ fn sidebar_minimalist_money_sub_nav(
     on_select_sub: Option<super::app_layout::MoneyTabSelectHandler>,
     on_select_section: SectionSelectHandler,
 ) -> impl IntoElement {
-    let sub_items: [(
-        &'static str,
-        MoneySubTab,
-        String,
-        Option<(&'static str, Rgba)>,
-    ); 4] = [
+    let sub_items: [SubNavItem; 4] = [
         (
             "min-sub-overview",
             MoneySubTab::Overview,
@@ -692,12 +1018,7 @@ fn sidebar_money_sub_nav(
     on_select_sub: Option<super::app_layout::MoneyTabSelectHandler>,
     on_select_section: SectionSelectHandler,
 ) -> impl IntoElement {
-    let sub_items: [(
-        &'static str,
-        MoneySubTab,
-        String,
-        Option<(&'static str, Rgba)>,
-    ); 4] = [
+    let sub_items: [SubNavItem; 4] = [
         (
             "side-sub-overview",
             MoneySubTab::Overview,

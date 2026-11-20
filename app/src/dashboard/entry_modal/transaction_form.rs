@@ -1,6 +1,6 @@
 use crate::brand::ThemeColors;
 use crate::components::ui::{
-    select_field_with_action, select_input, stateful_input_container, text_input,
+    money_input, select_field_with_action, select_input, stateful_input_container, text_input,
 };
 use crate::dashboard::DashboardView;
 use crate::i18n::{text, Language};
@@ -92,7 +92,7 @@ pub fn render_transaction_form(
                         }),
                 )),
         )
-        // 3. Amount
+        // 3. Amount (using MoneyInput via gpui-kit InputGroup)
         .child(
             div()
                 .flex_1()
@@ -107,10 +107,11 @@ pub fn render_transaction_form(
                         .text_color(palette.text_secondary)
                         .child(field3_label),
                 )
-                .child(stateful_input_container(
-                    palette,
+                .child(money_input(
+                    "entry-amount-input",
                     &dashboard.entry_amount_input,
-                    text_input(&dashboard.entry_amount_input, palette),
+                    "RWF",
+                    palette,
                 )),
         )
         .into_any_element()

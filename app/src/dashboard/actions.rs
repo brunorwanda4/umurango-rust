@@ -200,15 +200,21 @@ impl DashboardView {
             if !user.full_name.trim().is_empty() {
                 self.member_name = user.full_name.clone();
             }
-            let mut contact_parts = Vec::new();
             if let Some(ref email) = user.email {
-                if !email.trim().is_empty() {
-                    contact_parts.push(email.trim().to_string());
-                }
+                self.member_email = email.trim().to_string();
             }
+            if let Some(ref phone) = user.phone_number {
+                self.member_phone = phone.trim().to_string();
+            }
+            let mut contact_parts = Vec::new();
             if let Some(ref phone) = user.phone_number {
                 if !phone.trim().is_empty() {
                     contact_parts.push(phone.trim().to_string());
+                }
+            }
+            if let Some(ref email) = user.email {
+                if !email.trim().is_empty() {
+                    contact_parts.push(email.trim().to_string());
                 }
             }
             self.member_contact = contact_parts.join(" · ");

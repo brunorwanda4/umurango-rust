@@ -56,6 +56,9 @@ pub struct DashboardView {
     member_name: String,
     member_role: String,
     member_contact: String,
+    member_phone: String,
+    member_email: String,
+    pub user_dropdown_open: bool,
     pub family_name: String,
     search_state: Entity<InputState>,
     active_entry_modal: Option<EntryModalKind>,
@@ -177,6 +180,40 @@ impl DashboardView {
         })
         .detach();
 
+        let current_user = crate::auth::client::get_current_user();
+        let (initial_name, initial_phone, initial_email, initial_contact) =
+            if let Some(ref u) = current_user {
+                let name = if u.full_name.trim().is_empty() {
+                    "Rwanda Bruno".to_string()
+                } else {
+                    u.full_name.clone()
+                };
+                let phone = u.phone_number.clone().unwrap_or_default();
+                let email = u.email.clone().unwrap_or_default();
+                let mut parts = Vec::new();
+                if !phone.trim().is_empty() {
+                    parts.push(phone.trim().to_string());
+                }
+                if !email.trim().is_empty() {
+                    parts.push(email.trim().to_string());
+                }
+                let contact = if parts.is_empty() {
+                    "brunorwanda4@gmail.com".to_string()
+                } else {
+                    parts.join(" · ")
+                };
+                (name, phone, email, contact)
+            } else {
+                (
+                    "Rwanda Bruno".to_string(),
+                    "+250 788 123 456".to_string(),
+                    "brunorwanda4@gmail.com".to_string(),
+                    "brunorwanda4@gmail.com".to_string(),
+                )
+            };
+        let initial_family = crate::auth::client::get_current_family_name()
+            .unwrap_or_else(|| "Ingabire Family".to_string());
+
         Self {
             theme,
             mood,
@@ -188,10 +225,13 @@ impl DashboardView {
             project_filter: ProjectFilter::Active,
             expanded_project_index: None,
             nav_history: Vec::new(),
-            member_name: String::new(),
+            member_name: initial_name,
             member_role: String::new(),
-            member_contact: String::new(),
-            family_name: String::new(),
+            member_contact: initial_contact,
+            member_phone: initial_phone,
+            member_email: initial_email,
+            user_dropdown_open: false,
+            family_name: initial_family,
             search_state,
             active_entry_modal: None,
             entry_title_input,
@@ -250,6 +290,7 @@ impl DashboardView {
     }
 
     pub fn set_active_section(&mut self, section: AppSection, cx: &mut Context<Self>) {
+        self.user_dropdown_open = false;
         if self.active_section != section {
             self.nav_history
                 .push((self.active_section, self.money_sub_tab));
@@ -473,6 +514,7 @@ impl Render for DashboardView {
             let view = view_entity.clone();
             move |section: AppSection, _window: &mut Window, cx: &mut App| {
                 view.update(cx, |this, cx| {
+                    this.user_dropdown_open = false;
                     this.set_active_section(section, cx);
                 });
             }
@@ -555,6 +597,28 @@ impl Render for DashboardView {
             }
         };
 
+        let toggle_user_dropdown = {
+            let view = view_entity.clone();
+            Rc::new(move |_window: &mut Window, cx: &mut App| {
+                view.update(cx, |this, cx| {
+                    this.user_dropdown_open = !this.user_dropdown_open;
+                    cx.notify();
+                });
+            })
+        };
+
+        let close_user_dropdown = {
+            let view = view_entity.clone();
+            Rc::new(move |_window: &mut Window, cx: &mut App| {
+                view.update(cx, |this, cx| {
+                    if this.user_dropdown_open {
+                        this.user_dropdown_open = false;
+                        cx.notify();
+                    }
+                });
+            })
+        };
+
         let entry_modal = self.render_entry_modal(palette, view_entity.clone(), cx);
 
         let screen_body: AnyElement = match self.active_section {
@@ -623,6 +687,8 @@ impl Render for DashboardView {
                 can_go_back: !self.nav_history.is_empty()
                     || self.active_section != AppSection::Home,
                 member_name: &self.member_name,
+                member_contact: &self.member_contact,
+                member_phone: &self.member_phone,
                 family_name: &self.family_name,
                 total_treasury: &self.total_treasury,
                 money_badge_count: self.transactions.len(),
@@ -633,6 +699,10 @@ impl Render for DashboardView {
                 on_quick_entry: Some(quick_entry_action),
                 on_back: Some(back_action),
                 on_mood_change: Some(mood_action),
+                user_dropdown_open: self.user_dropdown_open,
+                on_toggle_user_dropdown: Some(toggle_user_dropdown),
+                on_close_user_dropdown: Some(close_user_dropdown),
+                on_sign_out: Some(Rc::new(sign_out_action.clone())),
             },
             select_section,
             change_theme,
