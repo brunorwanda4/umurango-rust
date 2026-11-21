@@ -7,13 +7,13 @@ mod i18n;
 mod icons;
 mod navigation;
 mod preferences;
-mod safe_area;
 mod theme;
 mod window;
 
 use app::UmuryangoApp;
 use gpui_kit::*;
 use umuryango_app::db;
+use umuryango_app::safe_area;
 use window::window_options;
 
 fn main() {
