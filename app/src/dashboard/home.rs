@@ -190,67 +190,83 @@ impl DashboardView {
             },
         );
 
-        let view_see_projects = view_entity.clone();
-        let projects_preview_card = card_surface(palette)
-            .gap_3()
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .justify_between()
+        let has_planned_projects = self.projects.iter().any(|p| !p.is_completed);
+        let projects_preview_card = if has_planned_projects {
+            let view_see_projects = view_entity.clone();
+            let view_entity_boost = view_entity.clone();
+            Some(
+                card_surface(palette)
+                    .gap_3()
                     .child(
                         div()
                             .flex()
-                            .flex_col()
+                            .items_center()
+                            .justify_between()
                             .child(
                                 div()
-                                    .text_sm()
-                                    .font_weight(FontWeight::EXTRA_BOLD)
-                                    .text_color(palette.text_primary)
-                                    .child(text(lang, "cozy.planned_projects_title")),
+                                    .flex()
+                                    .flex_col()
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .font_weight(FontWeight::EXTRA_BOLD)
+                                            .text_color(palette.text_primary)
+                                            .child(text(lang, "cozy.planned_projects_title")),
+                                    )
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .text_color(palette.text_secondary)
+                                            .child(text(lang, "cozy.planned_projects_sub")),
+                                    ),
                             )
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .text_color(palette.text_secondary)
-                                    .child(text(lang, "cozy.planned_projects_sub")),
-                            ),
+                            .child(pill_button(
+                                "home-see-all-projects-btn",
+                                text(lang, "cozy.see_all_arrow"),
+                                palette,
+                                move |_e, _w, cx| {
+                                    view_see_projects.update(cx, |this, cx| {
+                                        this.set_active_section(AppSection::Projects, cx);
+                                    });
+                                },
+                            )),
                     )
-                    .child(pill_button(
-                        "home-see-all-projects-btn",
-                        text(lang, "cozy.see_all_arrow"),
-                        palette,
-                        move |_e, _w, cx| {
-                            view_see_projects.update(cx, |this, cx| {
-                                this.set_active_section(AppSection::Projects, cx);
-                            });
-                        },
-                    )),
+                    .child(
+                        div().flex().flex_col().gap_2p5().children(
+                            self.projects
+                                .iter()
+                                .enumerate()
+                                .filter(|(_, p)| !p.is_completed)
+                                .take(2)
+                                .map(|(idx, proj)| {
+                                    let view_boost = view_entity_boost.clone();
+                                    project_preview_row(
+                                        idx,
+                                        proj,
+                                        lang,
+                                        palette,
+                                        move |_e, _w, cx| {
+                                            view_boost.update(cx, |this, cx| {
+                                                this.boost_project(idx, 50_000, cx);
+                                            });
+                                        },
+                                    )
+                                }),
+                        ),
+                    ),
             )
-            .child(
-                div().flex().flex_col().gap_2p5().children(
-                    self.projects
-                        .iter()
-                        .enumerate()
-                        .filter(|(_, p)| !p.is_completed)
-                        .take(2)
-                        .map(|(idx, proj)| {
-                            let view_boost = view_entity.clone();
-                            project_preview_row(idx, proj, lang, palette, move |_e, _w, cx| {
-                                view_boost.update(cx, |this, cx| {
-                                    this.boost_project(idx, 50_000, cx);
-                                });
-                            })
-                        }),
-                ),
-            );
+        } else {
+            None
+        };
 
         let middle_row = div()
             .flex()
             .gap_4()
             .when(stacked, |this| this.flex_col())
             .child(div().flex_1().min_w_0().child(insights_card))
-            .child(div().flex_1().min_w_0().child(projects_preview_card));
+            .when_some(projects_preview_card, |this, card| {
+                this.child(div().flex_1().min_w_0().child(card))
+            });
 
         let view_full_ledger = view_entity;
         let recent_activity_card = card_surface(palette)

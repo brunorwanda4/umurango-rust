@@ -269,7 +269,7 @@ entries at the end, and include validation.
   - Configured edge-to-edge Android Gradle project under `crates/mobile/android` with `GpuiActivity.java` window insets listener, `MainActivity.java`, and Umuryango branding.
   - Validated with unit tests in `app/src/safe_area.rs` for insets updates and JNI invocation, `cargo test -p umuryango-shared -p umuryango-backend -p umuryango-app --lib`, `cargo clippy --workspace -- -D warnings`, and `bun run check`.
 
-- Replaced mobile launcher icons in `crates/mobile/android/app/src/main/res/` with the official Umuryango family icon: generated adaptive foregrounds (`drawable-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher_foreground.png`) centered within Android's 72dp safe zone, updated `ic_launcher_background` to `#FF000000` in `colors.xml`, and generated legacy square and circular launcher icons (`mipmap-{mdpi,hdpi,xhdpi,xxxhdpi}/ic_launcher.png`, `ic_launcher_round.png`) across all standard densities.
+- Replaced mobile launcher icons in `crates/mobile/android/app/src/main/res/` with the official Umuryango family icon: generated adaptive foregrounds (`drawable-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher_foreground.png`) centered within Android's 72dp safe zone, updated `ic_launcher_background` to `#FF000000` in `colors.xml`, and generated legacy square and circular launcher icons (`mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher.png`, `ic_launcher_round.png`) across all standard densities.
 
 ## 2026-11-22
 
@@ -283,4 +283,9 @@ entries at the end, and include validation.
   - Used regular stroked icons (`free-regular-svg-icons`) for `window-restore` and `window-maximize` so the restore state displays clean outlined overlapping squares matching native caption controls.
   - Removed idle box borders, shadows, and opaque card backgrounds from window caption buttons so they sit cleanly on the titlebar, with smooth rounded hover highlights (`palette.bg_elevated` for minimize/maximize, `palette.error` red for close).
   - Added test lock in `safe_area.rs` to eliminate parallel test races on global static state.
+  - Validated via `cargo test -p umuryango-app`, `cargo fmt --check`, and `cargo clippy -p umuryango-app`.
+
+- Conditionally hid the Planned Projects preview card on the Home dashboard when no planned projects exist:
+  - Evaluated `self.projects.iter().any(|p| !p.is_completed)` in `app/src/dashboard/home.rs`.
+  - When no active/planned projects exist, omitted `projects_preview_card` via `when_some`, letting `cashflow_insights_card` cleanly occupy the row without an empty card container.
   - Validated via `cargo test -p umuryango-app`, `cargo fmt --check`, and `cargo clippy -p umuryango-app`.
