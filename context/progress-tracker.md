@@ -289,3 +289,9 @@ entries at the end, and include validation.
   - Evaluated `self.projects.iter().any(|p| !p.is_completed)` in `app/src/dashboard/home.rs`.
   - When no active/planned projects exist, omitted `projects_preview_card` via `when_some`, letting `cashflow_insights_card` cleanly occupy the row without an empty card container.
   - Validated via `cargo test -p umuryango-app`, `cargo fmt --check`, and `cargo clippy -p umuryango-app`.
+
+- Adopted the dialog component pattern in pp/src/dashboard/entry_modal/project_form.rs:
+  - Structured ender_project_form using DialogContent from crate::components::ui::dialog.
+  - Added standalone open_project_dialog function leveraging GPUI Kit's declarative dialog architecture (window.open_dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter, and ButtonVariants) matching category_dialog.rs.
+  - Added ender_project_dialog alias to support uniform dialog component rendering.
+  - Validated via cargo test -p umuryango-app (all 31 tests passing), cargo fmt --check, and cargo clippy -p umuryango-app -- -D warnings.
