@@ -7,6 +7,7 @@ mod i18n;
 mod icons;
 mod navigation;
 mod preferences;
+mod safe_area;
 mod theme;
 mod window;
 

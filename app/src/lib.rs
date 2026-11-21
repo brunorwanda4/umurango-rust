@@ -1,4 +1,5 @@
 pub mod db;
+pub mod safe_area;
 pub mod sync;
 
 pub fn mobile_entrypoint() {

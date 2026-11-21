@@ -10,6 +10,7 @@ pub fn app_footer(
     active_section: AppSection,
     palette: ThemeColors,
     on_select: SectionSelectHandler,
+    safe_bottom: Pixels,
 ) -> impl IntoElement {
     div()
         .id("app-footer")
@@ -20,7 +21,8 @@ pub fn app_footer(
         .justify_around()
         .gap_1p5()
         .px_2p5()
-        .py_2()
+        .pt_2()
+        .pb(px(8.0) + safe_bottom)
         .bg(palette.bg_nav)
         .border_t(palette.border_width)
         .border_color(palette.border_color)

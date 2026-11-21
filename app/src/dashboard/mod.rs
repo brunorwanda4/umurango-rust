@@ -634,6 +634,10 @@ impl Render for DashboardView {
             }
         };
 
+        let scale = window.scale_factor().max(1.0);
+        let safe_area = crate::safe_area::get_safe_area();
+        let safe_bottom = px(safe_area.bottom / scale);
+
         let toast_stack = if !self.toast_manager.is_empty() {
             let view_dismiss = view_entity.clone();
             let visible_toasts = self.toast_manager.visible(4).collect::<Vec<_>>();
@@ -642,7 +646,9 @@ impl Render for DashboardView {
                 div()
                     .absolute()
                     .when(is_stacked, |this| {
-                        this.bottom(px(72.0)).right(px(16.0)).left(px(16.0))
+                        this.bottom(px(72.0) + safe_bottom)
+                            .right(px(16.0))
+                            .left(px(16.0))
                     })
                     .when(!is_stacked, |this| {
                         this.bottom(px(24.0)).right(px(24.0)).w(px(360.0))
@@ -680,6 +686,7 @@ impl Render for DashboardView {
         app_layout(
             AppLayoutProps {
                 viewport_width,
+                safe_bottom,
                 theme: self.theme,
                 mood: self.mood,
                 language: self.language,

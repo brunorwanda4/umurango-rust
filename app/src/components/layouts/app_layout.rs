@@ -21,6 +21,7 @@ pub type SignOutHandler = Rc<dyn Fn(&mut Window, &mut App)>;
 
 pub struct AppLayoutProps<'a> {
     pub viewport_width: Pixels,
+    pub safe_bottom: Pixels,
     pub theme: ThemeMode,
     pub mood: CozyMood,
     pub language: Language,
@@ -135,6 +136,7 @@ where
                 props.active_section,
                 palette,
                 on_select,
+                props.safe_bottom,
             ))
     }
 }

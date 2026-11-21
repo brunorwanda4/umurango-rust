@@ -88,6 +88,7 @@ pub fn checkbox_with_description(
         .on_click(on_click)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn checkbox_with_link(
     id: impl Into<ElementId>,
     link_id: impl Into<ElementId>,

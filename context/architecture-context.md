@@ -83,3 +83,10 @@ web development; the API remains a Rust service.
   authentication and are removed on navigation to public screens. This store
   is unencrypted for now and must move under the local database encryption
   work before production.
+
+## Mobile Safe Area & Insets
+
+- Android and mobile platforms draw edge-to-edge behind system chrome.
+- System insets (status bars, camera cutouts, and 3-button navigation footers) are forwarded from Android's ViewCompat.setOnApplyWindowInsetsListener via JNI (Java_dev_gpui_mobile_GpuiActivity_nativeSetInsets).
+- Insets are stored in physical pixels in pp/src/safe_area.rs and dynamically scaled to logical pixels via window.scale_factor().
+- Bottom insets are applied to the pp-footer navigation bar and non-dashboard auth views to ensure interactive controls remain completely clear of system footers.

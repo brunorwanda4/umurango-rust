@@ -34,6 +34,7 @@ pub struct UmuryangoApp {
     _create_family_subscription: Subscription,
     _join_family_subscription: Subscription,
     _dashboard_subscription: Subscription,
+    _insets_task: Task<()>,
 }
 
 impl UmuryangoApp {
@@ -339,6 +340,17 @@ impl UmuryangoApp {
             },
         );
 
+        let insets_task = cx.spawn(async move |this, cx| loop {
+            cx.background_executor()
+                .timer(std::time::Duration::from_millis(50))
+                .await;
+            if crate::safe_area::take_insets_changed()
+                && this.update(cx, |_this, cx| cx.notify()).is_err()
+            {
+                break;
+            }
+        });
+
         Self {
             theme,
             language,
@@ -359,6 +371,7 @@ impl UmuryangoApp {
             _create_family_subscription: create_family_subscription,
             _join_family_subscription: join_family_subscription,
             _dashboard_subscription: dashboard_subscription,
+            _insets_task: insets_task,
         }
     }
 
@@ -443,8 +456,16 @@ impl Render for UmuryangoApp {
             }
         };
 
+        let scale = window.scale_factor().max(1.0);
+        let safe_area = crate::safe_area::get_safe_area();
+        let pad_top = px(safe_area.top / scale);
+        let pad_bottom = px(safe_area.bottom / scale);
+        let pad_left = px(safe_area.left / scale);
+        let pad_right = px(safe_area.right / scale);
+
         let palette = colors(self.theme);
         let is_maximized = window.is_maximized() || window.is_fullscreen();
+        let show_titlebar = !cfg!(target_os = "android");
 
         div()
             .size_full()
@@ -454,14 +475,16 @@ impl Render for UmuryangoApp {
             .font_family(palette.font_family)
             .bg(palette.bg_canvas)
             .text_color(palette.text_primary)
-            .when(!is_maximized, |this| {
+            .when(!is_maximized && show_titlebar, |this| {
                 this.border(px(2.5)).border_color(palette.border_color)
             })
-            .child(crate::components::layouts::app_window_titlebar(
-                self.theme,
-                self.language,
-                is_maximized,
-            ))
+            .when(show_titlebar, |this| {
+                this.child(crate::components::layouts::app_window_titlebar(
+                    self.theme,
+                    self.language,
+                    is_maximized,
+                ))
+            })
             .child(
                 div()
                     .flex_1()
@@ -469,6 +492,12 @@ impl Render for UmuryangoApp {
                     .min_h_0()
                     .w_full()
                     .overflow_hidden()
+                    .pt(pad_top)
+                    .pl(pad_left)
+                    .pr(pad_right)
+                    .when(self.screen != AuthScreen::Dashboard, |this| {
+                        this.pb(pad_bottom)
+                    })
                     .child(active_view),
             )
     }
