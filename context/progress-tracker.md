@@ -270,3 +270,5 @@ ight, ottom), insets change notification flag, and JNI bridges (Java_dev_gpui_m
 egister, 	erms, amily_setup) so navigation buttons and CTAs remain safe and accessible above 3-button phone navigation footers (Back, Home, Recent Apps).
   - Configured edge-to-edge Android Gradle project under crates/mobile/android with GpuiActivity.java window insets listener, MainActivity.java, and Umuryango branding.
   - Validated with unit tests in pp/src/safe_area.rs for insets updates and JNI invocation, cargo test -p umuryango-shared -p umuryango-backend -p umuryango-app --lib, cargo clippy --workspace -- -D warnings, and un run check.
+ 
+- Replaced mobile launcher icons in crates/mobile/android/app/src/main/res/ with the official Umuryango family icon: generated adaptive foregrounds (drawable-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher_foreground.png) centered within Android's 72dp safe zone, updated ic_launcher_background to #FF000000 in colors.xml, and generated legacy square and circular launcher icons (mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher.png, ic_launcher_round.png) across all standard densities.

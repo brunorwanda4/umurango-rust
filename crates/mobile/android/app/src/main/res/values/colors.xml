@@ -2,6 +2,6 @@
 <resources>
     <!-- App's dark theme surface color (matches bg_canvas = 0x0a0f1d in Rust). -->
     <color name="gpui_surface">#FF0A0F1D</color>
-    <!-- Adaptive launcher icon background. -->
-    <color name="ic_launcher_background">#FF0A0F1D</color>
+    <!-- Adaptive launcher icon background (black matching brand launcher icon). -->
+    <color name="ic_launcher_background">#FF000000</color>
 </resources>
