@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use std::rc::Rc;
+
 use crate::brand::ThemeColors;
 use crate::icons;
 pub use gpui_kit::component::dialog::{
@@ -9,6 +11,11 @@ pub use gpui_kit::component::dialog::{
 pub use gpui_kit::component::WindowExt;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
+
+/// Checks if a keystroke key string corresponds to the Escape key.
+pub fn is_escape_key(key: &str) -> bool {
+    key.eq_ignore_ascii_case("escape") || key.eq_ignore_ascii_case("esc")
+}
 
 /// Creates a styled dialog container adhering to the gpui-kit dialog specification.
 pub fn dialog_container(id: impl Into<ElementId>, palette: ThemeColors) -> Stateful<Div> {
@@ -74,7 +81,7 @@ pub fn dialog_footer(palette: ThemeColors) -> Div {
         .border_color(palette.border_color)
 }
 
-/// Creates a styled dialog overlay backdrop.
+/// Creates a styled dialog overlay backdrop that closes when clicking outside or pressing the Esc key.
 pub fn dialog_backdrop<C>(
     card: impl IntoElement,
     palette: ThemeColors,
@@ -83,6 +90,10 @@ pub fn dialog_backdrop<C>(
 where
     C: Fn(&MouseDownEvent, &mut Window, &mut App) + 'static,
 {
+    let on_close = Rc::new(on_close);
+    let on_close_click = on_close.clone();
+    let on_close_key = on_close;
+
     div()
         .id("dialog-backdrop")
         .absolute()
@@ -94,6 +105,64 @@ where
         .justify_center()
         .bg(palette.bg_canvas.opacity(0.85))
         .p_4()
-        .on_mouse_down(MouseButton::Left, on_close)
+        .on_key_down(move |event: &KeyDownEvent, window, cx| {
+            if is_escape_key(event.keystroke.key.as_str()) {
+                on_close_key(&MouseDownEvent::default(), window, cx);
+            }
+        })
+        .on_mouse_down(MouseButton::Left, move |e, window, cx| {
+            on_close_click(e, window, cx);
+        })
         .child(card)
+}
+
+/// Creates a styled dialog overlay backdrop with a simplified action callback that closes on outside click or Esc key.
+pub fn dialog_backdrop_action<C>(
+    card: impl IntoElement,
+    palette: ThemeColors,
+    on_close: C,
+) -> Stateful<Div>
+where
+    C: Fn(&mut Window, &mut App) + 'static,
+{
+    let on_close = Rc::new(on_close);
+    let on_close_click = on_close.clone();
+    let on_close_key = on_close;
+
+    div()
+        .id("dialog-backdrop")
+        .absolute()
+        .top_0()
+        .left_0()
+        .size_full()
+        .flex()
+        .items_center()
+        .justify_center()
+        .bg(palette.bg_canvas.opacity(0.85))
+        .p_4()
+        .on_key_down(move |event: &KeyDownEvent, window, cx| {
+            if is_escape_key(event.keystroke.key.as_str()) {
+                on_close_key(window, cx);
+            }
+        })
+        .on_mouse_down(MouseButton::Left, move |_e, window, cx| {
+            on_close_click(window, cx);
+        })
+        .child(card)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[core::prelude::v1::test]
+    fn test_is_escape_key() {
+        assert!(is_escape_key("escape"));
+        assert!(is_escape_key("Escape"));
+        assert!(is_escape_key("esc"));
+        assert!(is_escape_key("ESC"));
+        assert!(!is_escape_key("enter"));
+        assert!(!is_escape_key("tab"));
+        assert!(!is_escape_key("space"));
+    }
 }

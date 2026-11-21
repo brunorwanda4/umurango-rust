@@ -1,5 +1,7 @@
+use std::rc::Rc;
+
 use crate::brand::ThemeColors;
-use crate::components::ui::{compact_primary_button, pill_button};
+use crate::components::ui::{compact_primary_button, is_escape_key, pill_button};
 use crate::icons;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
@@ -145,6 +147,10 @@ pub fn render_modal_backdrop<C>(
 where
     C: Fn(&MouseDownEvent, &mut Window, &mut App) + 'static,
 {
+    let on_close = Rc::new(on_close);
+    let on_close_click = on_close.clone();
+    let on_close_key = on_close;
+
     div()
         .id("entry-modal-backdrop")
         .absolute()
@@ -156,6 +162,13 @@ where
         .justify_center()
         .bg(palette.bg_canvas.opacity(0.85))
         .p_4()
-        .on_mouse_down(MouseButton::Left, on_close)
+        .on_key_down(move |event: &KeyDownEvent, window, cx| {
+            if is_escape_key(event.keystroke.key.as_str()) {
+                on_close_key(&MouseDownEvent::default(), window, cx);
+            }
+        })
+        .on_mouse_down(MouseButton::Left, move |e, window, cx| {
+            on_close_click(e, window, cx);
+        })
         .child(card)
 }

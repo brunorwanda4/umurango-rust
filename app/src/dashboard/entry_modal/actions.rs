@@ -132,6 +132,7 @@ impl DashboardView {
         self.entry_title_input.update(cx, |state, cx| {
             state.set_placeholder(text(lang, "modal.category_name_ph"), window, cx);
             state.set_value("".to_string(), window, cx);
+            state.focus_handle(cx).focus(window, cx);
         });
         self.entry_category_desc_input.update(cx, |state, cx| {
             state.set_placeholder(text(lang, "modal.category_desc_ph"), window, cx);
@@ -254,6 +255,7 @@ impl DashboardView {
         self.entry_title_input.update(cx, |state, cx| {
             state.set_placeholder(title_ph, window, cx);
             state.set_value(title_val, window, cx);
+            state.focus_handle(cx).focus(window, cx);
         });
         self.entry_secondary_input.update(cx, |state, cx| {
             state.set_placeholder(sec_ph, window, cx);

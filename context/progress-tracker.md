@@ -295,3 +295,10 @@ entries at the end, and include validation.
   - Added standalone open_project_dialog function leveraging GPUI Kit's declarative dialog architecture (window.open_dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter, and ButtonVariants) matching category_dialog.rs.
   - Added ender_project_dialog alias to support uniform dialog component rendering.
   - Validated via cargo test -p umuryango-app (all 31 tests passing), cargo fmt --check, and cargo clippy -p umuryango-app -- -D warnings.
+
+- Added Escape (Esc) key dismiss support to dialog and modal backdrops:
+  - Added is_escape_key helper recognizing escape and esc keystrokes.
+  - Updated dialog_backdrop and dialog_backdrop_action in pp/src/components/ui/dialog.rs with .on_key_down to invoke close callbacks when Esc is pressed.
+  - Updated ender_modal_backdrop in pp/src/dashboard/entry_modal/shell.rs to close the active entry modal on Esc.
+  - Added auto-focus to entry_title_input upon opening modals in pp/src/dashboard/entry_modal/actions.rs to immediately capture keyboard events.
+  - Validated via cargo test -p umuryango-app (32 tests passing including 	est_is_escape_key), cargo fmt --check, and cargo clippy -p umuryango-app -- -D warnings.
