@@ -269,7 +269,7 @@ entries at the end, and include validation.
   - Configured edge-to-edge Android Gradle project under `crates/mobile/android` with `GpuiActivity.java` window insets listener, `MainActivity.java`, and Umuryango branding.
   - Validated with unit tests in `app/src/safe_area.rs` for insets updates and JNI invocation, `cargo test -p umuryango-shared -p umuryango-backend -p umuryango-app --lib`, `cargo clippy --workspace -- -D warnings`, and `bun run check`.
 
-- Replaced mobile launcher icons in `crates/mobile/android/app/src/main/res/` with the official Umuryango family icon: generated adaptive foregrounds (`drawable-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher_foreground.png`) centered within Android's 72dp safe zone, updated `ic_launcher_background` to `#FF000000` in `colors.xml`, and generated legacy square and circular launcher icons (`mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher.png`, `ic_launcher_round.png`) across all standard densities.
+- Replaced mobile launcher icons in `crates/mobile/android/app/src/main/res/` with the official Umuryango family icon: generated adaptive foregrounds (`drawable-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher_foreground.png`) centered within Android's 72dp safe zone, updated `ic_launcher_background` to `#FF000000` in `colors.xml`, and generated legacy square and circular launcher icons (`mipmap-{mdpi,hdpi,xhdpi,xxxhdpi}/ic_launcher.png`, `ic_launcher_round.png`) across all standard densities.
 
 ## 2026-11-22
 
@@ -277,3 +277,10 @@ entries at the end, and include validation.
   - `safe_area.rs` was being compiled both as a library module (`pub mod safe_area;` in `lib.rs`) and as a binary module (`mod safe_area;` in `main.rs`), resulting in duplicate unmangled JNI export symbols (`Java_dev_gpui_mobile_*_nativeSetInsets`) when `main.rs` linked `libumuryango_app.rlib`.
   - Switched `app/src/main.rs` to import `safe_area` via `use umuryango_app::safe_area;` matching the `umuryango_app::db` pattern.
   - Validated via `cargo build --bin umuryango-app`, `cargo test -p umuryango-app`, `cargo fmt --check`, and `cargo clippy -p umuryango-app`.
+
+- Fixed window titlebar control button icon visibility and aligned styling to clean titlebar controls:
+  - Explicitly specified `.text_color(idle_text)` and `.group_hover(id, move |s| s.text_color(hover_text))` on `Svg` icons in `app/src/components/layouts/window_titlebar.rs` so GPUI's `paint` method does not skip rendering them when `style.text.color` is `None`.
+  - Used regular stroked icons (`free-regular-svg-icons`) for `window-restore` and `window-maximize` so the restore state displays clean outlined overlapping squares matching native caption controls.
+  - Removed idle box borders, shadows, and opaque card backgrounds from window caption buttons so they sit cleanly on the titlebar, with smooth rounded hover highlights (`palette.bg_elevated` for minimize/maximize, `palette.error` red for close).
+  - Added test lock in `safe_area.rs` to eliminate parallel test races on global static state.
+  - Validated via `cargo test -p umuryango-app`, `cargo fmt --check`, and `cargo clippy -p umuryango-app`.

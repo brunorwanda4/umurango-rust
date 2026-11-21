@@ -87,8 +87,11 @@ pub extern "system" fn Java_dev_gpui_mobile_example_MainActivity_nativeSetInsets
 mod tests {
     use super::*;
 
+    static TEST_LOCK: Mutex<()> = Mutex::new(());
+
     #[test]
     fn test_safe_area_set_and_get() {
+        let _guard = TEST_LOCK.lock().unwrap();
         set_safe_area(12.0, 24.0, 12.0, 48.0);
         let insets = get_safe_area();
         assert_eq!(insets.left, 12.0);
@@ -106,6 +109,7 @@ mod tests {
 
     #[test]
     fn test_jni_native_set_insets() {
+        let _guard = TEST_LOCK.lock().unwrap();
         Java_dev_gpui_mobile_GpuiActivity_nativeSetInsets(
             std::ptr::null_mut(),
             std::ptr::null_mut(),

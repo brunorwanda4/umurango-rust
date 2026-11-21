@@ -35,65 +35,41 @@ fn window_control_button(
 ) -> impl IntoElement {
     let radius = window_control_radius(palette.style);
 
-    let (base_bg, base_border, base_text, hover_bg, hover_border, hover_text) = if is_danger {
+    let (idle_text, hover_bg, hover_text) = if is_danger {
         (
-            palette.expense_bg,
-            palette.expense_border,
-            palette.expense_text,
+            palette.text_secondary,
             palette.error,
-            palette.border_color,
             palette.text_on_accent,
         )
     } else {
         (
-            palette.bg_card,
-            palette.border_color,
+            palette.text_secondary,
+            palette.bg_elevated,
             palette.text_primary,
-            palette.accent_primary,
-            palette.border_color,
-            palette.text_on_accent,
         )
     };
 
-    let chrome_border = if palette.is_minimalist() {
-        px(1.0)
-    } else {
-        px(2.0)
-    };
-
-    let active_offset = match palette.style {
-        UiStyle::CozyKawaii | UiStyle::NeoBrutalism => px(1.5),
-        UiStyle::Claymorphism3D => px(1.0),
-        UiStyle::Minimalist => px(0.0),
-    };
+    let icon_svg =
+        if icon_name == icons::ICON_WINDOW_MAXIMIZE || icon_name == icons::ICON_WINDOW_RESTORE {
+            icons::icon_set("free-regular-svg-icons", icon_name)
+        } else {
+            icons::icon(icon_name)
+        };
 
     div()
         .id(id)
+        .group(id)
         .window_control_area(control_area)
         .cursor_pointer()
-        .w(px(30.0))
+        .w(px(34.0))
         .h(px(28.0))
         .flex_shrink_0()
         .flex()
         .items_center()
         .justify_center()
         .rounded(radius)
-        .bg(base_bg)
-        .border(chrome_border)
-        .border_color(base_border)
-        .shadow(palette.checkbox_shadows())
-        .text_color(base_text)
-        .hover(move |s| {
-            s.bg(hover_bg)
-                .border_color(hover_border)
-                .text_color(hover_text)
-        })
-        .active(move |s| {
-            s.top(active_offset)
-                .bg(hover_bg)
-                .text_color(hover_text)
-                .shadow(vec![])
-        })
+        .hover(move |s| s.bg(hover_bg))
+        .active(|s| s.opacity(0.7))
         .on_mouse_down(MouseButton::Left, |_, window, cx| {
             window.prevent_default();
             cx.stop_propagation();
@@ -102,7 +78,12 @@ fn window_control_button(
             cx.stop_propagation();
             on_click(event, window, cx);
         })
-        .child(icons::icon(icon_name).size(px(12.0)))
+        .child(
+            icon_svg
+                .size(px(12.0))
+                .text_color(idle_text)
+                .group_hover(id, move |s| s.text_color(hover_text)),
+        )
 }
 
 pub fn app_window_titlebar(
@@ -210,7 +191,7 @@ pub fn app_window_titlebar(
                 .id("window-titlebar-controls")
                 .flex()
                 .items_center()
-                .gap_2()
+                .gap(px(4.0))
                 .child(window_control_button(
                     "window-btn-minimize",
                     icons::ICON_MINUS,
