@@ -379,6 +379,8 @@ pub fn pill_button_colored(
         .on_click(on_click)
 }
 
+/// A true ghost icon button with completely transparent idle background, border, and shadow.
+/// Displays a smooth subtle background only when hovered or pressed.
 pub fn ghost_icon_button(
     id: impl Into<ElementId>,
     icon_name: &'static str,
@@ -389,46 +391,44 @@ pub fn ghost_icon_button(
     let radius = if palette.is_minimalist() {
         palette.radius_button
     } else {
-        px(13.0)
-    };
-    let border_w = if palette.is_minimalist() {
-        palette.border_width_input
-    } else {
-        px(2.0)
+        px(10.0)
     };
     let (hover_offset, active_offset) = if palette.is_minimalist() {
         (px(0.0), px(0.0))
     } else {
-        (px(-1.0), px(2.0))
+        (px(-0.5), px(1.0))
     };
+    let hover_bg = if palette.mode == crate::brand::ThemeMode::Dark {
+        palette.bg_elevated
+    } else {
+        palette.bg_badge
+    };
+
     div()
         .id(id)
         .relative()
-        .w(px(36.0))
-        .h(px(36.0))
+        .w(px(32.0))
+        .h(px(32.0))
         .flex_shrink_0()
         .flex()
         .items_center()
         .justify_center()
         .rounded(radius)
-        .bg(palette.bg_badge)
-        .border(border_w)
-        .border_color(palette.border_color)
-        .shadow(palette.checkbox_shadows())
-        .when(!enabled, |this| this.opacity(0.38).cursor_default())
+        // True ghost styling: NO background, NO border, and NO shadow when idle!
+        .when(!enabled, |this| this.opacity(0.35).cursor_default())
         .when(enabled, |this| {
             this.cursor_pointer()
-                .hover(move |s| {
-                    s.top(hover_offset)
-                        .border_color(palette.accent_primary)
-                        .bg(palette.bg_elevated)
-                })
-                .active(move |s| s.top(active_offset))
+                .hover(move |s| s.top(hover_offset).bg(hover_bg))
+                .active(move |s| s.top(active_offset).bg(palette.bg_input_focus))
                 .on_click(on_click)
         })
         .child(
             icons::icon(icon_name)
                 .size(px(14.0))
-                .text_color(palette.text_primary),
+                .text_color(if enabled {
+                    palette.text_primary
+                } else {
+                    palette.text_muted
+                }),
         )
 }

@@ -7,6 +7,7 @@ use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
+#[allow(clippy::too_many_arguments)]
 pub fn render_icon_picker(
     palette: ThemeColors,
     selected_icon: &str,
@@ -43,10 +44,13 @@ pub fn render_icon_picker(
         )
         .child(
             div()
+                .id("category-icon-picker-scroll")
                 .flex()
                 .flex_wrap()
                 .gap_1()
                 .p_1()
+                .max_h(px(140.0))
+                .overflow_y_scroll()
                 .rounded(palette.radius_input)
                 .bg(palette.bg_elevated)
                 .border(palette.border_width_input)

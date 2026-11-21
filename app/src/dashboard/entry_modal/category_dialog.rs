@@ -4,11 +4,13 @@ use super::types::{parse_color_hex, CATEGORY_FONTAWESOME_ICONS};
 use crate::brand::ThemeColors;
 use crate::components::ui::{
     pill_button_colored, stateful_input_container, stateful_textarea_container, text_input,
-    textarea_input,
+    textarea_input, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+    WindowExt,
 };
 use crate::dashboard::DashboardView;
 use crate::i18n::{text, Language};
 use crate::icons;
+use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::*;
 
 pub fn render_category_type_switcher(
@@ -89,31 +91,37 @@ pub fn render_category_dialog(
         .trim()
         .to_lowercase();
 
-    let mut displayed_icons: Vec<String> = if icon_query.is_empty() {
-        CATEGORY_FONTAWESOME_ICONS
+    let displayed_icons: Vec<String> = if icon_query.is_empty() {
+        let mut list: Vec<String> = CATEGORY_FONTAWESOME_ICONS
             .iter()
             .map(|s| s.to_string())
-            .collect()
+            .collect();
+        // If an icon is currently selected and not part of the default 24 quick picks, prepend it
+        if !selected_icon.is_empty()
+            && icons::has_icon(&selected_icon)
+            && !list.iter().any(|s| s.eq_ignore_ascii_case(&selected_icon))
+        {
+            list.insert(0, selected_icon.clone());
+        }
+        list
     } else {
-        CATEGORY_FONTAWESOME_ICONS
-            .iter()
-            .filter(|ic| ic.to_lowercase().contains(&icon_query))
+        // Search across all icons in assets/fontawesome/
+        let matches = icons::search_icons(&icon_query);
+        let mut list: Vec<String> = matches
+            .into_iter()
+            .take(80)
             .map(|s| s.to_string())
-            .collect()
+            .collect();
+
+        // Ensure exact valid query or selected icon is always present
+        if icons::has_icon(&icon_query) && !list.iter().any(|s| s.eq_ignore_ascii_case(&icon_query))
+        {
+            list.insert(0, icon_query.clone());
+        }
+        list
     };
 
-    if !icon_query.is_empty()
-        && icons::has_icon(&icon_query)
-        && !displayed_icons
-            .iter()
-            .any(|s| s.eq_ignore_ascii_case(&icon_query))
-    {
-        displayed_icons.insert(0, icon_query.clone());
-    }
-
-    div()
-        .flex()
-        .flex_col()
+    DialogContent::new()
         .gap_2()
         // 1. Type Switcher
         .child(render_category_type_switcher(
@@ -158,7 +166,7 @@ pub fn render_category_dialog(
             &dashboard.entry_category_icon_input,
             displayed_icons,
             &icon_query,
-            view_entity,
+            view_entity.clone(),
             lang,
         ))
         // 5. Description Textarea
@@ -181,4 +189,61 @@ pub fn render_category_dialog(
                 )),
         )
         .into_any_element()
+}
+
+/// Opens a standalone category dialog using GPUI Kit's native declarative dialog API (`window.open_dialog`).
+#[allow(dead_code)]
+pub fn open_category_dialog(
+    window: &mut Window,
+    cx: &mut App,
+    dashboard_view: Entity<DashboardView>,
+    palette: ThemeColors,
+    lang: Language,
+) {
+    window.open_dialog(cx, move |dialog, _window, _cx| {
+        let view = dashboard_view.clone();
+        dialog
+            .w(px(520.0))
+            .overlay(true)
+            .overlay_closable(true)
+            .keyboard(true)
+            .content(move |content, _window, cx| {
+                let db = view.read(cx);
+                content
+                    .child(
+                        DialogHeader::new()
+                            .child(DialogTitle::new().child(text(lang, "modal.category_title")))
+                            .child(
+                                DialogDescription::new()
+                                    .child(text(lang, "modal.category_desc_ph")),
+                            ),
+                    )
+                    .child(render_category_dialog(db, palette, view.clone(), lang, cx))
+                    .child(
+                        DialogFooter::new()
+                            .child(
+                                Button::new("category-dialog-cancel")
+                                    .outline()
+                                    .label(text(lang, "modal.cancel"))
+                                    .on_click(|_, window, cx| {
+                                        window.close_dialog(cx);
+                                    }),
+                            )
+                            .child(
+                                Button::new("category-dialog-save")
+                                    .primary()
+                                    .label(text(lang, "modal.save"))
+                                    .on_click({
+                                        let v = view.clone();
+                                        move |_, window, cx| {
+                                            v.update(cx, |this, cx| {
+                                                this.submit_entry_modal(window, cx);
+                                            });
+                                            window.close_dialog(cx);
+                                        }
+                                    }),
+                            ),
+                    )
+            })
+    });
 }

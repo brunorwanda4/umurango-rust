@@ -1,5 +1,7 @@
 use crate::brand::ThemeColors;
-use crate::components::ui::{pill_button_colored, stateful_input_container, text_input};
+use crate::components::ui::{
+    money_input, pill_button_colored, stateful_input_container, text_input,
+};
 use crate::dashboard::DashboardView;
 use crate::i18n::{text, Language};
 use gpui_kit::*;
@@ -131,10 +133,11 @@ pub fn render_loan_form(
                                 .text_color(palette.text_secondary)
                                 .child(text(lang, "modal.field_loan_principal")),
                         )
-                        .child(stateful_input_container(
-                            palette,
+                        .child(money_input(
+                            "entry-loan-amount-input",
                             &dashboard.entry_amount_input,
-                            text_input(&dashboard.entry_amount_input, palette),
+                            "RWF",
+                            palette,
                         )),
                 ),
         )

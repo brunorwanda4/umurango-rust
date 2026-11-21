@@ -130,7 +130,8 @@ impl DashboardView {
 
         let entry_title_input = cx.new(|cx| InputState::new(window, cx));
         let entry_secondary_input = cx.new(|cx| InputState::new(window, cx));
-        let entry_amount_input = cx.new(|cx| InputState::new(window, cx));
+        let entry_amount_input =
+            cx.new(|cx| InputState::new(window, cx).mask_pattern(money_mask_pattern("RWF")));
         let entry_category_select = cx.new(|cx| {
             SelectState::new(
                 vec![

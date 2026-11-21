@@ -1,3 +1,4 @@
+use crate::components::ui::money_mask_pattern;
 use crate::dashboard::{DashboardView, EntryModalKind};
 use crate::i18n::{text, Language};
 use gpui_kit::*;
@@ -174,6 +175,7 @@ impl DashboardView {
             });
             self.entry_amount_input.update(cx, |state, cx| {
                 state.set_placeholder(a_ph, window, cx);
+                state.set_mask_pattern(money_mask_pattern("RWF"), window, cx);
                 state.set_value(amt, window, cx);
             });
             cx.notify();
@@ -205,7 +207,7 @@ impl DashboardView {
                 text(lang, "modal.income_cat_ph"),
                 text(lang, "modal.income_cat_val"),
                 text(lang, "modal.amount_rwf_ph"),
-                "50000".to_string(),
+                "50,000".to_string(),
             ),
             EntryModalKind::Expense => (
                 text(lang, "modal.expense_desc_ph"),
@@ -213,7 +215,7 @@ impl DashboardView {
                 text(lang, "modal.expense_cat_ph"),
                 text(lang, "modal.expense_cat_val"),
                 text(lang, "modal.amount_rwf_ph"),
-                "35000".to_string(),
+                "35,000".to_string(),
             ),
             EntryModalKind::Loan => (
                 text(lang, "modal.loan_reason_ph"),
@@ -221,7 +223,7 @@ impl DashboardView {
                 text(lang, "modal.loan_person_ph"),
                 text(lang, "modal.loan_person_val"),
                 text(lang, "modal.loan_amount_rwf_ph"),
-                "120000".to_string(),
+                "120,000".to_string(),
             ),
             EntryModalKind::Project => (
                 text(lang, "modal.project_name_ph"),
@@ -229,7 +231,7 @@ impl DashboardView {
                 text(lang, "modal.project_cat_ph"),
                 "HOUSE".to_string(),
                 text(lang, "modal.target_amount_rwf_ph"),
-                "1200000".to_string(),
+                "1,200,000".to_string(),
             ),
             EntryModalKind::MemberInvite => (
                 text(lang, "modal.member_name_ph"),
@@ -283,6 +285,15 @@ impl DashboardView {
         if kind != EntryModalKind::Category {
             self.entry_amount_input.update(cx, |state, cx| {
                 state.set_placeholder(amt_ph, window, cx);
+                if kind == EntryModalKind::MemberInvite {
+                    state.set_mask_pattern(
+                        gpui_kit::component::input::MaskPattern::None,
+                        window,
+                        cx,
+                    );
+                } else {
+                    state.set_mask_pattern(money_mask_pattern("RWF"), window, cx);
+                }
                 state.set_value(amt_val, window, cx);
             });
         }

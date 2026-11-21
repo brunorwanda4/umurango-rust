@@ -10,6 +10,7 @@ use gpui_kit::component::{
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
+pub use gpui_kit::component::input::MaskPattern;
 pub use umuryango_shared::{
     currency_fraction_digits, format_minor_units, format_money, format_money_text, group_digits,
     is_valid_money_input, parse_money_text_to_minor_units, sanitize_money_text, Money,
@@ -266,6 +267,7 @@ pub fn input_field_with_error(
         ))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn password_field(
     toggle_id: impl Into<ElementId>,
     palette: ThemeColors,
@@ -307,7 +309,16 @@ pub fn password_field(
         ))
 }
 
-/// Creates an `InputState` initialized and validated for money entry.
+/// Returns a `MaskPattern::Number` configured for the given currency's fraction digits.
+pub fn money_mask_pattern(currency: &str) -> MaskPattern {
+    let fraction_digits = currency_fraction_digits(currency);
+    MaskPattern::Number {
+        separator: Some(','),
+        fraction: Some(fraction_digits),
+    }
+}
+
+/// Creates an `InputState` initialized with number formatting (comma digit grouping) and currency fraction validation.
 pub fn create_money_input_state(
     window: &mut Window,
     cx: &mut App,
@@ -320,13 +331,36 @@ pub fn create_money_input_state(
 
     cx.new(|cx| {
         let mut state = InputState::new(window, cx)
-            .default_value(initial_text)
-            .validate(move |text, _| is_valid_money_input(text, fraction_digits));
+            .mask_pattern(MaskPattern::Number {
+                separator: Some(','),
+                fraction: Some(fraction_digits),
+            })
+            .default_value(initial_text);
         if let Some(placeholder) = placeholder {
             state = state.placeholder(placeholder);
         }
         state
     })
+}
+
+/// Configures an `InputState` to format money with thousand separators and currency-specific fraction digits in real-time as the user types.
+pub fn setup_money_input_state(
+    state: &Entity<InputState>,
+    currency: &str,
+    window: &mut Window,
+    cx: &mut App,
+) {
+    let fraction_digits = currency_fraction_digits(currency);
+    state.update(cx, |s, cx| {
+        s.set_mask_pattern(
+            MaskPattern::Number {
+                separator: Some(','),
+                fraction: Some(fraction_digits),
+            },
+            window,
+            cx,
+        );
+    });
 }
 
 /// Updates an existing money `InputState` with an amount in minor units.

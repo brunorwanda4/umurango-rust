@@ -22,16 +22,14 @@ pub fn app_mobile_header(
     let select_money = on_select_section;
     let money_tab_cb = props.on_select_money_tab.clone();
 
-    let (title, badge_label, subtitle) = match active_section {
+    let (title, badge_label) = match active_section {
         AppSection::Home => (
             text(language, active_section.label_key()),
             text(language, "cozy.nav_home_badge"),
-            text(language, "cozy.nav_home_sub"),
         ),
         AppSection::Money => (
             money_sub_tab.nav_title_for(language),
             text(language, "cozy.nav_money_badge"),
-            text(language, "section.money_subtitle"),
         ),
         AppSection::Projects => (
             text(language, active_section.label_key()),
@@ -40,7 +38,6 @@ pub fn app_mobile_header(
                 props.projects_badge_count,
                 text(language, "cozy.nav_projects_badge_suffix")
             ),
-            text(language, "cozy.nav_projects_sub"),
         ),
         AppSection::Members => (
             text(language, active_section.label_key()),
@@ -49,12 +46,10 @@ pub fn app_mobile_header(
                 props.members_badge_count,
                 text(language, "cozy.nav_members_badge_suffix")
             ),
-            text(language, "cozy.nav_members_sub"),
         ),
         AppSection::Profile => (
             text(language, active_section.label_key()),
             text(language, "cozy.nav_profile_badge"),
-            text(language, "cozy.nav_profile_sub"),
         ),
     };
 
@@ -95,39 +90,28 @@ pub fn app_mobile_header(
                 .child(
                     div()
                         .flex()
-                        .flex_col()
+                        .items_center()
+                        .gap_2()
                         .min_w_0()
                         .child(
                             div()
-                                .flex()
-                                .items_center()
-                                .gap_2()
-                                .child(
-                                    div()
-                                        .text_base()
-                                        .font_weight(FontWeight::EXTRA_BOLD)
-                                        .text_color(palette.text_primary)
-                                        .child(title),
-                                )
-                                .child(
-                                    div()
-                                        .px_2()
-                                        .py(px(1.0))
-                                        .rounded_full()
-                                        .bg(palette.bg_badge)
-                                        .border(px(1.5))
-                                        .border_color(palette.border_color)
-                                        .text_size(px(10.0))
-                                        .font_weight(FontWeight::EXTRA_BOLD)
-                                        .text_color(palette.accent_primary)
-                                        .child(badge_label),
-                                ),
+                                .text_base()
+                                .font_weight(FontWeight::EXTRA_BOLD)
+                                .text_color(palette.text_primary)
+                                .child(title),
                         )
                         .child(
                             div()
-                                .text_xs()
-                                .text_color(palette.text_secondary)
-                                .child(subtitle),
+                                .px_2()
+                                .py(px(1.0))
+                                .rounded_full()
+                                .bg(palette.bg_badge)
+                                .border(px(1.5))
+                                .border_color(palette.border_color)
+                                .text_size(px(10.0))
+                                .font_weight(FontWeight::EXTRA_BOLD)
+                                .text_color(palette.accent_primary)
+                                .child(badge_label),
                         ),
                 ),
         )

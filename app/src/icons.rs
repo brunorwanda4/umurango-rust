@@ -4,8 +4,25 @@ use crate::brand::ThemeMode;
 use gpui_kit::{component::Icon, svg, Pixels, Rgba, Styled, Svg};
 use include_dir::{include_dir, Dir};
 use std::path::Path;
+use std::sync::LazyLock;
 
 static FONT_AWESOME: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../assets/fontawesome");
+
+static ALL_ICON_NAMES: LazyLock<Vec<&'static str>> = LazyLock::new(|| {
+    let mut names = Vec::new();
+    for dir in FONT_AWESOME.dirs() {
+        for file in dir.files() {
+            if file.path().extension().is_some_and(|ext| ext == "svg") {
+                if let Some(stem) = file.path().file_stem().and_then(|s| s.to_str()) {
+                    names.push(stem);
+                }
+            }
+        }
+    }
+    names.sort_unstable();
+    names.dedup();
+    names
+});
 
 pub const ICON_CHECK: &str = "check";
 pub const ICON_EYE: &str = "eye";
@@ -76,19 +93,68 @@ pub const ICON_INBOX: &str = "inbox";
 pub const ICON_CLIPBOARD_LIST: &str = "clipboard-list";
 pub const ICON_MONEY_BILL_TRANSFER: &str = "money-bill-transfer";
 
-pub fn has_icon(name: &str) -> bool {
+/// Returns all unique FontAwesome icon names available in assets/fontawesome.
+pub fn all_icons() -> &'static [&'static str] {
+    &ALL_ICON_NAMES
+}
+
+/// Searches all available FontAwesome icons by substring/prefix matching.
+/// Exact matches appear first, followed by prefix matches, then substring matches.
+pub fn search_icons(query: &str) -> Vec<&'static str> {
+    let q = query.trim().to_lowercase();
+    if q.is_empty() {
+        return Vec::new();
+    }
+
+    let mut exact = Vec::new();
+    let mut starts = Vec::new();
+    let mut contains = Vec::new();
+
+    for &name in all_icons() {
+        let lower = name.to_lowercase();
+        if lower == q {
+            exact.push(name);
+        } else if lower.starts_with(&q) {
+            starts.push(name);
+        } else if lower.contains(&q) {
+            contains.push(name);
+        }
+    }
+
+    let mut results = exact;
+    results.extend(starts);
+    results.extend(contains);
+    results
+}
+
+/// Locates icon SVG data across solid, regular, and brands folders.
+pub fn find_icon_data(name: &str) -> Option<(&'static str, &'static [u8])> {
     let clean = name.trim();
     if clean.is_empty() {
-        return false;
+        return None;
     }
-    let path = format!("free-solid-svg-icons/{clean}.svg");
-    FONT_AWESOME.get_file(Path::new(&path)).is_some()
+    const SETS: [&str; 3] = [
+        "free-solid-svg-icons",
+        "free-regular-svg-icons",
+        "free-brands-svg-icons",
+    ];
+    for set in SETS {
+        let path = format!("{set}/{clean}.svg");
+        if let Some(file) = FONT_AWESOME.get_file(Path::new(&path)) {
+            return Some((set, file.contents()));
+        }
+    }
+    None
+}
+
+pub fn has_icon(name: &str) -> bool {
+    find_icon_data(name).is_some()
 }
 
 pub fn safe_icon(name: &str) -> Svg {
     let clean = name.trim();
-    if has_icon(clean) {
-        icon(clean)
+    if let Some((_, data)) = find_icon_data(clean) {
+        svg().data(data)
     } else {
         icon("tag")
     }
@@ -103,7 +169,11 @@ fn icon_data(set: &str, name: &str) -> &'static [u8] {
 }
 
 pub fn icon(name: &str) -> Svg {
-    icon_set("free-solid-svg-icons", name)
+    if let Some((_, data)) = find_icon_data(name) {
+        svg().data(data)
+    } else {
+        icon_set("free-solid-svg-icons", name)
+    }
 }
 
 pub fn icon_set(set: &str, name: &str) -> Svg {
@@ -129,4 +199,29 @@ pub fn theme_button_icon(theme: ThemeMode) -> Icon {
         "moon"
     })
     .text_color(crate::brand::colors(theme).text_primary)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_all_icons_and_search() {
+        let total = all_icons().len();
+        assert!(total > 2000, "Expected over 2000 icons, found {total}");
+        assert!(has_icon("wallet"));
+        assert!(has_icon("house"));
+        assert!(has_icon("car"));
+        assert!(has_icon("cart-shopping"));
+        assert!(!has_icon("nonexistent_fake_icon_xyz"));
+
+        let car_matches = search_icons("car");
+        assert!(!car_matches.is_empty());
+        assert_eq!(car_matches[0], "car");
+        assert!(car_matches.contains(&"car-battery"));
+
+        let shop_matches = search_icons("shop");
+        assert!(!shop_matches.is_empty());
+        assert!(shop_matches.contains(&"cart-shopping"));
+    }
 }
