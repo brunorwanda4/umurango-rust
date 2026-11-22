@@ -1,6 +1,111 @@
 use super::*;
 
 impl DashboardView {
+    /// Checks GitHub Releases in the background for a newer version of the application.
+    pub fn check_for_app_update(&mut self, manual: bool, cx: &mut Context<Self>) {
+        if matches!(
+            self.update_state,
+            UpdateState::Checking | UpdateState::Downloading(_)
+        ) {
+            return;
+        }
+        if manual {
+            self.update_state = UpdateState::Checking;
+            cx.notify();
+        }
+
+        let check_task = cx
+            .background_executor()
+            .spawn(async move { crate::updater::check_for_update() });
+
+        cx.spawn(async move |this, cx| {
+            let result = check_task.await;
+            let _ = this.update(cx, |view, cx| {
+                match result {
+                    Ok(Some(release)) => {
+                        let ver = release.version.clone();
+                        view.update_state = UpdateState::Available(release);
+                        view.show_update_modal = true;
+                        view.toast_info(
+                            "New Update Available",
+                            Some(format!("Umuryango v{ver} is ready to install.")),
+                            cx,
+                        );
+                    }
+                    Ok(None) => {
+                        view.update_state = UpdateState::UpToDate;
+                        if manual {
+                            view.toast_success(
+                                "Up to Date",
+                                Some(format!(
+                                    "You are running the latest version (v{}).",
+                                    crate::updater::CURRENT_VERSION
+                                )),
+                                cx,
+                            );
+                        }
+                    }
+                    Err(err) => {
+                        if manual {
+                            view.update_state = UpdateState::Error(err.clone());
+                            view.toast_error("Update Check Failed", Some(err), cx);
+                        } else {
+                            view.update_state = UpdateState::Idle;
+                        }
+                    }
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
+    /// Downloads the available update asset, replaces the current binary, and restarts the application.
+    pub fn install_app_update(&mut self, cx: &mut Context<Self>) {
+        let release = match &self.update_state {
+            UpdateState::Available(rel) => rel.clone(),
+            _ => return,
+        };
+
+        self.update_state = UpdateState::Downloading(release.clone());
+        self.toast_info(
+            "Downloading Update",
+            Some(format!(
+                "Installing Umuryango v{} and restarting...",
+                release.version
+            )),
+            cx,
+        );
+        cx.notify();
+
+        let rel_for_worker = release.clone();
+        let install_task = cx
+            .background_executor()
+            .spawn(async move { crate::updater::download_and_apply_update(&rel_for_worker) });
+
+        cx.spawn(async move |this, cx| {
+            let result = install_task.await;
+            let _ = this.update(cx, |view, cx| {
+                match result {
+                    Ok(UpdateApplyOutcome::RestartLaunched) => {
+                        std::process::exit(0);
+                    }
+                    Ok(UpdateApplyOutcome::OpenedExternal(url)) => {
+                        view.update_state = UpdateState::Available(release);
+                        view.show_update_modal = false;
+                        view.toast_info("Opened Release Installer", Some(url), cx);
+                    }
+                    Err(err) => {
+                        view.update_state = UpdateState::Available(release);
+                        view.toast_error("Update Installation Failed", Some(err), cx);
+                    }
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
     pub fn boost_project(&mut self, index: usize, amount_rwf: i64, cx: &mut Context<Self>) {
         let Some((project_id, proj_name)) = self
             .projects

@@ -471,7 +471,7 @@ impl DashboardView {
                     ),
             );
 
-        let view_sync = view_entity;
+        let view_sync = view_entity.clone();
         let storage_card = card_surface(palette)
             .child(card_header(
                 text(lang, "dashboard.storage_health"),
@@ -515,6 +515,24 @@ impl DashboardView {
                     )),
             );
 
+        let view_check_update = view_entity.clone();
+        let view_install_update = view_entity;
+        let update_card = app_update_card(
+            &self.update_state,
+            lang,
+            palette,
+            move |_e, _w, cx| {
+                view_check_update.update(cx, |this, cx| {
+                    this.check_for_app_update(true, cx);
+                });
+            },
+            move |_e, _w, cx| {
+                view_install_update.update(cx, |this, cx| {
+                    this.install_app_update(cx);
+                });
+            },
+        );
+
         div()
             .flex()
             .gap_4()
@@ -529,7 +547,8 @@ impl DashboardView {
                     .gap_4()
                     .child(governance_card)
                     .child(channels_card)
-                    .child(storage_card),
+                    .child(storage_card)
+                    .child(update_card),
             )
             .into_any_element()
     }

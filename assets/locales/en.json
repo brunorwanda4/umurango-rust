@@ -345,5 +345,22 @@
   "modal.notes_ph": "Add notes, receipt #, or context...",
   "modal.datetime_ph": "e.g. Today, or YYYY-MM-DD",
   "modal.quick_today": "Today",
-  "modal.quick_yesterday": "Yesterday"
+  "modal.quick_yesterday": "Yesterday",
+  "update.card_title": "Application Updates",
+  "update.card_subtitle": "Automatic self-update from GitHub Releases",
+  "update.current_version": "Installed version:",
+  "update.status_idle": "Ready to check for updates",
+  "update.status_checking": "Checking GitHub Releases for new version...",
+  "update.status_up_to_date": "You are running the latest version",
+  "update.status_available": "New version available:",
+  "update.status_downloading": "Downloading and installing update...",
+  "update.check_btn": "Check for Updates",
+  "update.install_btn": "Update & Restart",
+  "update.installing_btn": "Updating...",
+  "update.later_btn": "Later",
+  "update.review_btn": "View Update",
+  "update.modal_title": "New App Update Available",
+  "update.modal_subtitle": "A new version of Umuryango is ready to install.",
+  "update.release_notes": "What's New",
+  "update.banner_title": "New update ready:"
 }

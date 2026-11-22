@@ -152,7 +152,7 @@ entries at the end, and include validation.
   - `avatar.rs`: Initial extraction, `avatar_initials`, and `member_avatar` with `AvatarSize`.
   - `modal.rs`: `modal_backdrop`, `modal_card`, `modal_header` with close button, and `modal_footer`.
   - `toggle.rs`: Animated switch components `toggle` and `toggle_field`.
-  - `button.rs`: Reusable action buttons: `icon_action_button`, `secondary_button`, and `destructive_button``.
+  - `button.rs`: Reusable action buttons: `icon_action_button`, `secondary_button`, and `destructive_button`.
   - Added new Font Awesome Free icons in `app/src/icons.rs` (`ICON_CIRCLE_CHECK`, `ICON_CIRCLE_XMARK`,
     `ICON_CIRCLE_INFO`, `ICON_TRIANGLE_EXCLAMATION`, `ICON_MAGNIFYING_GLASS`, `ICON_WALLET`,
     `ICON_CREDIT_CARD`, `ICON_ARROW_UP`, `ICON_ARROW_DOWN`).
@@ -192,7 +192,7 @@ entries at the end, and include validation.
   components (`app/src/dashboard/components.rs`) and typed dashboard data
   definitions (`app/src/dashboard/data.rs`), reducing the screen module by
   roughly 300 lines without changing navigation or dashboard behavior.
-- Added a project-wide â€œless is moreâ€ rule to `AGENTS.md` and the coding
+- Added a project-wide "less is more" rule to `AGENTS.md` and the coding
   context so AI changes favor focused components and avoid speculative
   abstractions.
 - Applied the feature-folder convention to the dashboard by organizing its
@@ -240,7 +240,7 @@ entries at the end, and include validation.
 - Validated via `cargo fmt --all -- --check`, `cargo check --workspace`, `cargo test -p umuryango-shared -p umuryango-backend`, `cargo test -p umuryango-app`, and `bun run check` in `web/`.
 - Implemented extensible multi-style UI theme architecture and Cozy Kawaii aesthetic across native GPUI app (`app/`):
   - Created `app/src/theme/mod.rs` with `UiStyle` (`CozyKawaii`, `NeoBrutalism`, `Claymorphism3D`), `CozyMood` (`Matcha`, `Peach`, `Berry`), and `StyleTokens` stored in GPUI global state (`cx.set_global(...)`) and synced with `gpui-kit` / `rune-kit` theme tokens.
-  - Configured Dark Cozy and Light Cozy palettes with tactile sticker outlines (`2.5px`â€“`3px`), rounded geometry (`32px` cards, `22px` buttons, `20px` inputs, `10px` checkboxes), and hard unblurred bottom rim shadows.
+  - Configured Dark Cozy and Light Cozy palettes with tactile sticker outlines (`2.5px`–`3px`), rounded geometry (`32px` cards, `22px` buttons, `20px` inputs, `10px` checkboxes), and hard unblurred bottom rim shadows.
   - Updated all shared UI components (`card`, `input`, `button`, `checkbox`, `alert`, `avatar`, `badge`, `divider`, `modal`, `stat_card`, `toggle`), dashboard components, layout shell (`sidebar`, `footer`, `mobile_header`), and auth screens to consume `StyleTokens`.
   - Updated `LoginView` and `auth/layout.rs` with the custom kawaii family hearth icon, "Forgot PIN?" link, visibility toggle, default-checked remember-me checkbox, tactile primary sign-in button, and live Dark/Light Cozy + `CozyMood` header switcher.
 - Refactored all 5 dashboard pages (`Home`, `Money`, `Projects`, `Members`/`People`, `Profile`) and layout chrome (`sidebar`, `mobile_header`/top navbar, `footer`) to match the Cozy Kawaii Family Finance HTML reference while reusing shared GPUI components:
@@ -291,17 +291,17 @@ entries at the end, and include validation.
   - Validated via `cargo test -p umuryango-app`, `cargo fmt --check`, and `cargo clippy -p umuryango-app`.
 
 - Adopted the dialog component pattern in `app/src/dashboard/entry_modal/project_form.rs`:
-  - Structured `render_project_form` using DialogContent from crate::components::ui::dialog.
-  - Added standalone open_project_dialog function leveraging GPUI Kit's declarative dialog architecture (window.open_dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter, and ButtonVariants) matching category_dialog.rs.
+  - Structured `render_project_form` using `DialogContent` from `crate::components::ui::dialog`.
+  - Added standalone `open_project_dialog` function leveraging GPUI Kit's declarative dialog architecture (`window.open_dialog`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogFooter`, and `ButtonVariants`) matching `category_dialog.rs`.
   - Added `render_project_dialog` alias to support uniform dialog component rendering.
-  - Validated via cargo test -p umuryango-app (all 31 tests passing), cargo fmt --check, and cargo clippy -p umuryango-app -- -D warnings.
+  - Validated via `cargo test -p umuryango-app` (all 31 tests passing), `cargo fmt --check`, and `cargo clippy -p umuryango-app -- -D warnings`.
 
 - Added Escape (Esc) key dismiss support to dialog and modal backdrops:
-  - Added is_escape_key helper recognizing escape and esc keystrokes.
-  - Updated dialog_backdrop and dialog_backdrop_action in `app/src/components/ui/dialog.rs` with .on_key_down to invoke close callbacks when Esc is pressed.
+  - Added `is_escape_key` helper recognizing `escape` and `esc` keystrokes.
+  - Updated `dialog_backdrop` and `dialog_backdrop_action` in `app/src/components/ui/dialog.rs` with `.on_key_down` to invoke close callbacks when Esc is pressed.
   - Updated `render_modal_backdrop` in `app/src/dashboard/entry_modal/shell.rs` to close the active entry modal on Esc.
-  - Added auto-focus to entry_title_input upon opening modals in `app/src/dashboard/entry_modal/actions.rs` to immediately capture keyboard events.
-  - Validated via cargo test -p umuryango-app (32 tests passing including 	est_is_escape_key), cargo fmt --check, and cargo clippy -p umuryango-app -- -D warnings.
+  - Added auto-focus to `entry_title_input` upon opening modals in `app/src/dashboard/entry_modal/actions.rs` to immediately capture keyboard events.
+  - Validated via `cargo test -p umuryango-app` (32 tests passing including `test_is_escape_key`), `cargo fmt --check`, and `cargo clippy -p umuryango-app -- -D warnings`.
 
 - Added spring-animated chevron transition to sidebar navigation:
   - Updated `app/src/components/layouts/sidebar.rs` to animate chevrons using GPUI Kit's spring animation framework (`SpringConfig::new(280.0, 24.0, 1.0)`, `SpringAnimation`, `AnimationPhase`, `.with_spring(...)`).
@@ -344,13 +344,15 @@ entries at the end, and include validation.
   - Updated submission logic in `app/src/dashboard/entry_modal/submit.rs` to read from `entry_date_picker`.
   - Validated via `cargo test -p umuryango-app` (all 34 tests passing), `cargo fmt --check`, and `cargo clippy -p umuryango-app -- -D warnings`.
 
-
 - Installed GPUI Kit agent skills from `https://gpui-kit.com/skills/`:
   - Installed `gpui-kit` skill (`.agents/skills/gpui-kit/`) containing `SKILL.md` and complete reference docs (`coding-guides.md`, `conventions.md`, `recipes.md`, `usage.md`, and GPUI mechanics guides under `references/gpui/`).
   - Installed `gpui-kit-design-guides` skill (`.agents/skills/gpui-kit-design-guides/`) containing `SKILL.md` and `references/design-guides.md`.
   - Synced and verified via `symposium sync -v` (both skills registered and included as workspace member skills).
-- Prepared backend for Render deployment with Neon PostgreSQL:
-  - Updated ackend/src/config.rs (Config::from_env / Config::from_lookup) to support PRODUCTION_DATABASE_URL fallback and automatic  .0.0.0:$PORT binding when Render's PORT environment variable is set.
-  - Added pply_schema_pool using SQLx (	ls-rustls-ring) in ackend/src/schema.rs and updated init_db, ackend/src/bin/init_schema.rs (--production flag), and ackend/src/main.rs startup warmup to ensure idempotent schema initialization over TLS.
-  - Added ender.yaml Blueprint for Render deployment and updated .env.example / ackend/.env.example.
-  - Initialized production database schema on Neon (cargo run -p umuryango-backend --bin init-schema -- --production) and validated with cargo test -p umuryango-backend, cargo fmt --all -- --check, and cargo clippy -p umuryango-backend -- -D warnings.
+
+- Implemented automatic GitHub Releases self-updater and CI release pipeline for `umuryango-app`:
+  - Created `app/src/updater.rs` with semantic version parsing (`parse_semver`, `is_newer_version`), GitHub Releases latest API check (`check_for_update`), platform binary asset selection (`select_platform_asset`), atomic binary download and self-replacement (`download_and_apply_update`), and startup `.old` executable cleanup (`cleanup_old_binary`).
+  - Added `app/src/components/dashboard/update_modal.rs` with `update_notification_banner`, `render_update_modal` (displaying release notes, version diff badge, asset size, and **Update & Restart** / **Later** actions), and `app_update_card` in Profile / Settings (`app/src/dashboard/profile.rs`).
+  - Wired automatic startup update check and background download-and-restart actions (`check_for_app_update`, `install_app_update`) in `app/src/dashboard/mod.rs` and `app/src/dashboard/actions.rs`.
+  - Added localized strings in `assets/locales/en.json` and `assets/locales/rw.json`.
+  - Added `.github/workflows/release.yml` to automatically build `umuryango-app-windows-x86_64.exe` and publish a GitHub Release when a version tag (`v*.*.*`) or bumped `Cargo.toml` version is pushed, plus `bun run release` (`scripts/release.js`) helper to bump, commit, tag, and push new versions.
+  - Validated via `cargo fmt --all -- --check`, `cargo clippy -p umuryango-app -- -D warnings`, and `cargo test -p umuryango-app` (38 tests passing).

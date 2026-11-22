@@ -92,6 +92,9 @@ pub const ICON_SORT: &str = "sort";
 pub const ICON_INBOX: &str = "inbox";
 pub const ICON_CLIPBOARD_LIST: &str = "clipboard-list";
 pub const ICON_MONEY_BILL_TRANSFER: &str = "money-bill-transfer";
+pub const ICON_DOWNLOAD: &str = "download";
+pub const ICON_ROTATE: &str = "rotate";
+pub const ICON_ROCKET: &str = "rocket";
 
 /// Returns all unique FontAwesome icon names available in assets/fontawesome.
 pub fn all_icons() -> &'static [&'static str] {
@@ -213,6 +216,9 @@ mod tests {
         assert!(has_icon("house"));
         assert!(has_icon("car"));
         assert!(has_icon("cart-shopping"));
+        assert!(has_icon(ICON_DOWNLOAD));
+        assert!(has_icon(ICON_ROTATE));
+        assert!(has_icon(ICON_ROCKET));
         assert!(!has_icon("nonexistent_fake_icon_xyz"));
 
         let car_matches = search_icons("car");

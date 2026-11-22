@@ -1,5 +1,6 @@
 mod components;
 mod data;
+mod update_modal;
 
 pub use components::{
     approval_request_card, cashflow_insights_card, expense_category_card, income_stream_card,
@@ -12,4 +13,7 @@ pub use data::{
     EntryModalKind, ExpenseCategoryRow, IncomeStreamRow, LoanFilter, LoanItem,
     MemberContributionRow, MoneySubTab, MonthlyCashflowPoint, ProjectFilter, ProjectSummary,
     QuickEntryKind, TransactionRow,
+};
+pub use update_modal::{
+    app_update_card, format_asset_size, render_update_modal, update_notification_banner,
 };

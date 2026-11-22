@@ -1,0 +1,110 @@
+name: Build & Publish App Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+    branches:
+      - main
+    paths:
+      - "Cargo.toml"
+      - "app/**"
+      - "crates/shared/**"
+      - ".github/workflows/release.yml"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Optional version tag to publish (e.g. v0.2.0). Defaults to Cargo.toml version."
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  check-release:
+    name: Resolve Release Tag
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.version.outputs.should_release }}
+      tag_name: ${{ steps.version.outputs.tag_name }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version and check if release already exists
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+            VERSION="${TAG_NAME#v}"
+            echo "Triggered by tag push: ${TAG_NAME}"
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
+            echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ -n "${INPUT_TAG}" ]]; then
+            VERSION="${INPUT_TAG#v}"
+            TAG_NAME="v${VERSION}"
+          else
+            VERSION=$(grep -m1 '^version = "' Cargo.toml | sed -E 's/version = "([^"]+)"/\1/')
+            TAG_NAME="v${VERSION}"
+          fi
+
+          echo "Workspace Cargo.toml version: ${VERSION} (${TAG_NAME})"
+
+          if gh release view "${TAG_NAME}" >/dev/null 2>&1; then
+            echo "Release ${TAG_NAME} already exists. Bump version in Cargo.toml or run bun run release to publish a new version."
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "New version ${TAG_NAME} detected! Proceeding to build and publish release."
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
+            echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          fi
+
+  release-windows:
+    name: Build Windows Desktop App
+    needs: check-release
+    if: needs.check-release.outputs.should_release == 'true'
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo registry and build artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build Umuryango native app (Release)
+        run: cargo build --release -p umuryango-app --bin umuryango-app
+
+      - name: Package release binary
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item "target/release/umuryango-app.exe" "dist/umuryango-app-windows-x86_64.exe"
+          $hash = (Get-FileHash "dist/umuryango-app-windows-x86_64.exe" -Algorithm SHA256).Hash.ToLower()
+          "$hash  umuryango-app-windows-x86_64.exe" | Out-File -FilePath "dist/umuryango-app-windows-x86_64.exe.sha256" -Encoding utf8
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.check-release.outputs.tag_name }}
+          name: "Umuryango ${{ needs.check-release.outputs.tag_name }}"
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          files: |
+            dist/umuryango-app-windows-x86_64.exe
+            dist/umuryango-app-windows-x86_64.exe.sha256

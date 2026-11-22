@@ -8789,6 +8789,7 @@ dependencies = [
  "rune",
  "rune-kit",
  "rusqlite",
+ "serde",
  "serde_json",
  "umuryango-shared",
  "ureq",

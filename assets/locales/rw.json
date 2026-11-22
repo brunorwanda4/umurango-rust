@@ -345,5 +345,22 @@
   "modal.notes_ph": "Andika ibisobanuro birambuye...",
   "modal.datetime_ph": "urugero Uyu munsi, cyangwa YYYY-MM-DD",
   "modal.quick_today": "Uyu munsi",
-  "modal.quick_yesterday": "Ejo hashize"
+  "modal.quick_yesterday": "Ejo hashize",
+  "update.card_title": "Kuvugurura Porogaramu",
+  "update.card_subtitle": "Kuvugurura binyuze kuri GitHub Releases",
+  "update.current_version": "Verisiyo iriho:",
+  "update.status_idle": "Witeguye kugenzura verisiyo nshya",
+  "update.status_checking": "Birimo kugenzura verisiyo nshya kuri GitHub...",
+  "update.status_up_to_date": "Ufite verisiyo ya vuba iheruka",
+  "update.status_available": "Verisiyo nshya irabonetse:",
+  "update.status_downloading": "Birimo gukurura no gushyiramo verisiyo nshya...",
+  "update.check_btn": "Shaka Verisiyo Nshya",
+  "update.install_btn": "Vugurura & Ongera Ufungure",
+  "update.installing_btn": "Birimo kuvugururwa...",
+  "update.later_btn": "Nyuma",
+  "update.review_btn": "Reba Verisiyo",
+  "update.modal_title": "Verisiyo Nshya ya Porogaramu Irabonetse",
+  "update.modal_subtitle": "Verisiyo nshya ya Umuryango yiteguye gushyirwamo.",
+  "update.release_notes": "Ibishya Birimo",
+  "update.banner_title": "Verisiyo nshya irabonetse:"
 }

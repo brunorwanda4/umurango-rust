@@ -102,3 +102,10 @@ web development; the API remains a Rust service.
 - System insets (status bars, camera cutouts, and 3-button navigation footers) are forwarded from Android's ViewCompat.setOnApplyWindowInsetsListener via JNI (Java_dev_gpui_mobile_GpuiActivity_nativeSetInsets).
 - Insets are stored in physical pixels in `app/src/safe_area.rs` and dynamically scaled to logical pixels via window.scale_factor().
 - Bottom insets are applied to the `app-footer` navigation bar and non-dashboard auth views to ensure interactive controls remain completely clear of system footers.
+
+## Native App Self-Update & Release Pipeline
+
+- `app/src/updater.rs` checks GitHub Releases (`https://api.github.com/repos/brunorwanda4/umurango-rust/releases/latest`, overridable via `UMURYANGO_UPDATE_REPO` or `UMURYANGO_UPDATE_URL`) against the compiled `CARGO_PKG_VERSION`.
+- When a newer semantic version is found, `DashboardView` surfaces a notification banner and an interactive Update & Restart modal (`app/src/components/dashboard/update_modal.rs`), plus an Application Updates card in the Profile screen.
+- On confirmation, the updater downloads the platform release asset into `<exe>.new.tmp`, renames the running executable to `<exe>.old`, moves the new binary into place, spawns the updated binary, and exits; `cleanup_old_binary()` removes `<exe>.old` on the next launch.
+- `.github/workflows/release.yml` automatically builds `umuryango-app-windows-x86_64.exe` and publishes a GitHub Release when a new version tag (`v*.*.*`) or bumped `Cargo.toml` version is pushed (`bun run release`).

@@ -16,9 +16,12 @@ use app::UmuryangoApp;
 use gpui_kit::*;
 use umuryango_app::db;
 use umuryango_app::safe_area;
+pub use umuryango_app::updater;
 use window::window_options;
 
 fn main() {
+    updater::cleanup_old_binary();
+
     let connection =
         db::open_local("umuryango.db").expect("local SQLite database must be available");
 

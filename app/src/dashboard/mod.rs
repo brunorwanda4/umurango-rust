@@ -8,6 +8,7 @@ pub(super) use crate::components::ui::*;
 pub(super) use crate::i18n::{text, Language};
 pub(super) use crate::icons;
 use crate::theme::{active_mood, set_cozy_mood};
+pub(super) use crate::updater::{UpdateApplyOutcome, UpdateState};
 pub(super) use gpui_kit::component::input::{InputState, TextareaState};
 pub(super) use gpui_kit::component::select::{SelectEvent, SelectState};
 pub(super) use gpui_kit::component::IndexPath;
@@ -111,6 +112,8 @@ pub struct DashboardView {
     pub(super) next_toast_id: u64,
     pub(super) toast_clock_running: bool,
     pub storage_sync_status: String,
+    pub update_state: UpdateState,
+    pub show_update_modal: bool,
 }
 
 impl EventEmitter<DashboardEvent> for DashboardView {}
@@ -235,7 +238,7 @@ impl DashboardView {
         let initial_family = crate::auth::client::get_current_family_name()
             .unwrap_or_else(|| "Ingabire Family".to_string());
 
-        Self {
+        let mut view = Self {
             theme,
             mood,
             language,
@@ -304,7 +307,11 @@ impl DashboardView {
             next_toast_id: 0,
             toast_clock_running: false,
             storage_sync_status: text(language, "dashboard.storage_health_desc").to_string(),
-        }
+            update_state: UpdateState::Idle,
+            show_update_modal: false,
+        };
+        view.check_for_app_update(false, cx);
+        view
     }
 
     pub fn set_member_name(&mut self, name: String, cx: &mut Context<Self>) {
@@ -646,6 +653,60 @@ impl Render for DashboardView {
 
         let entry_modal = self.render_entry_modal(palette, view_entity.clone(), cx);
 
+        let active_release = match &self.update_state {
+            UpdateState::Available(rel) => Some((rel.clone(), false)),
+            UpdateState::Downloading(rel) => Some((rel.clone(), true)),
+            _ => None,
+        };
+
+        let update_banner = active_release.as_ref().map(|(rel, is_downloading)| {
+            let view_review = view_entity.clone();
+            let view_install = view_entity.clone();
+            update_notification_banner(
+                rel,
+                *is_downloading,
+                self.language,
+                palette,
+                move |_e, _w, cx| {
+                    view_review.update(cx, |this, cx| {
+                        this.show_update_modal = true;
+                        cx.notify();
+                    });
+                },
+                move |_e, _w, cx| {
+                    view_install.update(cx, |this, cx| {
+                        this.install_app_update(cx);
+                    });
+                },
+            )
+        });
+
+        let update_modal = if self.show_update_modal {
+            active_release.as_ref().map(|(rel, is_downloading)| {
+                let view_close = view_entity.clone();
+                let view_install = view_entity.clone();
+                render_update_modal(
+                    rel,
+                    *is_downloading,
+                    self.language,
+                    palette,
+                    move |_w, cx| {
+                        view_close.update(cx, |this, cx| {
+                            this.show_update_modal = false;
+                            cx.notify();
+                        });
+                    },
+                    move |_e, _w, cx| {
+                        view_install.update(cx, |this, cx| {
+                            this.install_app_update(cx);
+                        });
+                    },
+                )
+            })
+        } else {
+            None
+        };
+
         let screen_body: AnyElement = match self.active_section {
             AppSection::Home => self.render_home_screen(stacked, palette, view_entity.clone()),
             AppSection::Money => {
@@ -701,10 +762,18 @@ impl Render for DashboardView {
             .bg(palette.bg_canvas)
             .text_color(palette.text_primary)
             .child(
-                touch_scrollable_fill("dashboard-main-scroll")
-                    .child(div().flex().flex_col().gap_4().p_5().child(screen_body)),
+                touch_scrollable_fill("dashboard-main-scroll").child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap_4()
+                        .p_5()
+                        .when_some(update_banner, |this, banner| this.child(banner))
+                        .child(screen_body),
+                ),
             )
             .when_some(entry_modal, |this, modal| this.child(modal))
+            .when_some(update_modal, |this, modal| this.child(modal))
             .when_some(toast_stack, |this, stack| this.child(stack));
 
         app_layout(

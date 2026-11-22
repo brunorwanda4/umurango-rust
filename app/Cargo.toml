@@ -17,6 +17,7 @@ rusqlite = { version = "0.37.0", features = ["bundled"] }
 umuryango-shared = { path = "../crates/shared" }
 ureq = { version = "2.10.2", features = ["json"] }
 uuid.workspace = true
+serde = { workspace = true, features = ["derive"] }
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"

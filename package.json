@@ -16,6 +16,7 @@
     "dev:native:all": "bun run scripts/dev-all.js --native",
     "dev:app:all": "bun run scripts/dev-all.js --app",
     "dev:no-web": "bun run scripts/dev-all.js --no-web",
+    "release": "bun run scripts/release.js",
     "check": "cargo check -p umuryango-app",
     "fmt": "cargo fmt --all -- --check"
   },
