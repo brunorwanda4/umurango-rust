@@ -1203,6 +1203,87 @@ where
         )
 }
 
+pub fn member_card<R>(
+    index: usize,
+    member: &MemberContributionRow,
+    language: Language,
+    palette: ThemeColors,
+    on_remind: R,
+) -> impl IntoElement
+where
+    R: Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+{
+    let contact_text = member
+        .phone
+        .as_ref()
+        .map(|p| p.to_string())
+        .filter(|p| !p.trim().is_empty())
+        .unwrap_or_else(|| "+250 788 000 000".to_string());
+
+    card_surface(palette)
+        .id(("member-card", index))
+        .gap_3()
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .gap_3()
+                .child(member_avatar(
+                    member.name.as_ref(),
+                    Some(member.role.as_ref()),
+                    AvatarSize::Lg,
+                    palette,
+                ))
+                .child(
+                    div()
+                        .px_2p5()
+                        .py_1()
+                        .rounded_full()
+                        .bg(palette.income_bg)
+                        .border(px(1.5))
+                        .border_color(palette.income_border)
+                        .text_size(px(10.0))
+                        .font_weight(FontWeight::EXTRA_BOLD)
+                        .text_color(palette.income_text)
+                        .child(member.status.clone()),
+                ),
+        )
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .pt_2()
+                .border_t(palette.border_width_input)
+                .border_color(palette.border_color)
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_2()
+                        .child(
+                            icons::icon(icons::ICON_PHONE)
+                                .size(px(11.0))
+                                .text_color(palette.text_secondary),
+                        )
+                        .child(
+                            div()
+                                .text_xs()
+                                .font_weight(FontWeight::MEDIUM)
+                                .text_color(palette.text_secondary)
+                                .child(contact_text),
+                        ),
+                )
+                .child(pill_button(
+                    ("member-remind-btn", index),
+                    text(language, "cozy.send_reminder_btn"),
+                    palette,
+                    on_remind,
+                )),
+        )
+}
+
 pub fn member_pledge_card<C, R>(
     index: usize,
     member: &MemberContributionRow,

@@ -314,3 +314,10 @@ entries at the end, and include validation.
   - Normalized all 4 chevron SVGs to consistent `viewBox="0 0 512 512"` centered at (256, 256), ensuring exact identical stroke weight, arm proportions, tip curvature, and visual bounds across all orientations.
   - Sized the sidebar chevron container with fixed `w(px(14.0)).h(px(14.0))` and removed unnatural vertical shifting, eliminating jumping and keeping icons optically centered with navigation labels.
   - Validated via `cargo test -p umuryango-app` (33 tests passing), `cargo fmt --check`, and `cargo clippy -p umuryango-app -- -D warnings`.
+
+- Removed pledge contribution tracking from the Members / People screen:
+  - Replaced the monthly circle pledge hero card and progress bar in `app/src/dashboard/members.rs` with a clean Family Members count header (`dashboard.household_members`) and Invite Member button.
+  - Added `member_card` in `app/src/components/dashboard/components.rs` displaying avatar, full name, role, status badge, and contact phone number without contribution progress or 'Log 25k' buttons.
+  - Added `phone: Option<SharedString>` to `MemberContributionRow` in `app/src/components/dashboard/data.rs` populated from `FamilyMemberDto.phone_number`.
+  - Updated `members_section` in `app/src/components/layouts/sections.rs` to align with the simplified member roster layout.
+  - Validated via `cargo test -p umuryango-app` (33 tests passing), `cargo fmt --check`, and `cargo clippy -p umuryango-app -- -D warnings`.

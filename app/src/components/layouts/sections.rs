@@ -3,9 +3,9 @@
 use crate::brand::{colors, ThemeColors, ThemeMode};
 use crate::components::app_content_width;
 use crate::components::dashboard::{
-    expense_category_card, format_rwf, income_stream_card, loan_card, member_pledge_card,
-    project_goal_card, transaction_row, ExpenseCategoryRow, IncomeStreamRow, LoanItem,
-    MemberContributionRow, ProjectSummary, TransactionRow,
+    expense_category_card, format_rwf, income_stream_card, loan_card, member_card,
+    member_pledge_card, project_goal_card, transaction_row, ExpenseCategoryRow, IncomeStreamRow,
+    LoanItem, MemberContributionRow, ProjectSummary, TransactionRow,
 };
 use crate::components::scroll::touch_scrollable_fill;
 use crate::components::ui::{
@@ -216,13 +216,6 @@ pub fn projects_section(theme: ThemeMode, language: Language) -> impl IntoElemen
 pub fn members_section(theme: ThemeMode, language: Language) -> impl IntoElement {
     let palette = colors(theme);
     let family_members: &[MemberContributionRow] = &[];
-    let total_pledge: i64 = family_members.iter().map(|m| m.monthly_goal_rwf).sum();
-    let total_contributed: i64 = family_members.iter().map(|m| m.contributed_rwf).sum();
-    let pct = if total_pledge <= 0 {
-        100
-    } else {
-        ((total_contributed * 100) / total_pledge).clamp(0, 100) as u8
-    };
 
     div().size_full().child(
         touch_scrollable_fill("members-section-scroll").child(
@@ -237,59 +230,41 @@ pub fn members_section(theme: ThemeMode, language: Language) -> impl IntoElement
                     palette,
                 ))
                 .child(
-                    card_surface(palette)
-                        .gap_3()
-                        .child(
-                            div()
-                                .flex()
-                                .items_center()
-                                .justify_between()
-                                .child(
-                                    div()
-                                        .flex()
-                                        .flex_col()
-                                        .child(
-                                            div()
-                                                .text_xs()
-                                                .font_weight(FontWeight::BOLD)
-                                                .text_color(palette.text_secondary)
-                                                .child(text(
-                                                    language,
-                                                    "cozy.circle_monthly_pledge",
-                                                )),
-                                        )
-                                        .child(
-                                            div()
-                                                .text_lg()
-                                                .font_weight(FontWeight::EXTRA_BOLD)
-                                                .text_color(palette.text_primary)
-                                                .child(format!(
-                                                    "{} / {} ({}%)",
-                                                    format_rwf(total_contributed),
-                                                    format_rwf(total_pledge),
-                                                    pct
-                                                )),
-                                        ),
-                                )
-                                .child(compact_primary_button(
-                                    "members-sec-invite-btn",
-                                    text(language, "cozy.invite_btn"),
-                                    palette,
-                                    |_e, _w, _cx| {},
-                                )),
-                        )
-                        .child(kawaii_progress_bar(pct, palette.accent_primary, palette)),
+                    card_surface(palette).gap_3().child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .justify_between()
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_col()
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .font_weight(FontWeight::BOLD)
+                                            .text_color(palette.text_secondary)
+                                            .child(text(language, "dashboard.household_members")),
+                                    )
+                                    .child(
+                                        div()
+                                            .text_lg()
+                                            .font_weight(FontWeight::EXTRA_BOLD)
+                                            .text_color(palette.text_primary)
+                                            .child(format!("{} Members", family_members.len())),
+                                    ),
+                            )
+                            .child(compact_primary_button(
+                                "members-sec-invite-btn",
+                                text(language, "cozy.invite_btn"),
+                                palette,
+                                |_e, _w, _cx| {},
+                            )),
+                    ),
                 )
                 .child(div().flex().flex_col().gap_3().children(
                     family_members.iter().enumerate().map(|(idx, member)| {
-                        member_pledge_card(
-                            idx,
-                            member,
-                            language,
-                            palette,
-                            |_e, _w, _cx| {},
-                            |_e, _w, _cx| {},
-                        )
+                        member_card(idx, member, language, palette, |_e, _w, _cx| {})
                     }),
                 )),
         ),

@@ -151,6 +151,7 @@ impl DashboardView {
         }
     }
 
+    #[allow(dead_code)]
     pub fn log_member_contribution(
         &mut self,
         index: usize,
