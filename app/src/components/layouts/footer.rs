@@ -1,4 +1,4 @@
-use super::nav::{AppSection, SectionSelectHandler};
+use super::nav::{AppSection, SectionSelectHandler, WorkspaceMode};
 use crate::brand::ThemeColors;
 use crate::i18n::{text, Language};
 use crate::icons;
@@ -8,6 +8,7 @@ use gpui_kit::*;
 pub fn app_footer(
     language: Language,
     active_section: AppSection,
+    workspace_mode: WorkspaceMode,
     palette: ThemeColors,
     on_select: SectionSelectHandler,
     safe_bottom: Pixels,
@@ -27,8 +28,9 @@ pub fn app_footer(
         .border_t(palette.border_width)
         .border_color(palette.border_color)
         .children(
-            AppSection::ALL
-                .into_iter()
+            AppSection::mobile_sections_for(workspace_mode)
+                .iter()
+                .copied()
                 .enumerate()
                 .map(|(idx, section)| {
                     footer_nav_item(

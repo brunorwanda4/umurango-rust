@@ -1,12 +1,13 @@
 pub(super) use crate::brand::{apply_theme, CozyMood};
-use crate::brand::{colors, ThemeColors, ThemeMode};
+use crate::brand::{colors, ThemeMode};
 pub(super) use crate::components::dashboard::*;
 pub(super) use crate::components::layouts::responsive::app_content_width;
-pub(super) use crate::components::layouts::{app_layout, AppLayoutProps, AppSection};
+pub(super) use crate::components::layouts::{
+    app_layout, AppLayoutProps, AppSection, WorkspaceMode,
+};
 pub(super) use crate::components::scroll::touch_scrollable_fill;
 pub(super) use crate::components::ui::*;
 pub(super) use crate::i18n::{text, Language};
-pub(super) use crate::icons;
 use crate::theme::{active_mood, set_cozy_mood};
 pub(super) use crate::updater::{UpdateApplyOutcome, UpdateState};
 pub(super) use gpui_kit::component::input::{InputState, TextareaState};
@@ -28,12 +29,6 @@ use std::time::{Duration, Instant};
 
 mod actions;
 mod entry_modal;
-mod home;
-mod members;
-mod money;
-mod profile;
-mod projects;
-mod reports;
 
 pub enum DashboardEvent {
     ThemeChanged(ThemeMode),
@@ -47,6 +42,7 @@ pub struct DashboardView {
     theme: ThemeMode,
     mood: CozyMood,
     language: Language,
+    pub workspace_mode: WorkspaceMode,
     active_section: AppSection,
     money_sub_tab: MoneySubTab,
     chart_mode: ChartMode,
@@ -115,8 +111,8 @@ pub struct DashboardView {
     pub(super) next_toast_id: u64,
     pub(super) toast_clock_running: bool,
     pub storage_sync_status: String,
-    pub update_state: UpdateState,
-    pub show_update_modal: bool,
+    pub(super) update_state: UpdateState,
+    pub(super) show_update_modal: bool,
 }
 
 impl EventEmitter<DashboardEvent> for DashboardView {}
@@ -245,6 +241,7 @@ impl DashboardView {
             theme,
             mood,
             language,
+            workspace_mode: WorkspaceMode::Family,
             active_section: AppSection::Home,
             money_sub_tab: MoneySubTab::Overview,
             chart_mode: ChartMode::Cashflow,
@@ -340,7 +337,22 @@ impl DashboardView {
         }
     }
 
-        pub fn set_report_period(&mut self, period: ReportPeriodFilter, cx: &mut Context<Self>) {
+    pub fn set_workspace_mode(&mut self, mode: WorkspaceMode, cx: &mut Context<Self>) {
+        if self.workspace_mode != mode {
+            self.workspace_mode = mode;
+            self.active_section = AppSection::Home;
+            let mode_label = text(self.language, mode.label_key());
+            let msg = format!(
+                "{} {}",
+                text(self.language, "workspace.switched_to"),
+                mode_label
+            );
+            self.toast_info(msg, None::<&str>, cx);
+            cx.notify();
+        }
+    }
+
+    pub fn set_report_period(&mut self, period: ReportPeriodFilter, cx: &mut Context<Self>) {
         self.report_period = period;
         self.report_timeline_points = derive_report_timeline(&self.transactions, period);
         cx.notify();
@@ -617,6 +629,18 @@ impl Render for DashboardView {
             }
         };
 
+        let select_workspace_mode = {
+            let view = view_entity.clone();
+            Rc::new(
+                move |mode: WorkspaceMode, _window: &mut Window, cx: &mut App| {
+                    view.update(cx, |this, cx| {
+                        this.user_dropdown_open = false;
+                        this.set_workspace_mode(mode, cx);
+                    });
+                },
+            )
+        };
+
         let select_money_tab = {
             let view = view_entity.clone();
             Rc::new(
@@ -773,17 +797,389 @@ impl Render for DashboardView {
         };
 
         let screen_body: AnyElement = match self.active_section {
-            AppSection::Home => self.render_home_screen(stacked, palette, view_entity.clone()),
-            AppSection::Money => {
-                self.render_money_screen(stacked, palette, view_entity.clone(), cx)
+            AppSection::Home => {
+                let view_for_sec = view_entity.clone();
+                let view_for_tab = view_entity.clone();
+                let view_for_qa = view_entity.clone();
+                let view_for_cm = view_entity.clone();
+                let view_for_boost = view_entity.clone();
+                crate::home::home_page(crate::home::HomePageProps {
+                    language: self.language,
+                    palette,
+                    stacked,
+                    total_treasury: &self.total_treasury,
+                    monthly_income_rwf: self.monthly_income_rwf,
+                    monthly_expenses_rwf: self.monthly_expenses_rwf,
+                    monthly_contributions: &self.monthly_contributions,
+                    monthly_expenses: &self.monthly_expenses,
+                    income_streams: &self.income_streams,
+                    expense_categories: &self.expense_categories,
+                    approvals: &self.approvals,
+                    chart_mode: self.chart_mode,
+                    monthly_cashflow: &self.monthly_cashflow,
+                    projects: &self.projects,
+                    transactions: &self.transactions,
+                    on_navigate_section: Rc::new(move |sec, _w, cx| {
+                        view_for_sec.update(cx, |this, cx| {
+                            this.set_active_section(sec, cx);
+                        });
+                    }),
+                    on_navigate_money_tab: Rc::new(move |tab, _w, cx| {
+                        view_for_tab.update(cx, |this, cx| {
+                            this.navigate_to_money_tab(tab, cx);
+                        });
+                    }),
+                    on_quick_action: Rc::new(move |kind, window, cx| {
+                        view_for_qa.update(cx, |this, cx| match kind {
+                            QuickEntryKind::Income => {
+                                this.open_entry_modal(EntryModalKind::Income, window, cx);
+                            }
+                            QuickEntryKind::Expense => {
+                                this.open_entry_modal(EntryModalKind::Expense, window, cx);
+                            }
+                            QuickEntryKind::Loan => {
+                                this.navigate_to_money_tab(MoneySubTab::Loans, cx);
+                                this.open_entry_modal(EntryModalKind::Loan, window, cx);
+                            }
+                            QuickEntryKind::Project => {
+                                this.set_active_section(AppSection::Projects, cx);
+                                this.open_entry_modal(EntryModalKind::Project, window, cx);
+                            }
+                        });
+                    }),
+                    on_change_chart_mode: Rc::new(move |mode, _w, cx| {
+                        view_for_cm.update(cx, |this, cx| {
+                            this.chart_mode = mode;
+                            cx.notify();
+                        });
+                    }),
+                    on_boost_project: Rc::new(move |idx, amount, _w, cx| {
+                        view_for_boost.update(cx, |this, cx| {
+                            this.boost_project(idx, amount, cx);
+                        });
+                    }),
+                })
+                .into_any_element()
             }
-            AppSection::Projects => self.render_projects_screen(palette, view_entity.clone()),
-            AppSection::Members => self.render_people_screen(palette, view_entity.clone()),
+            AppSection::Money => {
+                let view_for_tab = view_entity.clone();
+                let view_for_modal = view_entity.clone();
+                let view_for_cat = view_entity.clone();
+                let view_for_appr = view_entity.clone();
+                let view_for_filter = view_entity.clone();
+                let view_for_repay = view_entity.clone();
+                crate::money::money_page(
+                    crate::money::MoneyPageProps {
+                        language: self.language,
+                        palette,
+                        stacked,
+                        sub_tab: self.money_sub_tab,
+                        loans: &self.loans,
+                        monthly_income_rwf: self.monthly_income_rwf,
+                        monthly_expenses_rwf: self.monthly_expenses_rwf,
+                        total_treasury: &self.total_treasury,
+                        monthly_contributions: &self.monthly_contributions,
+                        monthly_expenses: &self.monthly_expenses,
+                        income_streams: &self.income_streams,
+                        expense_categories: &self.expense_categories,
+                        monthly_cashflow: &self.monthly_cashflow,
+                        approvals: &self.approvals,
+                        transactions: &self.transactions,
+                        loan_filter: self.loan_filter,
+                        chart_mode: self.chart_mode,
+                        search_state: &self.search_state,
+                        on_select_sub_tab: Rc::new(move |tab, _w, cx| {
+                            view_for_tab.update(cx, |this, cx| {
+                                this.navigate_to_money_tab(tab, cx);
+                            });
+                        }),
+                        on_open_entry_modal: Rc::new(move |kind, window, cx| {
+                            view_for_modal.update(cx, |this, cx| {
+                                this.open_entry_modal(kind, window, cx);
+                            });
+                        }),
+                        on_open_category_modal: Rc::new(move |is_income, window, cx| {
+                            view_for_cat.update(cx, |this, cx| {
+                                this.open_category_modal(is_income, window, cx);
+                            });
+                        }),
+                        on_resolve_approval: Rc::new(move |idx, approved, _w, cx| {
+                            view_for_appr.update(cx, |this, cx| {
+                                this.resolve_approval(idx, approved, cx);
+                            });
+                        }),
+                        on_change_loan_filter: Rc::new(move |filter, _w, cx| {
+                            view_for_filter.update(cx, |this, cx| {
+                                this.loan_filter = filter;
+                                cx.notify();
+                            });
+                        }),
+                        on_repay_loan: Rc::new(move |idx, amount, _w, cx| {
+                            view_for_repay.update(cx, |this, cx| {
+                                this.record_loan_repayment(idx, amount, cx);
+                            });
+                        }),
+                    },
+                    cx,
+                )
+                .into_any_element()
+            }
+            AppSection::Campaigns => {
+                let view_for_new = view_entity.clone();
+                let view_for_contrib = view_entity.clone();
+                crate::campaigns::campaigns_page(crate::campaigns::CampaignsPageProps {
+                    language: self.language,
+                    palette,
+                    stacked,
+                    on_new_campaign: Rc::new(move |_w, cx| {
+                        view_for_new.update(cx, |this, cx| {
+                            this.toast_info("Campaign creation dialog ready", None::<&str>, cx);
+                        });
+                    }),
+                    on_contribute: Rc::new(move |name, amount, _w, cx| {
+                        view_for_contrib.update(cx, |this, cx| {
+                            this.toast_success(
+                                format!("Pledged {} to {}", format_rwf(amount), name),
+                                Some("Contribution recorded to campaign"),
+                                cx,
+                            );
+                        });
+                    }),
+                })
+                .into_any_element()
+            }
+            AppSection::Projects => {
+                let view_for_filter = view_entity.clone();
+                let view_for_new = view_entity.clone();
+                let view_for_boost = view_entity.clone();
+                let view_for_expand = view_entity.clone();
+                crate::projects::projects_page(crate::projects::ProjectsPageProps {
+                    language: self.language,
+                    palette,
+                    projects: &self.projects,
+                    project_filter: self.project_filter,
+                    expanded_project_index: self.expanded_project_index,
+                    on_change_filter: Rc::new(move |filter, _w, cx| {
+                        view_for_filter.update(cx, |this, cx| {
+                            this.project_filter = filter;
+                            cx.notify();
+                        });
+                    }),
+                    on_new_project: Rc::new(move |window, cx| {
+                        view_for_new.update(cx, |this, cx| {
+                            this.open_entry_modal(EntryModalKind::Project, window, cx);
+                        });
+                    }),
+                    on_boost_project: Rc::new(move |idx, amount, _w, cx| {
+                        view_for_boost.update(cx, |this, cx| {
+                            this.boost_project(idx, amount, cx);
+                        });
+                    }),
+                    on_toggle_expand: Rc::new(move |idx, _w, cx| {
+                        view_for_expand.update(cx, |this, cx| {
+                            if this.expanded_project_index == Some(idx) {
+                                this.expanded_project_index = None;
+                            } else {
+                                this.expanded_project_index = Some(idx);
+                            }
+                            cx.notify();
+                        });
+                    }),
+                })
+                .into_any_element()
+            }
+            AppSection::Events => {
+                let view_for_new = view_entity.clone();
+                let view_for_rsvp = view_entity.clone();
+                crate::events::events_page(crate::events::EventsPageProps {
+                    language: self.language,
+                    palette,
+                    stacked,
+                    on_new_event: Rc::new(move |_w, cx| {
+                        view_for_new.update(cx, |this, cx| {
+                            this.toast_info("Event schedule dialog ready", None::<&str>, cx);
+                        });
+                    }),
+                    on_rsvp: Rc::new(move |title, status, _w, cx| {
+                        view_for_rsvp.update(cx, |this, cx| {
+                            this.toast_success(
+                                format!("RSVP {}: {}", status, title),
+                                Some("Family calendar updated"),
+                                cx,
+                            );
+                        });
+                    }),
+                })
+                .into_any_element()
+            }
+            AppSection::Vault => {
+                let view_for_upload = view_entity.clone();
+                let view_for_access = view_entity.clone();
+                crate::vault::vault_page(crate::vault::VaultPageProps {
+                    language: self.language,
+                    palette,
+                    stacked,
+                    on_upload_doc: Rc::new(move |_w, cx| {
+                        view_for_upload.update(cx, |this, cx| {
+                            this.toast_info("Encrypted document upload ready", None::<&str>, cx);
+                        });
+                    }),
+                    on_access_doc: Rc::new(move |title, _w, cx| {
+                        view_for_access.update(cx, |this, cx| {
+                            this.toast_success(
+                                format!("Decrypted: {}", title),
+                                Some("Audit key verified with biometric signature"),
+                                cx,
+                            );
+                        });
+                    }),
+                })
+                .into_any_element()
+            }
+            AppSection::Members => {
+                let view_for_invite = view_entity.clone();
+                crate::members::members_page(crate::members::MembersPageProps {
+                    language: self.language,
+                    palette,
+                    members: &self.members,
+                    family_members: &self.family_members,
+                    on_invite_member: Rc::new(move |window, cx| {
+                        view_for_invite.update(cx, |this, cx| {
+                            this.open_entry_modal(EntryModalKind::MemberInvite, window, cx);
+                        });
+                    }),
+                })
+                .into_any_element()
+            }
             AppSection::Profile => {
-                self.render_profile_screen(stacked, palette, view_entity.clone())
-            },
+                let view_for_lang = view_entity.clone();
+                let view_for_th = view_entity.clone();
+                let view_for_st = view_entity.clone();
+                let view_for_mood = view_entity.clone();
+                let view_for_rule = view_entity.clone();
+                let view_for_signout = view_entity.clone();
+                let view_for_sync = view_entity.clone();
+                let view_for_check_up = view_entity.clone();
+                let view_for_inst_up = view_entity.clone();
+                let next_lang = self.language.toggle();
+                crate::settings::settings_page(crate::settings::SettingsPageProps {
+                    language: self.language,
+                    palette,
+                    theme: self.theme,
+                    mood: self.mood,
+                    stacked,
+                    member_name: &self.member_name,
+                    member_role: &self.member_role,
+                    member_contact: &self.member_contact,
+                    family_name: &self.family_name,
+                    storage_sync_status: &self.storage_sync_status,
+                    rule_multi_sig_over_30k: self.rule_multi_sig_over_30k,
+                    rule_sunday_digest: self.rule_sunday_digest,
+                    rule_auto_roundup_momo: self.rule_auto_roundup_momo,
+                    update_state: &self.update_state,
+                    on_toggle_language: Rc::new(move |window, cx| {
+                        view_for_lang.update(cx, |this, cx| {
+                            this.set_language(next_lang, window, cx);
+                            cx.emit(DashboardEvent::LanguageChanged(next_lang));
+                        });
+                    }),
+                    on_change_theme: Rc::new(move |mode, cx| {
+                        view_for_th.update(cx, |this, cx| {
+                            this.set_theme(mode, cx);
+                            cx.emit(DashboardEvent::ThemeChanged(mode));
+                        });
+                    }),
+                    on_change_style: Rc::new(move |style, cx| {
+                        crate::theme::set_ui_style(style, cx);
+                        view_for_st.update(cx, |this, cx| {
+                            cx.emit(DashboardEvent::ThemeChanged(this.theme));
+                            cx.notify();
+                        });
+                    }),
+                    on_change_mood: Rc::new(move |mood, cx| {
+                        view_for_mood.update(cx, |this, cx| {
+                            this.set_mood(mood, cx);
+                        });
+                    }),
+                    on_toggle_rule: Rc::new(move |rule_key, _w, cx| {
+                        view_for_rule.update(cx, |this, cx| {
+                            match rule_key {
+                                "rule_multi_sig_over_30k" => {
+                                    this.rule_multi_sig_over_30k = !this.rule_multi_sig_over_30k;
+                                }
+                                "rule_sunday_digest" => {
+                                    this.rule_sunday_digest = !this.rule_sunday_digest;
+                                }
+                                "rule_auto_roundup_momo" => {
+                                    this.rule_auto_roundup_momo = !this.rule_auto_roundup_momo;
+                                }
+                                _ => {}
+                            }
+                            cx.notify();
+                        });
+                    }),
+                    on_sign_out: Rc::new(move |_w, cx| {
+                        view_for_signout.update(cx, |_this, cx| {
+                            cx.emit(DashboardEvent::SignOutRequested);
+                        });
+                    }),
+                    on_sync: Rc::new(move |_w, cx| {
+                        view_for_sync.update(cx, |_this, cx| {
+                            cx.emit(DashboardEvent::SyncRequested);
+                        });
+                    }),
+                    on_check_update: Rc::new(move |_w, cx| {
+                        view_for_check_up.update(cx, |this, cx| {
+                            this.check_for_app_update(true, cx);
+                        });
+                    }),
+                    on_install_update: Rc::new(move |_w, cx| {
+                        view_for_inst_up.update(cx, |this, cx| {
+                            this.install_app_update(cx);
+                        });
+                    }),
+                })
+                .into_any_element()
+            }
             AppSection::Reports => {
-                self.render_reports_screen(stacked, palette, view_entity.clone(), cx)
+                let view_for_period = view_entity.clone();
+                let view_for_pt = view_entity.clone();
+                let view_for_csv = view_entity.clone();
+                let view_for_sum = view_entity.clone();
+                crate::reports::reports_page(crate::reports::ReportsPageProps {
+                    language: self.language,
+                    palette,
+                    stacked,
+                    period: self.report_period,
+                    selected_point: self.selected_report_point,
+                    timeline_points: &self.report_timeline_points,
+                    transactions: &self.transactions,
+                    monthly_income_rwf: self.monthly_income_rwf,
+                    monthly_expenses_rwf: self.monthly_expenses_rwf,
+                    on_change_period: Rc::new(move |period, _w, cx| {
+                        view_for_period.update(cx, |this, cx| {
+                            this.report_period = period;
+                            cx.notify();
+                        });
+                    }),
+                    on_select_point: Rc::new(move |idx, _w, cx| {
+                        view_for_pt.update(cx, |this, cx| {
+                            this.selected_report_point = idx;
+                            cx.notify();
+                        });
+                    }),
+                    on_export_csv: Rc::new(move |_fmt, _w, cx| {
+                        view_for_csv.update(cx, |this, cx| {
+                            this.download_report_csv(cx);
+                        });
+                    }),
+                    on_export_summary: Rc::new(move |_fmt, _w, cx| {
+                        view_for_sum.update(cx, |this, cx| {
+                            this.download_report_summary(cx);
+                        });
+                    }),
+                })
+                .into_any_element()
             }
         };
 
@@ -872,6 +1268,8 @@ impl Render for DashboardView {
                 on_toggle_user_dropdown: Some(toggle_user_dropdown),
                 on_close_user_dropdown: Some(close_user_dropdown),
                 on_sign_out: Some(Rc::new(sign_out_action.clone())),
+                workspace_mode: self.workspace_mode,
+                on_select_workspace_mode: Some(select_workspace_mode),
             },
             select_section,
             change_theme,

@@ -1,4 +1,4 @@
-use super::nav::{AppSection, SectionSelectHandler};
+use super::nav::{AppSection, SectionSelectHandler, WorkspaceMode};
 use super::AppLayoutProps;
 use crate::brand::ThemeColors;
 use crate::components::dashboard::MoneySubTab;
@@ -21,6 +21,8 @@ pub fn app_mobile_header(
     let select_home = on_select_section.clone();
     let select_money = on_select_section;
     let money_tab_cb = props.on_select_money_tab.clone();
+    let on_toggle_workspace = props.on_select_workspace_mode.clone();
+    let current_mode = props.workspace_mode;
 
     let (title, badge_label) = match active_section {
         AppSection::Home => (
@@ -31,6 +33,10 @@ pub fn app_mobile_header(
             money_sub_tab.nav_title_for(language),
             text(language, "cozy.nav_money_badge"),
         ),
+        AppSection::Campaigns => (
+            text(language, active_section.label_key()),
+            text(language, "cozy.nav_campaigns_badge"),
+        ),
         AppSection::Projects => (
             text(language, active_section.label_key()),
             format!(
@@ -38,6 +44,14 @@ pub fn app_mobile_header(
                 props.projects_badge_count,
                 text(language, "cozy.nav_projects_badge_suffix")
             ),
+        ),
+        AppSection::Events => (
+            text(language, active_section.label_key()),
+            text(language, "cozy.nav_events_badge"),
+        ),
+        AppSection::Vault => (
+            text(language, active_section.label_key()),
+            text(language, "cozy.nav_vault_badge"),
         ),
         AppSection::Reports => (
             text(language, active_section.label_key()),
@@ -120,58 +134,97 @@ pub fn app_mobile_header(
                 ),
         )
         .child(
-            // Bell Notification Button with Pending Approval Badge
-            div().flex().items_center().gap_2().child(
-                div()
-                    .id("mobile-bell-btn")
-                    .relative()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .w(px(32.0))
-                    .h(px(32.0))
-                    .rounded_full()
-                    .bg(palette.bg_elevated)
-                    .border(px(1.5))
-                    .border_color(palette.border_color)
-                    .cursor_pointer()
-                    .hover(|s| s.bg(palette.accent_primary.opacity(0.12)))
-                    .child(
-                        icons::icon(icons::ICON_BELL)
-                            .size(px(14.0))
-                            .text_color(palette.text_secondary),
+            div()
+                .flex()
+                .items_center()
+                .gap_2()
+                .when_some(on_toggle_workspace, |this, toggle| {
+                    let next_mode = match current_mode {
+                        WorkspaceMode::Family => WorkspaceMode::Personal,
+                        WorkspaceMode::Personal => WorkspaceMode::Family,
+                    };
+                    this.child(
+                        div()
+                            .id("mobile-workspace-toggle-btn")
+                            .flex()
+                            .items_center()
+                            .gap_1p5()
+                            .px_2()
+                            .py(px(3.0))
+                            .rounded_full()
+                            .bg(palette.bg_elevated)
+                            .border(px(1.5))
+                            .border_color(palette.border_color)
+                            .cursor_pointer()
+                            .hover(|s| s.bg(palette.accent_primary.opacity(0.12)))
+                            .child(
+                                icons::icon(current_mode.icon())
+                                    .size(px(12.0))
+                                    .text_color(palette.accent_primary),
+                            )
+                            .child(
+                                div()
+                                    .text_size(px(11.0))
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(palette.text_primary)
+                                    .child(text(language, current_mode.label_key())),
+                            )
+                            .on_click(move |_e, window, cx| {
+                                toggle(next_mode, window, cx);
+                            }),
                     )
-                    .when(pending_count > 0, |this| {
-                        this.child(
-                            div()
-                                .absolute()
-                                .top(px(-2.0))
-                                .right(px(-2.0))
-                                .min_w(px(16.0))
-                                .h(px(16.0))
-                                .px(px(3.0))
-                                .rounded_full()
-                                .bg(palette.loan_text)
-                                .border(px(1.5))
-                                .border_color(palette.border_color)
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .child(
-                                    div()
-                                        .text_size(px(9.0))
-                                        .font_weight(FontWeight::EXTRA_BOLD)
-                                        .text_color(palette.text_on_accent)
-                                        .child(pending_count.to_string()),
-                                ),
+                })
+                .child(
+                    div()
+                        .id("mobile-bell-btn")
+                        .relative()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .w(px(32.0))
+                        .h(px(32.0))
+                        .rounded_full()
+                        .bg(palette.bg_elevated)
+                        .border(px(1.5))
+                        .border_color(palette.border_color)
+                        .cursor_pointer()
+                        .hover(|s| s.bg(palette.accent_primary.opacity(0.12)))
+                        .child(
+                            icons::icon(icons::ICON_BELL)
+                                .size(px(14.0))
+                                .text_color(palette.text_secondary),
                         )
-                    })
-                    .on_click(move |_e, window, cx| {
-                        select_money(AppSection::Money, window, cx);
-                        if let Some(ref cb) = money_tab_cb {
-                            cb(MoneySubTab::Overview, window, cx);
-                        }
-                    }),
-            ),
+                        .when(pending_count > 0, |this| {
+                            this.child(
+                                div()
+                                    .absolute()
+                                    .top(px(-2.0))
+                                    .right(px(-2.0))
+                                    .min_w(px(16.0))
+                                    .h(px(16.0))
+                                    .px(px(3.0))
+                                    .rounded_full()
+                                    .bg(palette.loan_text)
+                                    .border(px(1.5))
+                                    .border_color(palette.border_color)
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .child(
+                                        div()
+                                            .text_size(px(9.0))
+                                            .font_weight(FontWeight::EXTRA_BOLD)
+                                            .text_color(palette.text_on_accent)
+                                            .child(pending_count.to_string()),
+                                    ),
+                            )
+                        })
+                        .on_click(move |_e, window, cx| {
+                            select_money(AppSection::Money, window, cx);
+                            if let Some(ref cb) = money_tab_cb {
+                                cb(MoneySubTab::Overview, window, cx);
+                            }
+                        }),
+                ),
         )
 }

@@ -1,6 +1,6 @@
 use super::footer::app_footer;
 use super::mobile_header::app_mobile_header;
-use super::nav::{AppSection, SectionSelectHandler};
+use super::nav::{AppSection, SectionSelectHandler, WorkspaceMode, WorkspaceModeSelectHandler};
 use super::responsive::is_large_screen;
 use super::sidebar::app_sidebar;
 use crate::brand::{colors, ThemeMode};
@@ -45,6 +45,8 @@ pub struct AppLayoutProps<'a> {
     pub on_toggle_user_dropdown: Option<UserMenuToggleHandler>,
     pub on_close_user_dropdown: Option<UserMenuCloseHandler>,
     pub on_sign_out: Option<SignOutHandler>,
+    pub workspace_mode: WorkspaceMode,
+    pub on_select_workspace_mode: Option<WorkspaceModeSelectHandler>,
 }
 
 pub fn app_layout<N, T, L, S, C>(
@@ -134,6 +136,7 @@ where
             .child(app_footer(
                 props.language,
                 props.active_section,
+                props.workspace_mode,
                 palette,
                 on_select,
                 props.safe_bottom,

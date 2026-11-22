@@ -380,3 +380,20 @@ entries at the end, and include validation.
 - Configured production Render backend URL (`https://umurango-rust.onrender.com/api/v1`) as the default API base URL across native app (`app/src/auth/client.rs`), web portal (`web/src/service/api.ts`), and `.env.example`:
   - Added `PRODUCTION_API_BASE_URL` and `normalize_api_base_url` in `app/src/auth/client.rs` with runtime and compile-time `API_URL` / `NEXT_PUBLIC_API_URL` override support and unit test coverage (`test_normalize_api_base_url`).
   - Validated via `cargo fmt --all -- --check`, `cargo test -p umuryango-app --lib client::tests`, and `bun run --cwd web check`.
+
+- Refactored dashboard screens into dedicated, modular feature pages:
+  - Extracted each screen out of pp/src/dashboard/ into standalone feature modules with decoupled Props structs and component functions:
+    - pp/src/home/ (home_page, HomePageProps)
+    - pp/src/money/ (money_page, MoneyPageProps)
+    - pp/src/projects/ (projects_page, ProjectsPageProps)
+    - pp/src/campaigns/ (campaigns_page, CampaignsPageProps)
+    - pp/src/events/ (events_page, EventsPageProps)
+    - pp/src/vault/ (ault_page, VaultPageProps)
+    - pp/src/members/ (members_page, MembersPageProps)
+    - pp/src/reports/ (
+eports_page, ReportsPageProps)
+    - pp/src/settings/ (settings_page, SettingsPageProps)
+  - Exported all new feature modules in pp/src/lib.rs.
+  - Streamlined DashboardView (pp/src/dashboard/mod.rs) into an authenticated application shell that delegates screen rendering to the dedicated feature components.
+  - Implemented top-level WorkspaceMode (Personal vs Family) support across minimalist and cozy sidebars (pp/src/components/layouts/sidebar.rs), navigation (pp/src/components/layouts/nav.rs), and mobile layout.
+  - Validated via cargo fmt --all -- --check, cargo check -p umuryango-app, and cargo clippy -p umuryango-app -- -D warnings (zero warnings).
