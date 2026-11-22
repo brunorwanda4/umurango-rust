@@ -7,9 +7,9 @@
     "bun": ">=1.4.0"
   },
   "scripts": {
-    "dev": "bunx next dev",
-    "build": "bunx next build",
-    "start": "bunx next start",
+    "dev": "node init && bunx next dev",
+    "build": "node init && bunx next build",
+    "start": "node init && bunx next start",
     "typecheck": "bunx tsc --noEmit",
     "lint": "bunx oxlint .",
     "check": "bun run typecheck && bun run lint"
