@@ -6,6 +6,7 @@
     "build": "cargo build -p umuryango-app",
     "build:windows": "bun run scripts/build-release.js windows",
     "build:android": "bun run scripts/build-release.js android",
+    "build:mobile": "bun run scripts/build-release.js android",
     "build:all": "bun run scripts/build-release.js all",
     "dev": "bun run scripts/dev-native.js",
     "dev:backend": "bun run scripts/dev-backend.js",
@@ -20,6 +21,8 @@
     "dev:app:all": "bun run scripts/dev-all.js --app",
     "dev:no-web": "bun run scripts/dev-all.js --no-web",
     "release": "bun run scripts/release.js",
+    "release:mobile": "bun run scripts/release.js --mobile",
+    "release:all": "bun run scripts/release.js --build",
     "check": "cargo check -p umuryango-app",
     "fmt": "cargo fmt --all -- --check"
   },
