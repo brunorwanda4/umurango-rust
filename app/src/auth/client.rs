@@ -1,7 +1,8 @@
 //! HTTP API client for backend authentication and family management.
 
 use std::env;
-use std::sync::RwLock;
+use std::sync::{OnceLock, RwLock};
+use std::time::Duration;
 use umuryango_shared::{
     AuthResponse, CreateFamilyRequest, CreateFamilyResponse, CreateLoanRequest,
     CreateProjectRequest, CreateTransactionRequest, ErrorResponse, Family, FamilyMemberDto,
@@ -20,6 +21,17 @@ static CURRENT_FAMILY_ID: RwLock<Option<String>> = RwLock::new(None);
 static CURRENT_FAMILY_NAME: RwLock<Option<String>> = RwLock::new(None);
 static CURRENT_USER: RwLock<Option<UserDto>> = RwLock::new(None);
 static CURRENT_ROLE: RwLock<Option<String>> = RwLock::new(None);
+static HTTP_AGENT: OnceLock<ureq::Agent> = OnceLock::new();
+
+fn http_agent() -> &'static ureq::Agent {
+    HTTP_AGENT.get_or_init(|| {
+        ureq::AgentBuilder::new()
+            .timeout_connect(Duration::from_secs(30))
+            .timeout_read(Duration::from_secs(45))
+            .timeout_write(Duration::from_secs(30))
+            .build()
+    })
+}
 
 /// Stores the current user's session token.
 pub fn set_current_token(token: Option<String>) {
@@ -103,19 +115,23 @@ pub fn normalize_api_base_url(raw: &str) -> String {
     }
 }
 
-/// Resolves the backend API base URL from runtime environment variables (`API_URL` /
-/// `NEXT_PUBLIC_API_URL`), compile-time environment overrides, or defaults to the
-/// Render production backend (`https://umurango-rust.onrender.com/api/v1`).
-pub fn api_base_url() -> String {
-    if let Ok(url) = env::var("API_URL").or_else(|_| env::var("NEXT_PUBLIC_API_URL")) {
-        if !url.trim().is_empty() {
-            return normalize_api_base_url(&url);
-        }
-    }
+/// Returns true if a URL points to the local loopback interface (`127.0.0.1` or `localhost`).
+pub fn is_loopback_url(url: &str) -> bool {
+    let lower = url.trim().to_ascii_lowercase();
+    lower.contains("://127.0.0.1") || lower.contains("://localhost") || lower.contains("://[::1]")
+}
 
-    if let Some(url) = option_env!("API_URL").or(option_env!("NEXT_PUBLIC_API_URL")) {
-        if !url.trim().is_empty() {
-            return normalize_api_base_url(url);
+/// Resolves the backend API base URL.
+///
+/// Defaults to the Render production backend (`https://umurango-rust.onrender.com/api/v1`).
+/// Can be overridden at runtime via `UMURYANGO_API_URL` or `API_URL` (on Android,
+/// loopback URLs such as `127.0.0.1` or `localhost` are always ignored so mobile builds
+/// never accidentally target the phone's own loopback interface).
+pub fn api_base_url() -> String {
+    if let Ok(url) = env::var("UMURYANGO_API_URL").or_else(|_| env::var("API_URL")) {
+        let trimmed = url.trim();
+        if !trimmed.is_empty() && !(cfg!(target_os = "android") && is_loopback_url(trimmed)) {
+            return normalize_api_base_url(trimmed);
         }
     }
 
@@ -138,7 +154,8 @@ pub fn api_login(identifier: &str, password: &str) -> Result<AuthResponse, Strin
         password: password.to_string(),
     };
 
-    let response = match ureq::post(&url)
+    let response = match http_agent()
+        .post(&url)
         .set("Accept-Language", get_current_language())
         .send_json(&payload)
     {
@@ -180,7 +197,8 @@ pub fn api_register(name: &str, phone: &str, password: &str) -> Result<AuthRespo
         avatar_url: None,
     };
 
-    let response = match ureq::post(&url)
+    let response = match http_agent()
+        .post(&url)
         .set("Accept-Language", get_current_language())
         .send_json(&payload)
     {
@@ -214,7 +232,7 @@ pub fn api_register(name: &str, phone: &str, password: &str) -> Result<AuthRespo
 /// Calls backend `GET /api/v1/auth/me` to fetch the currently authenticated user profile.
 pub fn api_get_me() -> Result<UserDto, String> {
     let url = format!("{}/auth/me", api_base_url());
-    let req = authorized_request(ureq::get(&url));
+    let req = authorized_request(http_agent().get(&url));
 
     let response = match req.call() {
         Ok(resp) => resp,
@@ -246,7 +264,7 @@ pub fn api_get_me() -> Result<UserDto, String> {
 /// Calls backend `GET /api/v1/families` to list families the user belongs to.
 pub fn api_list_families() -> Result<Vec<Family>, String> {
     let url = format!("{}/families", api_base_url());
-    let req = authorized_request(ureq::get(&url));
+    let req = authorized_request(http_agent().get(&url));
 
     let response = match req.call() {
         Ok(resp) => resp,
@@ -280,7 +298,7 @@ pub fn api_create_family(
         member_phones,
     };
 
-    let req = authorized_request(ureq::post(&url));
+    let req = authorized_request(http_agent().post(&url));
     let response = match req.send_json(&payload) {
         Ok(resp) => resp,
         Err(ureq::Error::Status(status, resp)) => {
@@ -312,7 +330,7 @@ pub fn api_join_family(code: &str) -> Result<JoinFamilyResponse, String> {
         code: code.to_string(),
     };
 
-    let req = authorized_request(ureq::post(&url));
+    let req = authorized_request(http_agent().post(&url));
     let response = match req.send_json(&payload) {
         Ok(resp) => resp,
         Err(ureq::Error::Status(status, resp)) => {
@@ -340,7 +358,7 @@ pub fn api_join_family(code: &str) -> Result<JoinFamilyResponse, String> {
 /// Calls backend `GET /api/v1/families/invitations` to list pending invitations for the user.
 pub fn api_get_pending_invitations() -> Result<Vec<PendingFamilyInviteDto>, String> {
     let url = format!("{}/families/invitations", api_base_url());
-    let req = authorized_request(ureq::get(&url));
+    let req = authorized_request(http_agent().get(&url));
 
     let response = match req.call() {
         Ok(resp) => resp,
@@ -366,7 +384,7 @@ pub fn api_get_pending_invitations() -> Result<Vec<PendingFamilyInviteDto>, Stri
 /// Calls backend `POST /api/v1/families/invitations/{id}/accept` to accept a pending invite.
 pub fn api_accept_invitation(invite_id: &str) -> Result<JoinFamilyResponse, String> {
     let url = format!("{}/families/invitations/{invite_id}/accept", api_base_url());
-    let req = authorized_request(ureq::post(&url));
+    let req = authorized_request(http_agent().post(&url));
 
     let response = match req.send_string("") {
         Ok(resp) => resp,
@@ -398,7 +416,7 @@ pub fn api_get_treasury_summary(family_id: &str) -> Result<TreasurySummaryDto, S
         "{}/families/{family_id}/transactions/summary",
         api_base_url()
     );
-    let req = authorized_request(ureq::get(&url));
+    let req = authorized_request(http_agent().get(&url));
 
     let response = match req.call() {
         Ok(resp) => resp,
@@ -430,7 +448,7 @@ pub fn api_list_transactions(
     if let Some(f) = filter {
         url = format!("{url}?filter={f}");
     }
-    let req = authorized_request(ureq::get(&url));
+    let req = authorized_request(http_agent().get(&url));
 
     let response = match req.call() {
         Ok(resp) => resp,
@@ -459,7 +477,7 @@ pub fn api_create_transaction(
     payload: &CreateTransactionRequest,
 ) -> Result<TransactionItemDto, String> {
     let url = format!("{}/families/{family_id}/transactions", api_base_url());
-    let req = authorized_request(ureq::post(&url));
+    let req = authorized_request(http_agent().post(&url));
 
     let response = match req.send_json(payload) {
         Ok(resp) => resp,
@@ -491,7 +509,7 @@ pub fn api_approve_transaction(
         "{}/families/{family_id}/transactions/{transaction_id}/approve",
         api_base_url()
     );
-    let req = authorized_request(ureq::post(&url));
+    let req = authorized_request(http_agent().post(&url));
 
     let response = match req.send_string("") {
         Ok(resp) => resp,
@@ -523,7 +541,7 @@ pub fn api_reject_transaction(
         "{}/families/{family_id}/transactions/{transaction_id}/reject",
         api_base_url()
     );
-    let req = authorized_request(ureq::post(&url));
+    let req = authorized_request(http_agent().post(&url));
 
     let response = match req.send_string("") {
         Ok(resp) => resp,
@@ -549,7 +567,7 @@ pub fn api_reject_transaction(
 /// Calls backend `GET /api/v1/families/{family_id}/projects` to fetch communal projects.
 pub fn api_list_projects(family_id: &str) -> Result<Vec<ProjectDto>, String> {
     let url = format!("{}/families/{family_id}/projects", api_base_url());
-    let req = authorized_request(ureq::get(&url));
+    let req = authorized_request(http_agent().get(&url));
 
     let response = match req.call() {
         Ok(resp) => resp,
@@ -578,7 +596,7 @@ pub fn api_create_project(
     payload: &CreateProjectRequest,
 ) -> Result<ProjectDto, String> {
     let url = format!("{}/families/{family_id}/projects", api_base_url());
-    let req = authorized_request(ureq::post(&url));
+    let req = authorized_request(http_agent().post(&url));
 
     let response = match req.send_json(payload) {
         Ok(resp) => resp,
@@ -611,7 +629,7 @@ pub fn api_contribute_project(
         "{}/families/{family_id}/projects/{project_id}/contribute",
         api_base_url()
     );
-    let req = authorized_request(ureq::post(&url));
+    let req = authorized_request(http_agent().post(&url));
 
     let response = match req.send_json(payload) {
         Ok(resp) => resp,
@@ -637,7 +655,7 @@ pub fn api_contribute_project(
 /// Calls backend `GET /api/v1/families/{family_id}/members` to list family members.
 pub fn api_list_members(family_id: &str) -> Result<Vec<FamilyMemberDto>, String> {
     let url = format!("{}/families/{family_id}/members", api_base_url());
-    let req = authorized_request(ureq::get(&url));
+    let req = authorized_request(http_agent().get(&url));
 
     let response = match req.call() {
         Ok(resp) => resp,
@@ -666,7 +684,7 @@ pub fn api_invite_member(
     payload: &InviteFamilyMemberRequest,
 ) -> Result<FamilyMemberDto, String> {
     let url = format!("{}/families/{family_id}/members/invite", api_base_url());
-    let req = authorized_request(ureq::post(&url));
+    let req = authorized_request(http_agent().post(&url));
 
     let response = match req.send_json(payload) {
         Ok(resp) => resp,
@@ -692,7 +710,7 @@ pub fn api_invite_member(
 /// Calls backend `GET /api/v1/families/{family_id}/loans` to list family loans.
 pub fn api_list_loans(family_id: &str) -> Result<Vec<LoanDto>, String> {
     let url = format!("{}/families/{family_id}/loans", api_base_url());
-    let req = authorized_request(ureq::get(&url));
+    let req = authorized_request(http_agent().get(&url));
 
     let response = match req.call() {
         Ok(resp) => resp,
@@ -718,7 +736,7 @@ pub fn api_list_loans(family_id: &str) -> Result<Vec<LoanDto>, String> {
 /// Calls backend `POST /api/v1/families/{family_id}/loans` to create a family loan.
 pub fn api_create_loan(family_id: &str, payload: &CreateLoanRequest) -> Result<LoanDto, String> {
     let url = format!("{}/families/{family_id}/loans", api_base_url());
-    let req = authorized_request(ureq::post(&url));
+    let req = authorized_request(http_agent().post(&url));
 
     let response = match req.send_json(payload) {
         Ok(resp) => resp,
@@ -751,7 +769,7 @@ pub fn api_repay_loan(
         "{}/families/{family_id}/loans/{loan_id}/repay",
         api_base_url()
     );
-    let req = authorized_request(ureq::post(&url));
+    let req = authorized_request(http_agent().post(&url));
 
     let response = match req.send_json(payload) {
         Ok(resp) => resp,
@@ -778,7 +796,7 @@ pub fn api_repay_loan(
 pub fn api_sync_push(mutations: Vec<SyncMutation>) -> Result<SyncPushResponse, String> {
     let url = format!("{}/sync/push", api_base_url());
     let payload = SyncPushRequest { mutations };
-    let req = authorized_request(ureq::post(&url));
+    let req = authorized_request(http_agent().post(&url));
 
     let response = match req.send_json(&payload) {
         Ok(resp) => resp,
@@ -811,7 +829,7 @@ pub fn api_sync_pull(family_id: &str, cursor: Option<String>) -> Result<SyncPull
         family_id: fam_uuid,
         cursor,
     };
-    let req = authorized_request(ureq::post(&url));
+    let req = authorized_request(http_agent().post(&url));
 
     let response = match req.send_json(&payload) {
         Ok(resp) => resp,
@@ -860,5 +878,15 @@ mod tests {
             normalize_api_base_url("http://localhost:4433/api/v1/"),
             "http://localhost:4433/api/v1"
         );
+    }
+
+    #[test]
+    fn test_is_loopback_url() {
+        assert!(is_loopback_url("http://127.0.0.1:4433/api/v1"));
+        assert!(is_loopback_url("http://localhost:4433/api/v1"));
+        assert!(is_loopback_url("http://[::1]:4433/api/v1"));
+        assert!(!is_loopback_url(
+            "https://umurango-rust.onrender.com/api/v1"
+        ));
     }
 }

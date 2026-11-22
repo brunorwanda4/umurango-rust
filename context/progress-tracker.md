@@ -397,3 +397,8 @@ eports_page, ReportsPageProps)
   - Streamlined DashboardView (pp/src/dashboard/mod.rs) into an authenticated application shell that delegates screen rendering to the dedicated feature components.
   - Implemented top-level WorkspaceMode (Personal vs Family) support across minimalist and cozy sidebars (pp/src/components/layouts/sidebar.rs), navigation (pp/src/components/layouts/nav.rs), and mobile layout.
   - Validated via cargo fmt --all -- --check, cargo check -p umuryango-app, and cargo clippy -p umuryango-app -- -D warnings (zero warnings).
+
+- Fixed Network error: Connect error when creating an account or signing in from mobile/desktop app:
+  - Removed option_env!("NEXT_PUBLIC_API_URL") and runtime NEXT_PUBLIC_API_URL overrides from pi_base_url() in pp/src/auth/client.rs so local .env loopback values (http://127.0.0.1:4433/api/v1) are never baked into compiled Android/desktop binaries or injected by un run.
+  - Added is_loopback_url guard ensuring Android builds always ignore loopback addresses and connect to https://umurango-rust.onrender.com/api/v1.
+  - Configured shared ureq::Agent with 30s connect and 45s read timeouts to accommodate Render cold starts.
