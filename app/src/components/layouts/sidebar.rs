@@ -500,55 +500,6 @@ fn sidebar_minimalist_footer(
                             on_sel_fams(AppSection::Members, window, cx);
                         }),
                     ))
-                    .child(
-                        div()
-                            .text_size(px(11.0))
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(text_muted_col)
-                            .px_2()
-                            .pt_2()
-                            .pb_0p5()
-                            .child("Recent families"),
-                    )
-                    .child(sidebar_dropdown_item(
-                        "drop-item-recent-family",
-                        icons::icon(icons::ICON_USERS),
-                        fam_label_2,
-                        false,
-                        colors,
-                        Box::new(move |_e, window, cx| {
-                            if let Some(ref close) = close_4 {
-                                close(window, cx);
-                            }
-                            on_sel_recent(AppSection::Home, window, cx);
-                        }),
-                    ))
-                    .child(sidebar_dropdown_item(
-                        "drop-item-manage-access",
-                        icons::icon(icons::ICON_CLIPBOARD_LIST),
-                        "Manage family access".to_string(),
-                        false,
-                        colors,
-                        Box::new(move |_e, window, cx| {
-                            if let Some(ref close) = close_5 {
-                                close(window, cx);
-                            }
-                            on_sel_manage(AppSection::Members, window, cx);
-                        }),
-                    ))
-                    .child(sidebar_dropdown_item(
-                        "drop-item-create-family",
-                        icons::icon(icons::ICON_MONEY_BILL_TRANSFER),
-                        "Create family".to_string(),
-                        false,
-                        colors,
-                        Box::new(move |_e, window, cx| {
-                            if let Some(ref close) = close_6 {
-                                close(window, cx);
-                            }
-                            on_sel_create(AppSection::Members, window, cx);
-                        }),
-                    ))
                     .child(div().h(px(1.0)).w_full().bg(palette.border_color).my_1())
                     .child(sidebar_dropdown_item(
                         "drop-item-logout",
