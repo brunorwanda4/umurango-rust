@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/shared",
+    "crates/mobile",
     "backend",
     "app",
 ]

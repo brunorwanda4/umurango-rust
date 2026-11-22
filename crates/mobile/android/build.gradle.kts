@@ -1,17 +1,14 @@
-// Root build.gradle.kts for the GPUI Mobile Android Example project.
-//
-// This is a minimal Gradle project that packages the Rust native library
-// (compiled separately via cargo-ndk) into an APK using NativeActivity.
+// Root build.gradle.kts for the Umuryango Mobile Android project.
 //
 // Build steps:
 //   1. Compile the Rust library:
-//      cargo ndk -t arm64-v8a -o app/src/main/jniLibs build --example android_app --release
+//      cargo ndk -t arm64-v8a -o crates/mobile/android/app/src/main/jniLibs --platform 31 build --release -p umuryango-mobile
 //
 //   2. Build the APK:
-//      ./gradlew assembleDebug
+//      ./gradlew assembleSideloadRelease -PallowDebugSigning=true
 //
 //   3. Install on device/emulator:
-//      adb install app/build/outputs/apk/debug/app-debug.apk
+//      adb install -r app/build/outputs/apk/sideload/release/app-sideload-release.apk
 
 buildscript {
     repositories {
@@ -28,35 +25,35 @@ tasks.register("clean", Delete::class) {
     delete(rootProject.layout.buildDirectory)
 }
 
-// ── Convenience task: build Rust + APK in one go ────────────────────────────
-
 tasks.register<Exec>("buildRustRelease") {
     group = "rust"
-    description = "Compile the Rust native library for arm64-v8a using cargo-ndk."
-    workingDir = rootProject.projectDir.parentFile.parentFile.parentFile // -> gpui/
+    description = "Compile the Umuryango Rust native library for arm64-v8a using cargo-ndk."
+    workingDir = rootProject.projectDir.parentFile.parentFile.parentFile
     commandLine(
         "cargo", "ndk",
         "-t", "arm64-v8a",
-        "-o", "example/android_app/gradle/app/src/main/jniLibs",
-        "build", "--example", "android_app", "--release"
+        "-o", "crates/mobile/android/app/src/main/jniLibs",
+        "--platform", "31",
+        "build", "--release", "-p", "umuryango-mobile"
     )
 }
 
 tasks.register<Exec>("buildRustDebug") {
     group = "rust"
-    description = "Compile the Rust native library for arm64-v8a (debug) using cargo-ndk."
+    description = "Compile the Umuryango Rust native library for arm64-v8a (debug) using cargo-ndk."
     workingDir = rootProject.projectDir.parentFile.parentFile.parentFile
     commandLine(
         "cargo", "ndk",
         "-t", "arm64-v8a",
-        "-o", "example/android_app/gradle/app/src/main/jniLibs",
-        "build", "--example", "android_app"
+        "-o", "crates/mobile/android/app/src/main/jniLibs",
+        "--platform", "31",
+        "build", "-p", "umuryango-mobile"
     )
 }
 
 tasks.register("buildAll") {
     group = "rust"
-    description = "Build Rust library (release) and then assemble the release APK."
+    description = "Build Rust library (release) and then assemble the sideload release APK."
     dependsOn("buildRustRelease")
-    finalizedBy(":app:assembleRelease")
+    finalizedBy(":app:assembleSideloadRelease")
 }

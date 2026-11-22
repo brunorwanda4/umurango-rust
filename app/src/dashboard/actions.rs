@@ -90,6 +90,27 @@ impl DashboardView {
                     Ok(UpdateApplyOutcome::RestartLaunched) => {
                         std::process::exit(0);
                     }
+                    Ok(UpdateApplyOutcome::AndroidInstallerLaunched) => {
+                        view.update_state = UpdateState::Available(release);
+                        view.show_update_modal = false;
+                        view.toast_success(
+                            "Android Installer Opened",
+                            Some(
+                                "Confirm the package installation prompt to complete the update.",
+                            ),
+                            cx,
+                        );
+                    }
+                    Ok(UpdateApplyOutcome::AndroidPermissionRequired) => {
+                        view.update_state = UpdateState::Available(release);
+                        view.toast_warning(
+                            "Install Permission Required",
+                            Some(
+                                "Allow 'Install unknown apps' for Umuryango, then tap Update again.",
+                            ),
+                            cx,
+                        );
+                    }
                     Ok(UpdateApplyOutcome::OpenedExternal(url)) => {
                         view.update_state = UpdateState::Available(release);
                         view.show_update_modal = false;

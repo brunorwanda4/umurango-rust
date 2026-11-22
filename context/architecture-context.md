@@ -23,10 +23,9 @@ authorization decisions.
 
 ## Rust Conventions
 
-- Rust workspace members are `crates/shared`, `backend`, and `app`.
+- Rust workspace members are `crates/shared`, `backend`, `app`, and `crates/mobile`.
 - Backend uses Actix-web, Tokio, SQLx, and PostgreSQL.
-- Native app uses GPUI and rusqlite; encryption must be preserved when the local
-  database implementation moves from scaffold to production.
+- Native app uses GPUI (`app/`) and rusqlite, sharing its UI and domain library across desktop (`app/src/main.rs`) and Android (`crates/mobile/src/lib.rs`); encryption must be preserved when the local database implementation moves from scaffold to production.
 - Shared DTOs and enums belong in `crates/shared`, not duplicated per client.
 - Pure, deterministic domain logic created for `app/` must be organized so it
   can compile to WebAssembly for `web/`. GPUI, SQLite, filesystem, and native
@@ -103,9 +102,12 @@ web development; the API remains a Rust service.
 - Insets are stored in physical pixels in `app/src/safe_area.rs` and dynamically scaled to logical pixels via window.scale_factor().
 - Bottom insets are applied to the `app-footer` navigation bar and non-dashboard auth views to ensure interactive controls remain completely clear of system footers.
 
-## Native App Self-Update & Release Pipeline
+## Native App Self-Update & Release Pipeline (Windows & Android)
 
 - `app/src/updater.rs` checks GitHub Releases (`https://api.github.com/repos/brunorwanda4/umurango-rust/releases/latest`, overridable via `UMURYANGO_UPDATE_REPO` or `UMURYANGO_UPDATE_URL`) against the compiled `CARGO_PKG_VERSION`.
 - When a newer semantic version is found, `DashboardView` surfaces a notification banner and an interactive Update & Restart modal (`app/src/components/dashboard/update_modal.rs`), plus an Application Updates card in the Profile screen.
-- On confirmation, the updater downloads the platform release asset into `<exe>.new.tmp`, renames the running executable to `<exe>.old`, moves the new binary into place, spawns the updated binary, and exits; `cleanup_old_binary()` removes `<exe>.old` on the next launch.
-- `.github/workflows/release.yml` automatically builds `umuryango-app-windows-x86_64.exe` and publishes a GitHub Release when a new version tag (`v*.*.*`) or bumped `Cargo.toml` version is pushed (`bun run release`).
+- **Desktop (Windows `.exe`)**: On confirmation, the updater downloads `umuryango-app-windows-x86_64.exe` into `<exe>.new.tmp`, renames the running executable to `<exe>.old`, moves the new binary into place, spawns the updated binary, and exits; `cleanup_old_binary()` removes `<exe>.old` on the next launch.
+- **Mobile (Android `.apk`)**: `crates/mobile/src/lib.rs` registers an `AndroidUpdateInstaller` (`PlatformUpdateInstaller` trait in `app/src/updater.rs`). On confirmation, the updater downloads `umuryango-app-android-arm64.apk` into Android's `FileProvider` update cache directory (`MainActivity.updateCachePath()`) and invokes `MainActivity.requestInstallUpdate(...)` via JNI to launch the Android system package installer (or prompt for unknown-sources install permission).
+- **Build & Release Automation**:
+  - Local build scripts (`scripts/build-release.js`): `bun run build:windows`, `bun run build:android`, and `bun run build:all` output release artifacts and `.sha256` checksums into `dist/`.
+  - `.github/workflows/release.yml` automatically builds both `umuryango-app-windows-x86_64.exe` and `umuryango-app-android-arm64.apk` in parallel and publishes them to a GitHub Release when a new version tag (`v*.*.*`) or bumped `Cargo.toml` version is pushed (`bun run release`).

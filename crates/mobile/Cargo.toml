@@ -1,0 +1,21 @@
+[package]
+name = "umuryango-mobile"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "umuryango_mobile"
+crate-type = ["cdylib", "staticlib", "rlib"]
+path = "src/lib.rs"
+
+[dependencies]
+gpui-kit = "0.10.0"
+umuryango-app = { path = "../../app" }
+
+[target.'cfg(target_os = "android")'.dependencies]
+android_logger = "0.15"
+android-activity = { version = "0.6", features = ["native-activity"] }
+gpui-mobile = { package = "gpui-pre-mobile", git = "https://github.com/longbridge/gpui-mobile", rev = "d8945a826e4012b43a46b53d7e72b6beae24cc80", default-features = false }
+jni = "0.21"
+log = "0.4"

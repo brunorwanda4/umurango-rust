@@ -1,10 +1,21 @@
 /target/
 /target_check/
+/dist/
 web/node_modules/
 web/.next/
 web/tsconfig.tsbuildinfo
 web/AGENTS.md
 *.db
+
+# Android build output & signing secrets
+crates/mobile/android/.gradle/
+crates/mobile/android/build/
+crates/mobile/android/app/build/
+crates/mobile/android/app/src/main/jniLibs/
+crates/mobile/android/local.properties
+crates/mobile/android/keystore.properties
+*.jks
+*.keystore
 
 # Environment variables
 .env

@@ -36,13 +36,34 @@ val releaseSigningConfigured = configuredStoreFile?.isFile == true &&
     configuredStorePassword != null && configuredKeyAlias != null && configuredKeyPassword != null
 val allowDebugSigning = providers.gradleProperty("allowDebugSigning").orNull == "true"
 
+// Automatically read workspace version from root Cargo.toml so Android APK versionName
+// and versionCode stay synchronized with Cargo releases.
+val cargoTomlFile = rootProject.file("../../../Cargo.toml")
+val cargoVersionRegex = Regex("""(?m)^version\s*=\s*"(\d+)\.(\d+)\.(\d+)"""")
+val cargoMatch = if (cargoTomlFile.isFile) {
+    cargoVersionRegex.find(cargoTomlFile.readText())
+} else {
+    null
+}
+val resolvedVersionName = providers.gradleProperty("appVersionName").orNull
+    ?: cargoMatch?.let { "${it.groupValues[1]}.${it.groupValues[2]}.${it.groupValues[3]}" }
+    ?: "0.1.1"
+val resolvedVersionCode = providers.gradleProperty("appVersionCode").orNull?.toIntOrNull()
+    ?: cargoMatch?.let {
+        val major = it.groupValues[1].toInt()
+        val minor = it.groupValues[2].toInt()
+        val patch = it.groupValues[3].toInt()
+        (major * 10000 + minor * 100 + patch).coerceAtLeast(1)
+    }
+    ?: 101
+
 gradle.taskGraph.whenReady {
     val buildsRelease = allTasks.any { task -> task.name.contains("Release", ignoreCase = true) }
     if (buildsRelease && !releaseSigningConfigured && !allowDebugSigning) {
         throw GradleException(
             "Release signing is not configured. Add android/keystore.properties or set the " +
-                "ANDROID_KEYSTORE_* environment variables. For local testing only, run the " +
-                "mobile build script with --allow-debug-signing."
+                "ANDROID_KEYSTORE_* environment variables. For local testing or debug-signed " +
+                "builds, pass -PallowDebugSigning=true."
         )
     }
 }
@@ -55,11 +76,11 @@ android {
         applicationId = "rw.umuryango.app"
         minSdk = 26          // Vulkan 1.0 is mandatory from API 26+
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = resolvedVersionCode
+        versionName = resolvedVersionName
 
         // Tell NativeActivity which .so to load.
-        // This must match the cdylib output name.
+        // This must match the cdylib output name in crates/mobile/Cargo.toml.
         ndk {
             abiFilters += listOf("arm64-v8a")
         }
@@ -98,7 +119,7 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName(
-                if (allowDebugSigning) "debug" else "release"
+                if (releaseSigningConfigured) "release" else "debug"
             )
             isMinifyEnabled = true
             isShrinkResources = true
@@ -141,7 +162,7 @@ android {
 dependencies {
     // AndroidX back dispatcher used by MainActivity.
     implementation("androidx.activity:activity:1.9.3")
-    // AndroidX core for NotificationCompat
+    // AndroidX core for NotificationCompat & FileProvider
     implementation("androidx.core:core:1.12.0")
     // AndroidX SplashScreen compat (used by GpuiActivity to hold splash until native init)
     implementation("androidx.core:core-splashscreen:1.0.1")

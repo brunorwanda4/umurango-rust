@@ -1,5 +1,5 @@
-//! Self-update manager checking GitHub Releases, downloading new platform binaries,
-//! replacing the running executable, and restarting the application.
+//! Self-update manager checking GitHub Releases, downloading new platform binaries
+//! (Windows `.exe` and Android `.apk`), replacing/installing the package, and restarting.
 
 use serde::{Deserialize, Serialize};
 use std::env;
@@ -7,6 +7,7 @@ use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::{Arc, OnceLock};
 
 /// The compiled version of this application binary from `Cargo.toml`.
 pub const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -44,8 +45,30 @@ pub enum UpdateState {
 pub enum UpdateApplyOutcome {
     /// New executable was installed and spawned; the current process should exit immediately.
     RestartLaunched,
+    /// Android package installer was launched for the downloaded `.apk`.
+    AndroidInstallerLaunched,
+    /// Android opened system settings to grant "Install unknown apps" permission.
+    AndroidPermissionRequired,
     /// Opened external browser / installer (e.g. when no direct binary asset was found).
     OpenedExternal(String),
+}
+
+/// Platform-specific update installer hook (used on Android to download `.apk`
+/// into the app's `FileProvider` cache and launch the system package installer).
+pub trait PlatformUpdateInstaller: Send + Sync {
+    /// Returns the directory where downloaded update packages (e.g. `.apk`) should be stored.
+    fn update_cache_dir(&self) -> Result<PathBuf, String>;
+    /// Triggers the platform package installer for the downloaded package file.
+    fn install_package(&self, package_path: &Path) -> Result<UpdateApplyOutcome, String>;
+    /// Opens an external URL in the platform browser.
+    fn open_external_url(&self, url: &str) -> Result<(), String>;
+}
+
+static PLATFORM_INSTALLER: OnceLock<Arc<dyn PlatformUpdateInstaller>> = OnceLock::new();
+
+/// Registers a platform-specific update installer (called at startup by the Android host).
+pub fn register_platform_installer(installer: Arc<dyn PlatformUpdateInstaller>) -> bool {
+    PLATFORM_INSTALLER.set(installer).is_ok()
 }
 
 #[derive(Debug, Deserialize)]
@@ -169,6 +192,16 @@ pub fn select_platform_asset<'a>(
             return Some(any_exe);
         }
     } else if os_lower == "android" {
+        let is_arm64 = arch_lower == "aarch64" || arch_lower == "arm64";
+        if let Some(arch_apk) = candidates.iter().copied().find(|a| {
+            let n = a.name.to_lowercase();
+            n.ends_with(".apk")
+                && (n.contains(&arch_lower)
+                    || (is_arm64 && (n.contains("arm64") || n.contains("aarch64")))
+                    || n.contains("android"))
+        }) {
+            return Some(arch_apk);
+        }
         if let Some(apk) = candidates
             .iter()
             .copied()
@@ -284,8 +317,54 @@ pub fn check_for_update() -> Result<Option<ReleaseUpdate>, String> {
     }))
 }
 
-/// Downloads the release asset, replaces the current executable on disk, and spawns the new version.
+fn download_release_bytes(download_url: &str) -> Result<Vec<u8>, String> {
+    let user_agent = format!("umuryango-app/{CURRENT_VERSION}");
+    let response = ureq::get(download_url)
+        .set("User-Agent", &user_agent)
+        .call()
+        .map_err(|e| format!("Failed to download update package: {e}"))?;
+
+    let mut bytes = Vec::new();
+    response
+        .into_reader()
+        .take(250 * 1024 * 1024) // 250 MB safety cap
+        .read_to_end(&mut bytes)
+        .map_err(|e| format!("Failed to read update stream: {e}"))?;
+
+    if bytes.len() < 1024 {
+        return Err("Downloaded update package appears incomplete or corrupted.".to_string());
+    }
+    Ok(bytes)
+}
+
+/// Downloads the release asset, replaces the current executable (on desktop) or triggers the
+/// Android package installer (on Android), and restarts/upgrades the application.
 pub fn download_and_apply_update(update: &ReleaseUpdate) -> Result<UpdateApplyOutcome, String> {
+    if let Some(installer) = PLATFORM_INSTALLER.get() {
+        let Some(ref download_url) = update.download_url else {
+            installer.open_external_url(&update.html_url)?;
+            return Ok(UpdateApplyOutcome::OpenedExternal(update.html_url.clone()));
+        };
+
+        let cache_dir = installer.update_cache_dir()?;
+        fs::create_dir_all(&cache_dir)
+            .map_err(|e| format!("Failed to create Android update cache folder: {e}"))?;
+
+        let apk_filename = update
+            .asset_name
+            .as_deref()
+            .filter(|n| n.to_lowercase().ends_with(".apk"))
+            .map(ToOwned::to_owned)
+            .unwrap_or_else(|| format!("umuryango-app-android-{}.apk", update.version));
+        let apk_path = cache_dir.join(apk_filename);
+
+        let bytes = download_release_bytes(download_url)?;
+        fs::write(&apk_path, &bytes)
+            .map_err(|e| format!("Failed to save downloaded APK update: {e}"))?;
+
+        return installer.install_package(&apk_path);
+    }
+
     let Some(ref download_url) = update.download_url else {
         open_url_in_browser(&update.html_url)?;
         return Ok(UpdateApplyOutcome::OpenedExternal(update.html_url.clone()));
@@ -301,22 +380,7 @@ pub fn download_and_apply_update(update: &ReleaseUpdate) -> Result<UpdateApplyOu
     let staging_path = staging_exe_path(&current_exe);
     let backup_path = backup_exe_path(&current_exe);
 
-    let user_agent = format!("umuryango-app/{CURRENT_VERSION}");
-    let response = ureq::get(download_url)
-        .set("User-Agent", &user_agent)
-        .call()
-        .map_err(|e| format!("Failed to download update binary: {e}"))?;
-
-    let mut bytes = Vec::new();
-    response
-        .into_reader()
-        .take(250 * 1024 * 1024) // 250 MB safety cap
-        .read_to_end(&mut bytes)
-        .map_err(|e| format!("Failed to read update stream: {e}"))?;
-
-    if bytes.len() < 1024 {
-        return Err("Downloaded update binary appears incomplete or corrupted.".to_string());
-    }
+    let bytes = download_release_bytes(download_url)?;
 
     fs::write(&staging_path, &bytes)
         .map_err(|e| format!("Failed to write staged update file: {e}"))?;
@@ -389,6 +453,10 @@ fn replace_executable_and_restart(
 
 /// Opens a URL in the platform's default browser.
 pub fn open_url_in_browser(url: &str) -> Result<(), String> {
+    if let Some(installer) = PLATFORM_INSTALLER.get() {
+        return installer.open_external_url(url);
+    }
+
     #[cfg(target_os = "windows")]
     {
         Command::new("cmd")
@@ -459,7 +527,12 @@ mod tests {
                 size: 14_000_000,
             },
             GithubAssetDto {
-                name: "umuryango-app-android.apk".to_string(),
+                name: "umuryango-app-android-arm64.apk.sha256".to_string(),
+                browser_download_url: "https://example.com/android.apk.sha256".to_string(),
+                size: 64,
+            },
+            GithubAssetDto {
+                name: "umuryango-app-android-arm64.apk".to_string(),
                 browser_download_url: "https://example.com/android.apk".to_string(),
                 size: 18_000_000,
             },
@@ -472,6 +545,6 @@ mod tests {
         assert_eq!(linux.name, "umuryango-app-linux-x86_64");
 
         let android = select_platform_asset(&assets, "android", "aarch64").unwrap();
-        assert_eq!(android.name, "umuryango-app-android.apk");
+        assert_eq!(android.name, "umuryango-app-android-arm64.apk");
     }
 }

@@ -1,10 +1,10 @@
 //! Persists user theme, style, mood, and language preferences to local SQLite storage.
 
 use crate::brand::ThemeMode;
+use crate::db::{get_app_state, open_local, set_app_state};
 use crate::i18n::Language;
 use crate::theme::{CozyMood, UiStyle};
 use rusqlite::{Connection, Result};
-use umuryango_app::db::{get_app_state, set_app_state};
 
 pub const PREF_THEME_MODE: &str = "preference.theme_mode";
 pub const PREF_UI_STYLE: &str = "preference.ui_style";
@@ -94,7 +94,7 @@ pub fn save(connection: &Connection, prefs: &AppPreferences) -> Result<()> {
 
 /// Standalone fallback helper that opens `umuryango.db` directly to persist theme changes.
 pub fn save_theme_to_db(style: UiStyle, mode: ThemeMode, mood: CozyMood) {
-    if let Ok(connection) = umuryango_app::db::open_local("umuryango.db") {
+    if let Ok(connection) = open_local("umuryango.db") {
         let theme_str = match mode {
             ThemeMode::Light => "light",
             ThemeMode::Dark => "dark",
@@ -116,7 +116,7 @@ pub fn save_theme_to_db(style: UiStyle, mode: ThemeMode, mood: CozyMood) {
 
 #[allow(dead_code)]
 pub fn save_language_to_db(language: Language) {
-    if let Ok(connection) = umuryango_app::db::open_local("umuryango.db") {
+    if let Ok(connection) = open_local("umuryango.db") {
         let _ = set_app_state(&connection, PREF_LANGUAGE, Some(language.locale_code()));
     }
 }
@@ -124,7 +124,6 @@ pub fn save_language_to_db(language: Language) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use umuryango_app::db::open_local;
 
     fn database() -> Connection {
         open_local(":memory:").expect("in-memory database must open")

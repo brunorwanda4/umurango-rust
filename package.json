@@ -4,6 +4,9 @@
   "private": true,
   "scripts": {
     "build": "cargo build -p umuryango-app",
+    "build:windows": "bun run scripts/build-release.js windows",
+    "build:android": "bun run scripts/build-release.js android",
+    "build:all": "bun run scripts/build-release.js all",
     "dev": "bun run scripts/dev-native.js",
     "dev:backend": "bun run scripts/dev-backend.js",
     "dev:frontend": "bun run --cwd web dev",

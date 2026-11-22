@@ -1,25 +1,12 @@
 #![recursion_limit = "512"]
 
-mod app;
-mod auth;
-mod brand;
-mod components;
-mod dashboard;
-mod i18n;
-mod icons;
-mod navigation;
-mod preferences;
-mod theme;
-mod window;
-
-use app::UmuryangoApp;
-use gpui_kit::*;
-use umuryango_app::db;
-use umuryango_app::safe_area;
-pub use umuryango_app::updater;
-use window::window_options;
-
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn main() {
+    use gpui_kit::*;
+    use umuryango_app::{
+        app::UmuryangoApp, db, preferences, theme, updater, window::window_options,
+    };
+
     updater::cleanup_old_binary();
 
     let connection =
@@ -35,3 +22,6 @@ fn main() {
         .expect("window must open");
     });
 }
+
+#[cfg(any(target_os = "ios", target_os = "android"))]
+fn main() {}

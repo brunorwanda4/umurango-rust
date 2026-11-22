@@ -1,7 +1,7 @@
 //! Persists the last visited screen so the app reopens where the user left off.
 
+use crate::db::{get_app_state, set_app_state};
 use rusqlite::{Connection, Result};
-use umuryango_app::db::{get_app_state, set_app_state};
 
 const SCREEN_KEY: &str = "navigation.last_screen";
 const SESSION_TOKEN_KEY: &str = "session.token";
@@ -115,7 +115,7 @@ pub fn save(connection: &Connection, state: &SavedNavigation) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use umuryango_app::db::open_local;
+    use crate::db::open_local;
 
     fn database() -> Connection {
         open_local(":memory:").expect("in-memory database opens")
