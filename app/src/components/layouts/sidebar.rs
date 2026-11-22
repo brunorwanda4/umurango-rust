@@ -137,6 +137,8 @@ fn app_sidebar_minimalist(
                 this.child(
                     div()
                         .id(spring_id)
+                        .w(px(14.0))
+                        .h(px(14.0))
                         .flex()
                         .items_center()
                         .justify_center()
@@ -146,10 +148,9 @@ fn app_sidebar_minimalist(
                                 .to(AnimationPhase(target_phase))
                                 .with_epsilon(0.005),
                             move |chevron_box, phase| {
-                                let y_offset = phase.interpolate_clamped(px(0.0), px(1.0));
                                 let icon_color =
                                     phase.interpolate_clamped(text_muted_col, text_active);
-                                chevron_box.relative().top(y_offset).child(
+                                chevron_box.child(
                                     icons::icon(sidebar_chevron_icon(phase.0))
                                         .size(px(11.0))
                                         .text_color(icon_color),

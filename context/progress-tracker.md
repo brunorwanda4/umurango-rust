@@ -309,4 +309,8 @@ entries at the end, and include validation.
   - Interpolated vertical position (`y_offset`) and active/muted text tinting for smooth, responsive feedback when toggling the Money section.
   - Added unit test `test_sidebar_chevron_icon_selection` to verify icon switching across phase thresholds.
   - Validated via `cargo test -p umuryango-app` (all 33 tests passing), `cargo fmt --check`, and `cargo clippy -p umuryango-app -- -D warnings`.
-
+- Unified chevron SVG viewBoxes and alignment across directional states:
+  - Fixed aspect ratio and alignment discrepancy between Font Awesome `chevron-right` (`320x512`), `chevron-down` (`448x512`), `chevron-left` (`320x512`), and `chevron-up` (`448x512`) in `assets/fontawesome/free-solid-svg-icons/`.
+  - Normalized all 4 chevron SVGs to consistent `viewBox="0 0 512 512"` centered at (256, 256), ensuring exact identical stroke weight, arm proportions, tip curvature, and visual bounds across all orientations.
+  - Sized the sidebar chevron container with fixed `w(px(14.0)).h(px(14.0))` and removed unnatural vertical shifting, eliminating jumping and keeping icons optically centered with navigation labels.
+  - Validated via `cargo test -p umuryango-app` (33 tests passing), `cargo fmt --check`, and `cargo clippy -p umuryango-app -- -D warnings`.
