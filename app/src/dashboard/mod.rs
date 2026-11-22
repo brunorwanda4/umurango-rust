@@ -11,7 +11,6 @@ use crate::theme::{active_mood, set_cozy_mood};
 pub(super) use crate::updater::{UpdateApplyOutcome, UpdateState};
 pub(super) use gpui_kit::component::input::{InputState, TextareaState};
 pub(super) use gpui_kit::component::select::{SelectEvent, SelectState};
-pub(super) use gpui_kit::component::IndexPath;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CustomCategoryItem {
@@ -147,7 +146,7 @@ impl DashboardView {
                     "Farming".to_string(),
                     "Salary".to_string(),
                 ],
-                Some(IndexPath::default()),
+                None,
                 window,
                 cx,
             )
@@ -173,7 +172,7 @@ impl DashboardView {
                     "Cash".to_string(),
                     "Bank Account".to_string(),
                 ],
-                Some(IndexPath::default()),
+                None,
                 window,
                 cx,
             )

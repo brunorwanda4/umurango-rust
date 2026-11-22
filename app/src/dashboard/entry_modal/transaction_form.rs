@@ -147,7 +147,8 @@ pub fn render_transaction_form(
                             palette,
                             select_input(&dashboard.entry_account_select, palette)
                                 .w_full()
-                                .menu_width(px(220.0)),
+                                .menu_width(px(220.0))
+                                .placeholder(text(lang, "modal.field_account")),
                         )),
                 )
                 // 5. Date / Time (using GPUI Kit DatePicker component)

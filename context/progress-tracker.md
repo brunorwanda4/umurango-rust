@@ -370,4 +370,9 @@ entries at the end, and include validation.
   - Removed the hardcoded Windows `org.gradle.java.home=C:\\Program Files\\Microsoft\\jdk-17.0.20.101-hotspot` line from `crates/mobile/android/gradle.properties` so Linux CI runners use `JAVA_HOME` from `actions/setup-java` while local Windows builds still auto-detect JDK 17 via `scripts/build-release.js`.
 
 - Fixed Render cargo run --release binary ambiguity:
-  - Added default-run = "umuryango-backend" to ackend/Cargo.toml and default-members = ["backend"] to root Cargo.toml so Render's default cargo build --release and cargo run --release target umuryango-backend automatically.
+  - Added default-run = "umuryango-backend" to `backend/Cargo.toml` and default-members = ["backend"] to root `Cargo.toml` so Render's default `cargo build --release` and `cargo run --release` target `umuryango-backend` automatically.
+
+- Removed pre-populated default values from entry modal inputs:
+  - Updated `open_entry_modal` and `open_category_modal` in `app/src/dashboard/entry_modal/actions.rs` to initialize text inputs, money inputs, date inputs, and select dropdowns empty (`""` / `None`) so placeholders are shown instead of pre-filled values.
+  - Initialized `entry_category_select` and `entry_account_select` with `None` in `DashboardView::new` (`app/src/dashboard/mod.rs`) and added placeholder text to the account select dropdown in `app/src/dashboard/entry_modal/transaction_form.rs`.
+  - Validated via `cargo fmt --all -- --check`, `cargo clippy -p umuryango-app -- -D warnings`, and `cargo test -p umuryango-app --lib` (38 tests passing).

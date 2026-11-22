@@ -1,6 +1,7 @@
 use crate::components::ui::money_mask_pattern;
 use crate::dashboard::{DashboardView, EntryModalKind};
 use crate::i18n::{text, Language};
+use gpui_kit::component::date_picker::DatePickerState;
 use gpui_kit::*;
 
 impl DashboardView {
@@ -150,7 +151,7 @@ impl DashboardView {
         });
         self.entry_category_color_input.update(cx, |state, cx| {
             state.set_placeholder("#RRGGBB".to_string(), window, cx);
-            state.set_value(self.entry_category_color.clone(), window, cx);
+            state.set_value("".to_string(), window, cx);
         });
         cx.notify();
     }
@@ -207,90 +208,61 @@ impl DashboardView {
         }
 
         let lang = self.language;
-        let (title_ph, title_val, sec_ph, sec_val, amt_ph, amt_val) = match kind {
+        let (title_ph, sec_ph, amt_ph) = match kind {
             EntryModalKind::Income => (
                 text(lang, "modal.income_desc_ph"),
-                text(lang, "modal.income_desc_val"),
                 text(lang, "modal.income_cat_ph"),
-                text(lang, "modal.income_cat_val"),
                 text(lang, "modal.amount_rwf_ph"),
-                "50,000".to_string(),
             ),
             EntryModalKind::Expense => (
                 text(lang, "modal.expense_desc_ph"),
-                text(lang, "modal.expense_desc_val"),
                 text(lang, "modal.expense_cat_ph"),
-                text(lang, "modal.expense_cat_val"),
                 text(lang, "modal.amount_rwf_ph"),
-                "35,000".to_string(),
             ),
             EntryModalKind::Loan => (
                 text(lang, "modal.loan_reason_ph"),
-                text(lang, "modal.loan_reason_val"),
                 text(lang, "modal.loan_person_ph"),
-                text(lang, "modal.loan_person_val"),
                 text(lang, "modal.loan_amount_rwf_ph"),
-                "120,000".to_string(),
             ),
             EntryModalKind::Project => (
                 text(lang, "modal.project_name_ph"),
-                text(lang, "modal.project_name_val"),
                 text(lang, "modal.project_cat_ph"),
-                "HOUSE".to_string(),
                 text(lang, "modal.target_amount_rwf_ph"),
-                "1,200,000".to_string(),
             ),
             EntryModalKind::MemberInvite => (
                 text(lang, "modal.member_name_ph"),
-                "".to_string(),
                 text(lang, "modal.member_phone_ph"),
-                "+25078".to_string(),
                 text(lang, "modal.member_role_ph"),
-                "MEMBER".to_string(),
             ),
             EntryModalKind::Category => (
                 text(lang, "modal.category_name_ph"),
-                "".to_string(),
                 text(lang, "modal.category_desc_ph"),
-                "".to_string(),
-                "".to_string(),
                 "".to_string(),
             ),
         };
 
         self.entry_title_input.update(cx, |state, cx| {
             state.set_placeholder(title_ph, window, cx);
-            state.set_value(title_val, window, cx);
+            state.set_value("".to_string(), window, cx);
             state.focus_handle(cx).focus(window, cx);
         });
         self.entry_secondary_input.update(cx, |state, cx| {
             state.set_placeholder(sec_ph, window, cx);
-            state.set_value(sec_val.clone(), window, cx);
+            state.set_value("".to_string(), window, cx);
         });
 
         if kind == EntryModalKind::Income || kind == EntryModalKind::Expense {
             let is_inc = kind == EntryModalKind::Income;
             let avail = self.get_available_categories(is_inc);
-            let selected_val = if !sec_val.is_empty() && avail.contains(&sec_val) {
-                sec_val
-            } else if is_inc {
-                "Contribution".to_string()
-            } else {
-                avail
-                    .first()
-                    .cloned()
-                    .unwrap_or_else(|| "General".to_string())
-            };
             self.entry_category_select.update(cx, |sel, cx| {
                 sel.set_items(avail, window, cx);
-                sel.set_selected_value(&selected_val, window, cx);
+                sel.set_selected_index(None, window, cx);
             });
-            self.entry_secondary_input.update(cx, |state, cx| {
-                state.set_value(selected_val, window, cx);
-            });
+            self.entry_date_picker =
+                cx.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
             self.entry_date_input.update(cx, |state, cx| {
                 state.set_placeholder(text(lang, "modal.datetime_ph"), window, cx);
-                state.set_value("Today".to_string(), window, cx);
+                state.set_value("".to_string(), window, cx);
             });
             self.entry_notes_input.update(cx, |state, cx| {
                 state.set_placeholder(text(lang, "modal.notes_ph"), window, cx);
@@ -306,7 +278,7 @@ impl DashboardView {
                     window,
                     cx,
                 );
-                sel.set_selected_index(Some(gpui_kit::component::IndexPath::default()), window, cx);
+                sel.set_selected_index(None, window, cx);
             });
         }
 
@@ -322,7 +294,7 @@ impl DashboardView {
                 } else {
                     state.set_mask_pattern(money_mask_pattern("RWF"), window, cx);
                 }
-                state.set_value(amt_val, window, cx);
+                state.set_value("".to_string(), window, cx);
             });
         }
         self.active_entry_modal = Some(kind);
