@@ -121,14 +121,28 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android NDK 27
+      - name: Configure Android SDK and NDK 27
         run: |
-          sdkmanager --install "ndk;27.1.12297006" "platforms;android-34" "build-tools;34.0.0"
-          echo "ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/27.1.12297006" >> "$GITHUB_ENV"
-          echo "NDK_HOME=${ANDROID_HOME}/ndk/27.1.12297006" >> "$GITHUB_ENV"
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "ANDROID_HOME=${SDK_ROOT}" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=${SDK_ROOT}" >> "$GITHUB_ENV"
+
+          SDKMANAGER=$(find "${SDK_ROOT}/cmdline-tools" -name sdkmanager -type f | head -n 1)
+          if [[ -z "${SDKMANAGER}" ]]; then
+            SDKMANAGER="sdkmanager"
+          fi
+
+          yes | "${SDKMANAGER}" --licenses >/dev/null 2>&1 || true
+
+          NDK_VERSION="27.1.12297006"
+          if [[ ! -d "${SDK_ROOT}/ndk/${NDK_VERSION}" ]]; then
+            "${SDKMANAGER}" --install "ndk;${NDK_VERSION}" "platforms;android-34" "build-tools;34.0.0"
+          else
+            "${SDKMANAGER}" --install "platforms;android-34" "build-tools;34.0.0"
+          fi
+
+          echo "ANDROID_NDK_HOME=${SDK_ROOT}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+          echo "NDK_HOME=${SDK_ROOT}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
 
       - name: Install Rust stable toolchain with Android arm64 target
         uses: dtolnay/rust-toolchain@stable
@@ -172,7 +186,12 @@ jobs:
       - name: Package Android release APK
         run: |
           mkdir -p dist
-          cp crates/mobile/android/app/build/outputs/apk/sideload/release/app-sideload-release.apk dist/umuryango-app-android-arm64.apk
+          APK_PATH=$(find crates/mobile/android/app/build/outputs/apk/sideload/release -name "*.apk" -type f | head -n 1)
+          if [[ -z "${APK_PATH}" ]]; then
+            echo "Failed to locate built sideload release APK"
+            exit 1
+          fi
+          cp "${APK_PATH}" dist/umuryango-app-android-arm64.apk
           cd dist
           sha256sum umuryango-app-android-arm64.apk > umuryango-app-android-arm64.apk.sha256
 
