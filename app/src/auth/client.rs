@@ -11,6 +11,9 @@ use umuryango_shared::{
     SyncPushResponse, TransactionItemDto, TreasurySummaryDto, UserDto,
 };
 
+/// Production backend API base URL deployed on Render.
+pub const PRODUCTION_API_BASE_URL: &str = "https://umurango-rust.onrender.com/api/v1";
+
 static CURRENT_TOKEN: RwLock<Option<String>> = RwLock::new(None);
 static CURRENT_LANGUAGE: RwLock<&'static str> = RwLock::new("en");
 static CURRENT_FAMILY_ID: RwLock<Option<String>> = RwLock::new(None);
@@ -85,11 +88,38 @@ pub fn get_current_family_name() -> Option<String> {
         .and_then(|lock| lock.clone())
 }
 
-/// Resolves the backend API base URL from environment or defaults to local dev server.
+/// Normalizes a backend base URL so that it always points to the `/api/v1` prefix
+/// without a trailing slash (e.g. `https://umurango-rust.onrender.com` ->
+/// `https://umurango-rust.onrender.com/api/v1`).
+pub fn normalize_api_base_url(raw: &str) -> String {
+    let trimmed = raw.trim().trim_end_matches('/');
+    if trimmed.is_empty() {
+        return PRODUCTION_API_BASE_URL.to_string();
+    }
+    if trimmed.ends_with("/api/v1") {
+        trimmed.to_string()
+    } else {
+        format!("{trimmed}/api/v1")
+    }
+}
+
+/// Resolves the backend API base URL from runtime environment variables (`API_URL` /
+/// `NEXT_PUBLIC_API_URL`), compile-time environment overrides, or defaults to the
+/// Render production backend (`https://umurango-rust.onrender.com/api/v1`).
 pub fn api_base_url() -> String {
-    env::var("API_URL")
-        .or_else(|_| env::var("NEXT_PUBLIC_API_URL"))
-        .unwrap_or_else(|_| "http://localhost:4433/api/v1".to_string())
+    if let Ok(url) = env::var("API_URL").or_else(|_| env::var("NEXT_PUBLIC_API_URL")) {
+        if !url.trim().is_empty() {
+            return normalize_api_base_url(&url);
+        }
+    }
+
+    if let Some(url) = option_env!("API_URL").or(option_env!("NEXT_PUBLIC_API_URL")) {
+        if !url.trim().is_empty() {
+            return normalize_api_base_url(url);
+        }
+    }
+
+    PRODUCTION_API_BASE_URL.to_string()
 }
 
 fn authorized_request(req: ureq::Request) -> ureq::Request {
@@ -802,4 +832,33 @@ pub fn api_sync_pull(family_id: &str, cursor: Option<String>) -> Result<SyncPull
     response
         .into_json::<SyncPullResponse>()
         .map_err(|e| format!("Failed to parse sync pull response: {e}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_normalize_api_base_url() {
+        assert_eq!(
+            normalize_api_base_url("https://umurango-rust.onrender.com"),
+            "https://umurango-rust.onrender.com/api/v1"
+        );
+        assert_eq!(
+            normalize_api_base_url("https://umurango-rust.onrender.com/"),
+            "https://umurango-rust.onrender.com/api/v1"
+        );
+        assert_eq!(
+            normalize_api_base_url("https://umurango-rust.onrender.com/api/v1"),
+            "https://umurango-rust.onrender.com/api/v1"
+        );
+        assert_eq!(
+            normalize_api_base_url("http://localhost:4433"),
+            "http://localhost:4433/api/v1"
+        );
+        assert_eq!(
+            normalize_api_base_url("http://localhost:4433/api/v1/"),
+            "http://localhost:4433/api/v1"
+        );
+    }
 }

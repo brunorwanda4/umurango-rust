@@ -376,3 +376,7 @@ entries at the end, and include validation.
   - Updated `open_entry_modal` and `open_category_modal` in `app/src/dashboard/entry_modal/actions.rs` to initialize text inputs, money inputs, date inputs, and select dropdowns empty (`""` / `None`) so placeholders are shown instead of pre-filled values.
   - Initialized `entry_category_select` and `entry_account_select` with `None` in `DashboardView::new` (`app/src/dashboard/mod.rs`) and added placeholder text to the account select dropdown in `app/src/dashboard/entry_modal/transaction_form.rs`.
   - Validated via `cargo fmt --all -- --check`, `cargo clippy -p umuryango-app -- -D warnings`, and `cargo test -p umuryango-app --lib` (38 tests passing).
+
+- Configured production Render backend URL (`https://umurango-rust.onrender.com/api/v1`) as the default API base URL across native app (`app/src/auth/client.rs`), web portal (`web/src/service/api.ts`), and `.env.example`:
+  - Added `PRODUCTION_API_BASE_URL` and `normalize_api_base_url` in `app/src/auth/client.rs` with runtime and compile-time `API_URL` / `NEXT_PUBLIC_API_URL` override support and unit test coverage (`test_normalize_api_base_url`).
+  - Validated via `cargo fmt --all -- --check`, `cargo test -p umuryango-app --lib client::tests`, and `bun run --cwd web check`.

@@ -1,5 +1,14 @@
-const apiBaseUrl =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4433/api/v1";
+function normalizeApiBaseUrl(raw: string): string {
+  const trimmed = raw.trim().replace(/\/+$/, "");
+  if (!trimmed) {
+    return "https://umurango-rust.onrender.com/api/v1";
+  }
+  return trimmed.endsWith("/api/v1") ? trimmed : `${trimmed}/api/v1`;
+}
+
+const apiBaseUrl = normalizeApiBaseUrl(
+  process.env.NEXT_PUBLIC_API_URL ?? "https://umurango-rust.onrender.com/api/v1",
+);
 
 export type Family = {
   id: string;
@@ -16,8 +25,7 @@ export type User = {
   status: string;
 };
 
-export const DEFAULT_AVATAR_STYLE_BASE_URL =
-  "https://api.dicebear.com/10.x/weave/svg";
+export const DEFAULT_AVATAR_STYLE_BASE_URL = "https://api.dicebear.com/10.x/weave/svg";
 
 export function generateDefaultAvatarUrl(seed: string): string {
   const clean = seed.trim();
