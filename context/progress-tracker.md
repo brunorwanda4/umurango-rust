@@ -343,3 +343,9 @@ entries at the end, and include validation.
   - Replaced plain text input in `app/src/dashboard/entry_modal/transaction_form.rs` with GPUI Kit's native calendar date picker.
   - Updated submission logic in `app/src/dashboard/entry_modal/submit.rs` to read from `entry_date_picker`.
   - Validated via `cargo test -p umuryango-app` (all 34 tests passing), `cargo fmt --check`, and `cargo clippy -p umuryango-app -- -D warnings`.
+
+
+- Installed GPUI Kit agent skills from `https://gpui-kit.com/skills/`:
+  - Installed `gpui-kit` skill (`.agents/skills/gpui-kit/`) containing `SKILL.md` and complete reference docs (`coding-guides.md`, `conventions.md`, `recipes.md`, `usage.md`, and GPUI mechanics guides under `references/gpui/`).
+  - Installed `gpui-kit-design-guides` skill (`.agents/skills/gpui-kit-design-guides/`) containing `SKILL.md` and `references/design-guides.md`.
+  - Synced and verified via `symposium sync -v` (both skills registered and included as workspace member skills).
