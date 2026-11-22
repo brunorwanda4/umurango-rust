@@ -1,4 +1,4 @@
-# Progress Tracker
+﻿# Progress Tracker
 
 This file records meaningful repository progress. Keep entries concise, newest
 entries at the end, and include validation.
@@ -192,7 +192,7 @@ entries at the end, and include validation.
   components (`app/src/dashboard/components.rs`) and typed dashboard data
   definitions (`app/src/dashboard/data.rs`), reducing the screen module by
   roughly 300 lines without changing navigation or dashboard behavior.
-- Added a project-wide “less is more” rule to `AGENTS.md` and the coding
+- Added a project-wide â€œless is moreâ€ rule to `AGENTS.md` and the coding
   context so AI changes favor focused components and avoid speculative
   abstractions.
 - Applied the feature-folder convention to the dashboard by organizing its
@@ -240,7 +240,7 @@ entries at the end, and include validation.
 - Validated via `cargo fmt --all -- --check`, `cargo check --workspace`, `cargo test -p umuryango-shared -p umuryango-backend`, `cargo test -p umuryango-app`, and `bun run check` in `web/`.
 - Implemented extensible multi-style UI theme architecture and Cozy Kawaii aesthetic across native GPUI app (`app/`):
   - Created `app/src/theme/mod.rs` with `UiStyle` (`CozyKawaii`, `NeoBrutalism`, `Claymorphism3D`), `CozyMood` (`Matcha`, `Peach`, `Berry`), and `StyleTokens` stored in GPUI global state (`cx.set_global(...)`) and synced with `gpui-kit` / `rune-kit` theme tokens.
-  - Configured Dark Cozy and Light Cozy palettes with tactile sticker outlines (`2.5px`–`3px`), rounded geometry (`32px` cards, `22px` buttons, `20px` inputs, `10px` checkboxes), and hard unblurred bottom rim shadows.
+  - Configured Dark Cozy and Light Cozy palettes with tactile sticker outlines (`2.5px`â€“`3px`), rounded geometry (`32px` cards, `22px` buttons, `20px` inputs, `10px` checkboxes), and hard unblurred bottom rim shadows.
   - Updated all shared UI components (`card`, `input`, `button`, `checkbox`, `alert`, `avatar`, `badge`, `divider`, `modal`, `stat_card`, `toggle`), dashboard components, layout shell (`sidebar`, `footer`, `mobile_header`), and auth screens to consume `StyleTokens`.
   - Updated `LoginView` and `auth/layout.rs` with the custom kawaii family hearth icon, "Forgot PIN?" link, visibility toggle, default-checked remember-me checkbox, tactile primary sign-in button, and live Dark/Light Cozy + `CozyMood` header switcher.
 - Refactored all 5 dashboard pages (`Home`, `Money`, `Projects`, `Members`/`People`, `Profile`) and layout chrome (`sidebar`, `mobile_header`/top navbar, `footer`) to match the Cozy Kawaii Family Finance HTML reference while reusing shared GPUI components:
@@ -290,15 +290,23 @@ entries at the end, and include validation.
   - When no active/planned projects exist, omitted `projects_preview_card` via `when_some`, letting `cashflow_insights_card` cleanly occupy the row without an empty card container.
   - Validated via `cargo test -p umuryango-app`, `cargo fmt --check`, and `cargo clippy -p umuryango-app`.
 
-- Adopted the dialog component pattern in pp/src/dashboard/entry_modal/project_form.rs:
-  - Structured ender_project_form using DialogContent from crate::components::ui::dialog.
+- Adopted the dialog component pattern in `app/src/dashboard/entry_modal/project_form.rs`:
+  - Structured `render_project_form` using DialogContent from crate::components::ui::dialog.
   - Added standalone open_project_dialog function leveraging GPUI Kit's declarative dialog architecture (window.open_dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter, and ButtonVariants) matching category_dialog.rs.
-  - Added ender_project_dialog alias to support uniform dialog component rendering.
+  - Added `render_project_dialog` alias to support uniform dialog component rendering.
   - Validated via cargo test -p umuryango-app (all 31 tests passing), cargo fmt --check, and cargo clippy -p umuryango-app -- -D warnings.
 
 - Added Escape (Esc) key dismiss support to dialog and modal backdrops:
   - Added is_escape_key helper recognizing escape and esc keystrokes.
-  - Updated dialog_backdrop and dialog_backdrop_action in pp/src/components/ui/dialog.rs with .on_key_down to invoke close callbacks when Esc is pressed.
-  - Updated ender_modal_backdrop in pp/src/dashboard/entry_modal/shell.rs to close the active entry modal on Esc.
-  - Added auto-focus to entry_title_input upon opening modals in pp/src/dashboard/entry_modal/actions.rs to immediately capture keyboard events.
+  - Updated dialog_backdrop and dialog_backdrop_action in `app/src/components/ui/dialog.rs` with .on_key_down to invoke close callbacks when Esc is pressed.
+  - Updated `render_modal_backdrop` in `app/src/dashboard/entry_modal/shell.rs` to close the active entry modal on Esc.
+  - Added auto-focus to entry_title_input upon opening modals in `app/src/dashboard/entry_modal/actions.rs` to immediately capture keyboard events.
   - Validated via cargo test -p umuryango-app (32 tests passing including 	est_is_escape_key), cargo fmt --check, and cargo clippy -p umuryango-app -- -D warnings.
+
+- Added spring-animated chevron transition to sidebar navigation:
+  - Updated `app/src/components/layouts/sidebar.rs` to animate chevrons using GPUI Kit's spring animation framework (`SpringConfig::new(280.0, 24.0, 1.0)`, `SpringAnimation`, `AnimationPhase`, `.with_spring(...)`).
+  - Added `sidebar_chevron_icon(phase_value)` pure helper dynamically transitioning between `icons::ICON_CHEVRON_RIGHT` and `icons::ICON_CHEVRON_DOWN` as the navigation section expands or collapses.
+  - Interpolated vertical position (`y_offset`) and active/muted text tinting for smooth, responsive feedback when toggling the Money section.
+  - Added unit test `test_sidebar_chevron_icon_selection` to verify icon switching across phase thresholds.
+  - Validated via `cargo test -p umuryango-app` (all 33 tests passing), `cargo fmt --check`, and `cargo clippy -p umuryango-app -- -D warnings`.
+

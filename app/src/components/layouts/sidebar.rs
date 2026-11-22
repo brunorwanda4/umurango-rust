@@ -38,6 +38,15 @@ pub fn app_sidebar(
     }
 }
 
+/// Returns the chevron icon according to the spring animation phase value.
+pub fn sidebar_chevron_icon(phase_value: f32) -> &'static str {
+    if phase_value > 0.45 {
+        icons::ICON_CHEVRON_DOWN
+    } else {
+        icons::ICON_CHEVRON_RIGHT
+    }
+}
+
 /// Sleek shadcn-style minimalist sidebar with "Family" and "Management" sections.
 fn app_sidebar_minimalist(
     props: &AppLayoutProps<'_>,
@@ -74,7 +83,11 @@ fn app_sidebar_minimalist(
                        label: String,
                        is_active: bool,
                        has_chevron: bool,
+                       is_open: bool,
                        on_click_fn: SidebarClickHandler| {
+        let spring_id = (id, 1usize);
+        let target_phase = if is_open { 1.0 } else { 0.0 };
+        let spring = SpringConfig::new(280.0, 24.0, 1.0);
         div()
             .id(id)
             .w_full()
@@ -122,9 +135,27 @@ fn app_sidebar_minimalist(
             )
             .when(has_chevron, |this| {
                 this.child(
-                    icons::icon(icons::ICON_CHEVRON_RIGHT)
-                        .size(px(11.0))
-                        .text_color(text_muted_col),
+                    div()
+                        .id(spring_id)
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .with_spring(
+                            spring_id,
+                            SpringAnimation::new(spring)
+                                .to(AnimationPhase(target_phase))
+                                .with_epsilon(0.005),
+                            move |chevron_box, phase| {
+                                let y_offset = phase.interpolate_clamped(px(0.0), px(1.0));
+                                let icon_color =
+                                    phase.interpolate_clamped(text_muted_col, text_active);
+                                chevron_box.relative().top(y_offset).child(
+                                    icons::icon(sidebar_chevron_icon(phase.0))
+                                        .size(px(11.0))
+                                        .text_color(icon_color),
+                                )
+                            },
+                        ),
                 )
             })
             .on_click(move |ev, window, cx| on_click_fn(ev, window, cx))
@@ -176,6 +207,7 @@ fn app_sidebar_minimalist(
                             text(language, "sidebar.dashboard"),
                             active_section == AppSection::Home,
                             false,
+                            false,
                             Box::new(move |_e, window, cx| {
                                 on_sel_home(AppSection::Home, window, cx)
                             }),
@@ -186,6 +218,7 @@ fn app_sidebar_minimalist(
                             text(language, "nav.money"),
                             in_money,
                             true,
+                            in_money,
                             Box::new(move |_e, window, cx| {
                                 on_sel_money(AppSection::Money, window, cx)
                             }),
@@ -209,6 +242,7 @@ fn app_sidebar_minimalist(
                             text(language, "nav.projects"),
                             active_section == AppSection::Projects,
                             false,
+                            false,
                             Box::new(move |_e, window, cx| {
                                 on_sel_proj(AppSection::Projects, window, cx)
                             }),
@@ -219,6 +253,7 @@ fn app_sidebar_minimalist(
                             text(language, "sidebar.reports"),
                             false,
                             false,
+                            false,
                             Box::new(move |_e, window, cx| {
                                 on_sel_reports(AppSection::Money, window, cx)
                             }),
@@ -227,6 +262,7 @@ fn app_sidebar_minimalist(
                             "min-nav-notifications",
                             icons::ICON_BELL,
                             text(language, "sidebar.notifications"),
+                            false,
                             false,
                             false,
                             Box::new(move |_e, window, cx| {
@@ -250,6 +286,7 @@ fn app_sidebar_minimalist(
                             text(language, "nav.members"),
                             active_section == AppSection::Members,
                             false,
+                            false,
                             Box::new(move |_e, window, cx| {
                                 on_sel_members(AppSection::Members, window, cx)
                             }),
@@ -260,6 +297,7 @@ fn app_sidebar_minimalist(
                             text(language, "sidebar.settings"),
                             active_section == AppSection::Profile,
                             true,
+                            active_section == AppSection::Profile,
                             Box::new(move |_e, window, cx| {
                                 on_sel_settings(AppSection::Profile, window, cx)
                             }),
@@ -1099,4 +1137,18 @@ fn sidebar_money_sub_nav(
                     }
                 })
         }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[core::prelude::v1::test]
+    fn test_sidebar_chevron_icon_selection() {
+        assert_eq!(sidebar_chevron_icon(0.0), icons::ICON_CHEVRON_RIGHT);
+        assert_eq!(sidebar_chevron_icon(0.3), icons::ICON_CHEVRON_RIGHT);
+        assert_eq!(sidebar_chevron_icon(0.45), icons::ICON_CHEVRON_RIGHT);
+        assert_eq!(sidebar_chevron_icon(0.46), icons::ICON_CHEVRON_DOWN);
+        assert_eq!(sidebar_chevron_icon(1.0), icons::ICON_CHEVRON_DOWN);
+    }
 }
