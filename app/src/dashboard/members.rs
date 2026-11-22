@@ -57,30 +57,12 @@ impl DashboardView {
                 )),
         );
 
-        let members_grid =
-            div()
-                .flex()
-                .flex_col()
-                .gap_3()
-                .children(self.family_members.iter().enumerate().map(|(idx, member)| {
-                    let view_remind = view_entity.clone();
-                    let member_name = member.name.to_string();
-                    member_card(idx, member, lang, palette, move |_e, _w, cx| {
-                        let target_name = member_name.clone();
-                        view_remind.update(cx, |this, cx| {
-                            this.toast_info(
-                                text(this.language, "cozy.toast_reminded"),
-                                Some(format!("Notification sent to {target_name}!")),
-                                cx,
-                            );
-                            this.toast_notice = Some(format!(
-                                "{} {target_name}!",
-                                text(this.language, "cozy.toast_reminded")
-                            ));
-                            cx.notify();
-                        });
-                    })
-                }));
+        let members_grid = div().flex().flex_col().gap_3().children(
+            self.family_members
+                .iter()
+                .enumerate()
+                .map(|(idx, member)| member_card(idx, member, palette)),
+        );
 
         div()
             .flex()

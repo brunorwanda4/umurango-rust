@@ -321,3 +321,7 @@ entries at the end, and include validation.
   - Added `phone: Option<SharedString>` to `MemberContributionRow` in `app/src/components/dashboard/data.rs` populated from `FamilyMemberDto.phone_number`.
   - Updated `members_section` in `app/src/components/layouts/sections.rs` to align with the simplified member roster layout.
   - Validated via `cargo test -p umuryango-app` (33 tests passing), `cargo fmt --check`, and `cargo clippy -p umuryango-app -- -D warnings`.
+- Removed reminder action buttons from member roster cards:
+  - Streamlined `member_card` in `app/src/components/dashboard/components.rs` to display household member identity (avatar, name, role, status pill, and contact phone) without reminder triggers or buttons.
+  - Simplified `render_people_screen` in `app/src/dashboard/members.rs` and `members_section` in `app/src/components/layouts/sections.rs` to directly render clean member cards.
+  - Validated via `cargo test -p umuryango-app` (33 tests passing), `cargo fmt --check`, and `cargo clippy -p umuryango-app -- -D warnings`.

@@ -262,11 +262,14 @@ pub fn members_section(theme: ThemeMode, language: Language) -> impl IntoElement
                             )),
                     ),
                 )
-                .child(div().flex().flex_col().gap_3().children(
-                    family_members.iter().enumerate().map(|(idx, member)| {
-                        member_card(idx, member, language, palette, |_e, _w, _cx| {})
-                    }),
-                )),
+                .child(
+                    div().flex().flex_col().gap_3().children(
+                        family_members
+                            .iter()
+                            .enumerate()
+                            .map(|(idx, member)| member_card(idx, member, palette)),
+                    ),
+                ),
         ),
     )
 }

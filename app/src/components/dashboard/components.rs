@@ -1203,16 +1203,11 @@ where
         )
 }
 
-pub fn member_card<R>(
+pub fn member_card(
     index: usize,
     member: &MemberContributionRow,
-    language: Language,
     palette: ThemeColors,
-    on_remind: R,
-) -> impl IntoElement
-where
-    R: Fn(&ClickEvent, &mut Window, &mut App) + 'static,
-{
+) -> impl IntoElement {
     let contact_text = member
         .phone
         .as_ref()
@@ -1253,34 +1248,22 @@ where
             div()
                 .flex()
                 .items_center()
-                .justify_between()
+                .gap_2()
                 .pt_2()
                 .border_t(palette.border_width_input)
                 .border_color(palette.border_color)
                 .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap_2()
-                        .child(
-                            icons::icon(icons::ICON_PHONE)
-                                .size(px(11.0))
-                                .text_color(palette.text_secondary),
-                        )
-                        .child(
-                            div()
-                                .text_xs()
-                                .font_weight(FontWeight::MEDIUM)
-                                .text_color(palette.text_secondary)
-                                .child(contact_text),
-                        ),
+                    icons::icon(icons::ICON_PHONE)
+                        .size(px(11.0))
+                        .text_color(palette.text_secondary),
                 )
-                .child(pill_button(
-                    ("member-remind-btn", index),
-                    text(language, "cozy.send_reminder_btn"),
-                    palette,
-                    on_remind,
-                )),
+                .child(
+                    div()
+                        .text_xs()
+                        .font_weight(FontWeight::MEDIUM)
+                        .text_color(palette.text_secondary)
+                        .child(contact_text),
+                ),
         )
 }
 
