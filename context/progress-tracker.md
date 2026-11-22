@@ -368,3 +368,6 @@ entries at the end, and include validation.
 - Fixed GitHub Actions "Build Android Mobile App (.apk)" failure in `.github/workflows/release.yml` and `crates/mobile/android/gradle.properties`:
   - Removed `android-actions/setup-android@v3` (which failed on `ubuntu-latest` because it defaults to installing the removed legacy `tools` SDK package) and configured the pre-installed `ubuntu-latest` Android SDK (`ANDROID_HOME` / `sdkmanager`) directly with `ndk;27.1.12297006`, `platforms;android-34`, and `build-tools;34.0.0`.
   - Removed the hardcoded Windows `org.gradle.java.home=C:\\Program Files\\Microsoft\\jdk-17.0.20.101-hotspot` line from `crates/mobile/android/gradle.properties` so Linux CI runners use `JAVA_HOME` from `actions/setup-java` while local Windows builds still auto-detect JDK 17 via `scripts/build-release.js`.
+
+- Fixed Render cargo run --release binary ambiguity:
+  - Added default-run = "umuryango-backend" to ackend/Cargo.toml and default-members = ["backend"] to root Cargo.toml so Render's default cargo build --release and cargo run --release target umuryango-backend automatically.

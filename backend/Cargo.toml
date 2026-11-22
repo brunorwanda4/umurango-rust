@@ -3,6 +3,7 @@ name = "umuryango-backend"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+default-run = "umuryango-backend"
 
 [lib]
 name = "umuryango_backend"
