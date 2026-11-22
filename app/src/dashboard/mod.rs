@@ -66,6 +66,9 @@ pub struct DashboardView {
     entry_secondary_input: Entity<InputState>,
     entry_amount_input: Entity<InputState>,
     pub(super) entry_category_select: Entity<SelectState<Vec<String>>>,
+    pub(super) entry_account_select: Entity<SelectState<Vec<String>>>,
+    pub(super) entry_date_input: Entity<InputState>,
+    pub(super) entry_notes_input: Entity<TextareaState>,
     entry_loan_is_lent: bool,
     pub(super) entry_category_is_income: bool,
     pub(super) entry_category_return_modal: Option<EntryModalKind>,
@@ -159,6 +162,20 @@ impl DashboardView {
             },
         )
         .detach();
+        let entry_account_select = cx.new(|cx| {
+            SelectState::new(
+                vec![
+                    "Mobile Money".to_string(),
+                    "Cash".to_string(),
+                    "Bank Account".to_string(),
+                ],
+                Some(IndexPath::default()),
+                window,
+                cx,
+            )
+        });
+        let entry_date_input = cx.new(|cx| InputState::new(window, cx));
+        let entry_notes_input = cx.new(|cx| TextareaState::new(window, cx));
         let entry_category_desc_input = cx.new(|cx| TextareaState::new(window, cx));
         let entry_category_icon_input = cx.new(|cx| InputState::new(window, cx));
         cx.observe(&entry_category_icon_input, |_this, _input, cx| {
@@ -239,6 +256,9 @@ impl DashboardView {
             entry_secondary_input,
             entry_amount_input,
             entry_category_select,
+            entry_account_select,
+            entry_date_input,
+            entry_notes_input,
             entry_loan_is_lent: true,
             entry_category_is_income: false,
             entry_category_return_modal: None,

@@ -330,3 +330,10 @@ entries at the end, and include validation.
   - Added `render_transaction_dialog` alias to support uniform dialog component rendering.
   - Added `open_transaction_dialog` leveraging GPUI Kit's declarative dialog architecture (`window.open_dialog`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogFooter`, and `ButtonVariants`) matching `project_form.rs` and `category_dialog.rs`.
   - Validated via `cargo test -p umuryango-app` (33 tests passing), `cargo fmt --check`, and `cargo clippy -p umuryango-app -- -D warnings`.
+- Added date/time, account selector, and note textarea options to transaction modal:
+  - Added `entry_account_select` (`Mobile Money`, `Cash`, `Bank Account`), `entry_date_input`, and `entry_notes_input` to `DashboardView`.
+  - Added date/time input field with calendar icon prefix and quick 1-click 'Today' and 'Yesterday' selectors in `app/src/dashboard/entry_modal/transaction_form.rs`.
+  - Added account select field (`Mobile Money`, `Cash`, `Bank Account`) and multiline notes textarea styled with `stateful_textarea_container`.
+  - Updated transaction submission in `app/src/dashboard/entry_modal/submit.rs` to assemble account, date, and note details into `CreateTransactionRequest.notes` and toast notifications.
+  - Updated English (`en.json`) and Kinyarwanda (`rw.json`) localization dictionaries with matching keys for all new controls.
+  - Validated via `cargo test -p umuryango-app` (33 tests passing), `cargo fmt --check`, and `cargo clippy -p umuryango-app -- -D warnings`.

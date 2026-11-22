@@ -232,12 +232,37 @@ impl DashboardView {
             _ => "General".to_string(),
         };
 
+        let user_notes = self.entry_notes_input.read(cx).value().trim().to_string();
+        let date_val = self.entry_date_input.read(cx).value().trim().to_string();
+        let account_val = self
+            .entry_account_select
+            .read(cx)
+            .selected_value()
+            .cloned()
+            .unwrap_or_else(|| "Mobile Money".to_string());
+
+        let mut note_parts = Vec::new();
+        if !account_val.is_empty() {
+            note_parts.push(format!("Account: {account_val}"));
+        }
+        if !date_val.is_empty() {
+            note_parts.push(format!("Date: {date_val}"));
+        }
+        if !user_notes.is_empty() {
+            note_parts.push(user_notes);
+        }
+        let notes = if note_parts.is_empty() {
+            None
+        } else {
+            Some(note_parts.join(" · "))
+        };
+
         let req = umuryango_shared::CreateTransactionRequest {
             amount_minor_units: amount,
             is_income,
             category,
             description: description.clone(),
-            notes: None,
+            notes,
             idempotency_key: Some(uuid::Uuid::new_v4().to_string()),
         };
 
@@ -247,9 +272,10 @@ impl DashboardView {
                     self.toast_success(
                         "Income Recorded",
                         Some(format!(
-                            "{} · {}",
+                            "{} · {} ({})",
                             description,
-                            format_signed_rwf(amount, true)
+                            format_signed_rwf(amount, true),
+                            account_val
                         )),
                         cx,
                     );
@@ -257,9 +283,10 @@ impl DashboardView {
                     self.toast_expense(
                         "Expense Recorded",
                         Some(format!(
-                            "{} · {}",
+                            "{} · {} ({})",
                             description,
-                            format_signed_rwf(amount, false)
+                            format_signed_rwf(amount, false),
+                            account_val
                         )),
                         cx,
                     );

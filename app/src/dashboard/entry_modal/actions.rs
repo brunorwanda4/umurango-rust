@@ -51,6 +51,12 @@ impl DashboardView {
         self.entry_secondary_input.update(cx, |state, cx| {
             state.set_placeholder(sec_ph, window, cx);
         });
+        self.entry_date_input.update(cx, |state, cx| {
+            state.set_placeholder(text(lang, "modal.datetime_ph"), window, cx);
+        });
+        self.entry_notes_input.update(cx, |state, cx| {
+            state.set_placeholder(text(lang, "modal.notes_ph"), window, cx);
+        });
         if kind != EntryModalKind::Category {
             self.entry_amount_input.update(cx, |state, cx| {
                 state.set_placeholder(amt_ph, window, cx);
@@ -281,6 +287,26 @@ impl DashboardView {
             });
             self.entry_secondary_input.update(cx, |state, cx| {
                 state.set_value(selected_val, window, cx);
+            });
+            self.entry_date_input.update(cx, |state, cx| {
+                state.set_placeholder(text(lang, "modal.datetime_ph"), window, cx);
+                state.set_value("Today".to_string(), window, cx);
+            });
+            self.entry_notes_input.update(cx, |state, cx| {
+                state.set_placeholder(text(lang, "modal.notes_ph"), window, cx);
+                state.set_value("".to_string(), window, cx);
+            });
+            self.entry_account_select.update(cx, |sel, cx| {
+                sel.set_items(
+                    vec![
+                        "Mobile Money".to_string(),
+                        "Cash".to_string(),
+                        "Bank Account".to_string(),
+                    ],
+                    window,
+                    cx,
+                );
+                sel.set_selected_index(Some(gpui_kit::component::IndexPath::default()), window, cx);
             });
         }
 

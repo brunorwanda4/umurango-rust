@@ -338,5 +338,12 @@
   "sidebar.notifications": "Imenyekanisha",
   "sidebar.events": "Ibikorwa",
   "sidebar.contacts": "Abo Mwishyura",
-  "sidebar.settings": "Igenamiterere"
+  "sidebar.settings": "Igenamiterere",
+  "modal.field_account": "Konti",
+  "modal.field_datetime": "Itariki n'Isaha",
+  "modal.field_notes": "Icyitonderwa (Hitamo)",
+  "modal.notes_ph": "Andika ibisobanuro birambuye...",
+  "modal.datetime_ph": "urugero Uyu munsi, cyangwa YYYY-MM-DD",
+  "modal.quick_today": "Uyu munsi",
+  "modal.quick_yesterday": "Ejo hashize"
 }

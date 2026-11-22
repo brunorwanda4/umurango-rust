@@ -338,5 +338,12 @@
   "sidebar.notifications": "Notifications",
   "sidebar.events": "Events",
   "sidebar.contacts": "Contacts",
-  "sidebar.settings": "Settings"
+  "sidebar.settings": "Settings",
+  "modal.field_account": "Account",
+  "modal.field_datetime": "Date & Time",
+  "modal.field_notes": "Note (Optional)",
+  "modal.notes_ph": "Add notes, receipt #, or context...",
+  "modal.datetime_ph": "e.g. Today, or YYYY-MM-DD",
+  "modal.quick_today": "Today",
+  "modal.quick_yesterday": "Yesterday"
 }
