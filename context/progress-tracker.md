@@ -325,3 +325,8 @@ entries at the end, and include validation.
   - Streamlined `member_card` in `app/src/components/dashboard/components.rs` to display household member identity (avatar, name, role, status pill, and contact phone) without reminder triggers or buttons.
   - Simplified `render_people_screen` in `app/src/dashboard/members.rs` and `members_section` in `app/src/components/layouts/sections.rs` to directly render clean member cards.
   - Validated via `cargo test -p umuryango-app` (33 tests passing), `cargo fmt --check`, and `cargo clippy -p umuryango-app -- -D warnings`.
+- Adopted the dialog component pattern in `app/src/dashboard/entry_modal/transaction_form.rs`:
+  - Structured `render_transaction_form` using `DialogContent` from `crate::components::ui::dialog`.
+  - Added `render_transaction_dialog` alias to support uniform dialog component rendering.
+  - Added `open_transaction_dialog` leveraging GPUI Kit's declarative dialog architecture (`window.open_dialog`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogFooter`, and `ButtonVariants`) matching `project_form.rs` and `category_dialog.rs`.
+  - Validated via `cargo test -p umuryango-app` (33 tests passing), `cargo fmt --check`, and `cargo clippy -p umuryango-app -- -D warnings`.
