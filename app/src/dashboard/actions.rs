@@ -432,6 +432,7 @@ impl DashboardView {
                 self.expense_categories = derive_expense_categories(&txs);
                 self.monthly_cashflow = derive_monthly_cashflow(&txs);
                 self.transactions = txs.iter().map(TransactionRow::from_dto).collect();
+                self.report_timeline_points = derive_report_timeline(&self.transactions, self.report_period);
                 raw_txs = txs;
             }
 

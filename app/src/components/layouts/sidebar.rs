@@ -252,11 +252,11 @@ fn app_sidebar_minimalist(
                             "min-nav-reports",
                             icons::ICON_FILE_LINES,
                             text(language, "sidebar.reports"),
-                            false,
+                            active_section == AppSection::Reports,
                             false,
                             false,
                             Box::new(move |_e, window, cx| {
-                                on_sel_reports(AppSection::Money, window, cx)
+                                on_sel_reports(AppSection::Reports, window, cx)
                             }),
                         ))
                         .child(render_item(
@@ -421,19 +421,19 @@ fn sidebar_minimalist_footer(
             let on_sel_family = on_select.clone();
             let on_sel_overview = on_select.clone();
             let on_sel_fams = on_select.clone();
-            let on_sel_recent = on_select.clone();
-            let on_sel_manage = on_select.clone();
-            let on_sel_create = on_select.clone();
+            let _on_sel_recent = on_select.clone();
+            let _on_sel_manage = on_select.clone();
+            let _on_sel_create = on_select.clone();
             let close_1 = on_close.clone();
             let close_2 = on_close.clone();
             let close_3 = on_close.clone();
-            let close_4 = on_close.clone();
-            let close_5 = on_close.clone();
-            let close_6 = on_close.clone();
+            let _close_4 = on_close.clone();
+            let _close_5 = on_close.clone();
+            let _close_6 = on_close.clone();
             let close_7 = on_close.clone();
             let sign_out_cb = on_sign_out.clone();
             let fam_label_1 = family_name.clone();
-            let fam_label_2 = family_name.clone();
+            let _fam_label_2 = family_name.clone();
 
             this.child(
                 div()
@@ -707,6 +707,7 @@ fn app_sidebar_cozy(
             AppSection::Home => None,
             AppSection::Money => Some(props.money_badge_count.to_string()),
             AppSection::Projects => Some(props.projects_badge_count.to_string()),
+            AppSection::Reports => None,
             AppSection::Members => Some(props.members_badge_count.to_string()),
             AppSection::Profile => None,
         }

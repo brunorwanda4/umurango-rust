@@ -1,5 +1,6 @@
 mod components;
 mod data;
+pub mod reports_chart;
 mod update_modal;
 
 pub use components::{
@@ -13,6 +14,10 @@ pub use data::{
     EntryModalKind, ExpenseCategoryRow, IncomeStreamRow, LoanFilter, LoanItem,
     MemberContributionRow, MoneySubTab, MonthlyCashflowPoint, ProjectFilter, ProjectSummary,
     QuickEntryKind, TransactionRow,
+};
+pub use reports_chart::{
+    derive_report_timeline, export_report_csv, export_report_summary, family_financial_chart,
+    get_export_dir, ReportPeriodFilter, ReportTimelinePoint,
 };
 pub use update_modal::{
     app_update_card, format_asset_size, render_update_modal, update_notification_banner,

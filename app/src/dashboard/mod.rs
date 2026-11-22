@@ -33,6 +33,7 @@ mod members;
 mod money;
 mod profile;
 mod projects;
+mod reports;
 
 pub enum DashboardEvent {
     ThemeChanged(ThemeMode),
@@ -102,6 +103,9 @@ pub struct DashboardView {
     pub monthly_cashflow: Vec<MonthlyCashflowPoint>,
     pub loans: Vec<LoanItem>,
     pub approvals: Vec<ApprovalItem>,
+    pub report_period: ReportPeriodFilter,
+    pub selected_report_point: usize,
+    pub report_timeline_points: Vec<ReportTimelinePoint>,
     pub rule_multi_sig_over_30k: bool,
     pub rule_sunday_digest: bool,
     pub rule_auto_roundup_momo: bool,
@@ -297,6 +301,9 @@ impl DashboardView {
             monthly_cashflow: derive_monthly_cashflow(&[]),
             loans: Vec::new(),
             approvals: Vec::new(),
+            report_period: ReportPeriodFilter::ThisMonth,
+            selected_report_point: 2,
+            report_timeline_points: derive_report_timeline(&[], ReportPeriodFilter::ThisMonth),
             rule_multi_sig_over_30k: true,
             rule_sunday_digest: true,
             rule_auto_roundup_momo: false,
@@ -330,6 +337,65 @@ impl DashboardView {
             }
             self.active_section = section;
             cx.notify();
+        }
+    }
+
+        pub fn set_report_period(&mut self, period: ReportPeriodFilter, cx: &mut Context<Self>) {
+        self.report_period = period;
+        self.report_timeline_points = derive_report_timeline(&self.transactions, period);
+        cx.notify();
+    }
+
+    pub fn select_report_point(&mut self, idx: usize, cx: &mut Context<Self>) {
+        self.selected_report_point = idx;
+        cx.notify();
+    }
+
+    pub fn download_report_csv(&mut self, cx: &mut Context<Self>) {
+        match export_report_csv(&self.family_name, &self.transactions) {
+            Ok(path) => {
+                let msg = format!("Report saved to {}", path.display());
+                self.toast_success("Export Succeeded", Some(msg), cx);
+            }
+            Err(err) => {
+                self.toast_error("Export Failed", Some(err), cx);
+            }
+        }
+    }
+
+    pub fn download_report_summary(&mut self, cx: &mut Context<Self>) {
+        let total_income: i64 = self
+            .transactions
+            .iter()
+            .filter(|t| t.is_income)
+            .map(|t| t.amount_rwf)
+            .sum();
+        let total_expenses: i64 = self
+            .transactions
+            .iter()
+            .filter(|t| !t.is_income)
+            .map(|t| t.amount_rwf)
+            .sum();
+        let total_contributions: i64 = self
+            .transactions
+            .iter()
+            .filter(|t| t.is_income && t.category.to_lowercase().contains("contribution"))
+            .map(|t| t.amount_rwf)
+            .sum();
+        match export_report_summary(
+            &self.family_name,
+            total_income,
+            total_expenses,
+            total_contributions,
+            self.transactions.len(),
+        ) {
+            Ok(path) => {
+                let msg = format!("Summary saved to {}", path.display());
+                self.toast_success("Export Succeeded", Some(msg), cx);
+            }
+            Err(err) => {
+                self.toast_error("Export Failed", Some(err), cx);
+            }
         }
     }
 
@@ -715,6 +781,9 @@ impl Render for DashboardView {
             AppSection::Members => self.render_people_screen(palette, view_entity.clone()),
             AppSection::Profile => {
                 self.render_profile_screen(stacked, palette, view_entity.clone())
+            },
+            AppSection::Reports => {
+                self.render_reports_screen(stacked, palette, view_entity.clone(), cx)
             }
         };
 

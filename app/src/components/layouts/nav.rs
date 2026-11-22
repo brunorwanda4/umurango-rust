@@ -10,15 +10,17 @@ pub enum AppSection {
     Home,
     Money,
     Projects,
+    Reports,
     Members,
     Profile,
 }
 
 impl AppSection {
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 6] = [
         Self::Home,
         Self::Money,
         Self::Projects,
+        Self::Reports,
         Self::Members,
         Self::Profile,
     ];
@@ -28,6 +30,7 @@ impl AppSection {
             Self::Home => "home",
             Self::Money => "money",
             Self::Projects => "projects",
+            Self::Reports => "reports",
             Self::Members => "members",
             Self::Profile => "profile",
         }
@@ -38,6 +41,7 @@ impl AppSection {
             Self::Home => "nav.home",
             Self::Money => "nav.money",
             Self::Projects => "nav.projects",
+            Self::Reports => "nav.reports",
             Self::Members => "nav.members",
             Self::Profile => "nav.profile",
         }
@@ -48,6 +52,7 @@ impl AppSection {
             Self::Home => icons::ICON_HOUSE,
             Self::Money => icons::ICON_WALLET,
             Self::Projects => icons::ICON_BULLSEYE,
+            Self::Reports => icons::ICON_FILE_LINES,
             Self::Members => icons::ICON_USERS,
             Self::Profile => icons::ICON_USER,
         }
@@ -67,6 +72,7 @@ mod tests {
                 AppSection::Home,
                 AppSection::Money,
                 AppSection::Projects,
+                AppSection::Reports,
                 AppSection::Members,
                 AppSection::Profile,
             ]
