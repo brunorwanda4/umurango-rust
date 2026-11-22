@@ -1,10 +1,18 @@
-//! PostgreSQL schema management using tokio-postgres.
+//! PostgreSQL schema management using SQLx (with TLS support) and tokio-postgres.
 
+use crate::config::normalize_database_url;
+use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::error::Error;
 use tokio_postgres::{Client, NoTls};
 
 /// The complete PostgreSQL schema DDL derived from schema.prisma.
 pub const SCHEMA_SQL: &str = include_str!("../schema.sql");
+
+/// Applies the complete Umuryango schema using a `sqlx::PgPool` (supports TLS / Neon).
+pub async fn apply_schema_pool(pool: &PgPool) -> Result<(), sqlx::Error> {
+    sqlx::raw_sql(SCHEMA_SQL).execute(pool).await?;
+    Ok(())
+}
 
 /// Applies the complete Umuryango schema using an existing `tokio_postgres::Client`.
 pub async fn apply_schema(client: &Client) -> Result<(), tokio_postgres::Error> {
@@ -24,10 +32,15 @@ pub async fn connect(
     Ok((client, handle))
 }
 
-/// Connects to PostgreSQL via tokio-postgres and initializes all types, tables, and indexes.
+/// Connects to PostgreSQL via SQLx (supporting both local and TLS/Neon connections)
+/// and initializes all types, tables, and indexes.
 pub async fn init_db(database_url: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
-    let (client, _handle) = connect(database_url).await?;
-    apply_schema(&client).await?;
+    let normalized = normalize_database_url(database_url);
+    let pool = PgPoolOptions::new()
+        .max_connections(1)
+        .connect(&normalized)
+        .await?;
+    apply_schema_pool(&pool).await?;
     Ok(())
 }
 

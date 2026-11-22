@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: umuryango-backend
+    runtime: rust
+    plan: free
+    buildCommand: cargo build --release -p umuryango-backend --bin umuryango-backend
+    startCommand: ./target/release/umuryango-backend
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: RUST_LOG
+        value: info

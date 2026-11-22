@@ -2,6 +2,7 @@ use actix_web::{get, middleware::from_fn, web, App, HttpResponse, HttpServer, Re
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use umuryango_backend::{
     config::Config, handlers, middleware::request_log::request_log, openapi::ApiDoc,
+    schema::apply_schema_pool,
 };
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
@@ -21,10 +22,12 @@ async fn main() -> std::io::Result<()> {
         .connect_lazy(&config.database_url)
         .map_err(|error| std::io::Error::other(error.to_string()))?;
 
-    // Warm up a database connection in the background so incoming requests don't pay connect latency
+    // Warm up database connection and ensure idempotent schema exists in the background
     let warmup_pool = pool.clone();
     tokio::spawn(async move {
-        let _ = sqlx::query("SELECT 1").execute(&warmup_pool).await;
+        if let Err(err) = apply_schema_pool(&warmup_pool).await {
+            eprintln!("Database warmup/schema initialization warning: {err}");
+        }
     });
 
     let bind_address = config.bind_address.clone();

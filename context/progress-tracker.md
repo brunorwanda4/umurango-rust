@@ -349,3 +349,8 @@ entries at the end, and include validation.
   - Installed `gpui-kit` skill (`.agents/skills/gpui-kit/`) containing `SKILL.md` and complete reference docs (`coding-guides.md`, `conventions.md`, `recipes.md`, `usage.md`, and GPUI mechanics guides under `references/gpui/`).
   - Installed `gpui-kit-design-guides` skill (`.agents/skills/gpui-kit-design-guides/`) containing `SKILL.md` and `references/design-guides.md`.
   - Synced and verified via `symposium sync -v` (both skills registered and included as workspace member skills).
+- Prepared backend for Render deployment with Neon PostgreSQL:
+  - Updated ackend/src/config.rs (Config::from_env / Config::from_lookup) to support PRODUCTION_DATABASE_URL fallback and automatic  .0.0.0:$PORT binding when Render's PORT environment variable is set.
+  - Added pply_schema_pool using SQLx (	ls-rustls-ring) in ackend/src/schema.rs and updated init_db, ackend/src/bin/init_schema.rs (--production flag), and ackend/src/main.rs startup warmup to ensure idempotent schema initialization over TLS.
+  - Added ender.yaml Blueprint for Render deployment and updated .env.example / ackend/.env.example.
+  - Initialized production database schema on Neon (cargo run -p umuryango-backend --bin init-schema -- --production) and validated with cargo test -p umuryango-backend, cargo fmt --all -- --check, and cargo clippy -p umuryango-backend -- -D warnings.

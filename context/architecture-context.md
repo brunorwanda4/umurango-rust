@@ -61,6 +61,18 @@ Keep HTTP handlers thin:
 Do not construct SQL by concatenating request data. Use bound SQLx parameters
 and committed migrations.
 
+## Backend Deployment (Render & Neon)
+
+- `backend/src/config.rs` resolves `DATABASE_URL` (falling back to
+  `PRODUCTION_DATABASE_URL`) and `BIND_ADDRESS` (falling back to `0.0.0.0:$PORT`
+  when `PORT` is injected by Render).
+- On startup, `umuryango-backend` warms the database pool and ensures the
+  idempotent schema (`backend/schema.sql`) is applied via SQLx over TLS
+  (`tls-rustls-ring`), supporting managed PostgreSQL providers such as Neon
+  (`?sslmode=require&channel_binding=require`).
+- `render.yaml` defines the Render Blueprint for `umuryango-backend` with
+  `/health` health checks.
+
 ## Backend Request Logging
 
 - Actix request logging middleware prints method, status, client IP, route,
@@ -88,5 +100,5 @@ web development; the API remains a Rust service.
 
 - Android and mobile platforms draw edge-to-edge behind system chrome.
 - System insets (status bars, camera cutouts, and 3-button navigation footers) are forwarded from Android's ViewCompat.setOnApplyWindowInsetsListener via JNI (Java_dev_gpui_mobile_GpuiActivity_nativeSetInsets).
-- Insets are stored in physical pixels in pp/src/safe_area.rs and dynamically scaled to logical pixels via window.scale_factor().
-- Bottom insets are applied to the pp-footer navigation bar and non-dashboard auth views to ensure interactive controls remain completely clear of system footers.
+- Insets are stored in physical pixels in `app/src/safe_area.rs` and dynamically scaled to logical pixels via window.scale_factor().
+- Bottom insets are applied to the `app-footer` navigation bar and non-dashboard auth views to ensure interactive controls remain completely clear of system footers.
