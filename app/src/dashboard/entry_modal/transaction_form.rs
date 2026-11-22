@@ -1,12 +1,12 @@
 use crate::brand::ThemeColors;
 use crate::components::ui::{
-    money_input, select_container, select_field_with_action, select_input,
-    stateful_input_container, stateful_textarea_container, text_input, textarea_input,
-    DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, WindowExt,
+    date_picker_container, date_picker_input, money_input, select_container,
+    select_field_with_action, select_input, stateful_input_container, stateful_textarea_container,
+    text_input, textarea_input, DialogContent, DialogDescription, DialogFooter, DialogHeader,
+    DialogTitle, WindowExt,
 };
 use crate::dashboard::DashboardView;
 use crate::i18n::{text, Language};
-use crate::icons;
 use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::*;
 
@@ -31,9 +31,7 @@ pub fn render_transaction_form(
         )
     };
 
-    let view_add_cat = view_entity.clone();
-    let view_set_date_today = view_entity.clone();
-    let view_set_date_yesterday = view_entity;
+    let view_add_cat = view_entity;
 
     DialogContent::new()
         .gap_3()
@@ -124,7 +122,7 @@ pub fn render_transaction_form(
                         )),
                 ),
         )
-        // Row 2: Account Select & Date/Time
+        // Row 2: Account Select & DatePicker
         .child(
             div()
                 .flex()
@@ -152,7 +150,7 @@ pub fn render_transaction_form(
                                 .menu_width(px(220.0)),
                         )),
                 )
-                // 5. Date / Time (with Calendar prefix & Today/Yesterday quick buttons)
+                // 5. Date / Time (using GPUI Kit DatePicker component)
                 .child(
                     div()
                         .flex_1()
@@ -162,100 +160,16 @@ pub fn render_transaction_form(
                         .gap_1()
                         .child(
                             div()
-                                .flex()
-                                .items_center()
-                                .justify_between()
-                                .child(
-                                    div()
-                                        .text_xs()
-                                        .font_weight(FontWeight::BOLD)
-                                        .text_color(palette.text_secondary)
-                                        .child(text(lang, "modal.field_datetime")),
-                                )
-                                .child(
-                                    div()
-                                        .flex()
-                                        .items_center()
-                                        .gap_1()
-                                        .child(
-                                            div()
-                                                .id("btn-quick-today")
-                                                .cursor_pointer()
-                                                .px_1p5()
-                                                .py_0p5()
-                                                .rounded(px(4.0))
-                                                .bg(palette.accent_primary.opacity(0.12))
-                                                .text_xs()
-                                                .font_weight(FontWeight::BOLD)
-                                                .text_color(palette.accent_primary)
-                                                .hover(|s| {
-                                                    s.bg(palette.accent_primary)
-                                                        .text_color(palette.text_on_accent)
-                                                })
-                                                .child(text(lang, "modal.quick_today"))
-                                                .on_click(move |_e, window, cx| {
-                                                    view_set_date_today.update(cx, |this, cx| {
-                                                        this.entry_date_input.update(
-                                                            cx,
-                                                            |input, cx| {
-                                                                input.set_value(
-                                                                    "Today".to_string(),
-                                                                    window,
-                                                                    cx,
-                                                                );
-                                                            },
-                                                        );
-                                                    });
-                                                }),
-                                        )
-                                        .child(
-                                            div()
-                                                .id("btn-quick-yesterday")
-                                                .cursor_pointer()
-                                                .px_1p5()
-                                                .py_0p5()
-                                                .rounded(px(4.0))
-                                                .bg(palette.bg_elevated)
-                                                .border(px(1.0))
-                                                .border_color(palette.border_color)
-                                                .text_xs()
-                                                .font_weight(FontWeight::BOLD)
-                                                .text_color(palette.text_secondary)
-                                                .hover(|s| {
-                                                    s.border_color(palette.accent_primary)
-                                                        .text_color(palette.text_primary)
-                                                })
-                                                .child(text(lang, "modal.quick_yesterday"))
-                                                .on_click(move |_e, window, cx| {
-                                                    view_set_date_yesterday.update(
-                                                        cx,
-                                                        |this, cx| {
-                                                            this.entry_date_input.update(
-                                                                cx,
-                                                                |input, cx| {
-                                                                    input.set_value(
-                                                                        "Yesterday".to_string(),
-                                                                        window,
-                                                                        cx,
-                                                                    );
-                                                                },
-                                                            );
-                                                        },
-                                                    );
-                                                }),
-                                        ),
-                                ),
+                                .text_xs()
+                                .font_weight(FontWeight::BOLD)
+                                .text_color(palette.text_secondary)
+                                .child(text(lang, "modal.field_datetime")),
                         )
-                        .child(stateful_input_container(
+                        .child(date_picker_container(
                             palette,
-                            &dashboard.entry_date_input,
-                            text_input(&dashboard.entry_date_input, palette).prefix(
-                                div().pl_2().flex().items_center().child(
-                                    icons::icon(icons::ICON_CALENDAR)
-                                        .size(px(13.0))
-                                        .text_color(palette.text_muted),
-                                ),
-                            ),
+                            date_picker_input(&dashboard.entry_date_picker, palette)
+                                .w_full()
+                                .placeholder(text(lang, "modal.datetime_ph")),
                         )),
                 ),
         )

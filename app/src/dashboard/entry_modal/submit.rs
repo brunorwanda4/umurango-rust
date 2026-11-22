@@ -1,3 +1,4 @@
+use crate::components::ui::selected_date_string;
 use crate::dashboard::{
     format_rwf, format_signed_rwf, CustomCategoryItem, DashboardEvent, DashboardView,
     EntryModalKind,
@@ -233,7 +234,17 @@ impl DashboardView {
         };
 
         let user_notes = self.entry_notes_input.read(cx).value().trim().to_string();
-        let date_val = self.entry_date_input.read(cx).value().trim().to_string();
+        let date_from_picker = selected_date_string(self.entry_date_picker.read(cx));
+        let date_val = date_from_picker
+            .or_else(|| {
+                let v = self.entry_date_input.read(cx).value().trim().to_string();
+                if v.is_empty() {
+                    None
+                } else {
+                    Some(v)
+                }
+            })
+            .unwrap_or_else(|| "Today".to_string());
         let account_val = self
             .entry_account_select
             .read(cx)

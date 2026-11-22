@@ -67,6 +67,7 @@ pub struct DashboardView {
     entry_amount_input: Entity<InputState>,
     pub(super) entry_category_select: Entity<SelectState<Vec<String>>>,
     pub(super) entry_account_select: Entity<SelectState<Vec<String>>>,
+    pub(super) entry_date_picker: Entity<DatePickerState>,
     pub(super) entry_date_input: Entity<InputState>,
     pub(super) entry_notes_input: Entity<TextareaState>,
     entry_loan_is_lent: bool,
@@ -174,6 +175,8 @@ impl DashboardView {
                 cx,
             )
         });
+        let entry_date_picker =
+            cx.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
         let entry_date_input = cx.new(|cx| InputState::new(window, cx));
         let entry_notes_input = cx.new(|cx| TextareaState::new(window, cx));
         let entry_category_desc_input = cx.new(|cx| TextareaState::new(window, cx));
@@ -257,6 +260,7 @@ impl DashboardView {
             entry_amount_input,
             entry_category_select,
             entry_account_select,
+            entry_date_picker,
             entry_date_input,
             entry_notes_input,
             entry_loan_is_lent: true,

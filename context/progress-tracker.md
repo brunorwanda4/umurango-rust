@@ -337,3 +337,9 @@ entries at the end, and include validation.
   - Updated transaction submission in `app/src/dashboard/entry_modal/submit.rs` to assemble account, date, and note details into `CreateTransactionRequest.notes` and toast notifications.
   - Updated English (`en.json`) and Kinyarwanda (`rw.json`) localization dictionaries with matching keys for all new controls.
   - Validated via `cargo test -p umuryango-app` (33 tests passing), `cargo fmt --check`, and `cargo clippy -p umuryango-app -- -D warnings`.
+- Implemented GPUI Kit DatePicker component for transaction date selection:
+  - Added `app/src/components/ui/date_picker.rs` with `date_picker_input`, `date_picker_container`, `date_picker_field`, and `selected_date_string` adhering to GPUI Kit DatePicker component spec (https://gpui-kit.com/component/date-picker/).
+  - Integrated `entry_date_picker: Entity<DatePickerState>` in `DashboardView` configured with `%Y-%m-%d` format and cleanable selection.
+  - Replaced plain text input in `app/src/dashboard/entry_modal/transaction_form.rs` with GPUI Kit's native calendar date picker.
+  - Updated submission logic in `app/src/dashboard/entry_modal/submit.rs` to read from `entry_date_picker`.
+  - Validated via `cargo test -p umuryango-app` (all 34 tests passing), `cargo fmt --check`, and `cargo clippy -p umuryango-app -- -D warnings`.
